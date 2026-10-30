@@ -1,4 +1,4 @@
-// Telegram: morning digest and live alerts for today's picks. (Telegram: test on first run)
+// Telegram: morning digest and live alerts for today's picks. (first run sends a test message)
 //   node scripts/alerts.mjs digest   -> top picks of the day + yesterday's results
 //   node scripts/alerts.mjs watch    -> injuries / pulled props / line moves on today's picks since the last check
 // Needs TELEGRAM_TOKEN. The chat id is taken from the first message sent to the bot and saved in data/telegram.json.
