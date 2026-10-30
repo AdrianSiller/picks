@@ -19,6 +19,8 @@ async function chatId() {
   if (process.env.TELEGRAM_CHAT) return process.env.TELEGRAM_CHAT;
   const saved = read("telegram.json", {}); if (saved.chat) return saved.chat;
   const r = await J(`https://api.telegram.org/bot${token}/getUpdates`);
+  if (!r) { const me = await J(`https://api.telegram.org/bot${token}/getMe`); console.log(me ? `Bot @${me.result.username} OK, pero sin mensajes` : "Telegram rechazó el token (revisa que esté completo)"); return null; }
+  console.log(`getUpdates: ${r.result.length} mensajes`);
   const m = r && r.result && r.result.reverse().find(u => u.message && u.message.chat);
   if (!m) return null;
   write("telegram.json", {chat: m.message.chat.id});
