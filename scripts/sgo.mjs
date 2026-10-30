@@ -50,7 +50,10 @@ export async function priceUCL(key, soc) {
     if (y && no) g.btts = [y, no];
     const co = e.odds["cornerKicks-all-game-ou-over"], cu = e.odds["cornerKicks-all-game-ou-under"];
     if (co && cu) { const line = Number(((co.byBookmaker || {}).draftkings || {}).overUnder || co.bookOverUnder);
-      const ov = pickBook(co, line), un = pickBook(cu, line); if (ov && un && ov.line === line && un.line === line) g.corn = {line, over: ov.p, under: un.p}; }
+      const ov = pickBook(co, line), un = pickBook(cu, line);
+      if (ov && un && ov.line === line && un.line === line) g.corn = {line, over: ov.p, under: un.p};
+      // No single book listed: use the consensus price when both sides share the line
+      else if (Number(co.bookOverUnder) === Number(cu.bookOverUnder) && co.bookOdds && cu.bookOdds) g.corn = {line: Number(co.bookOverUnder), over: decAm(co.bookOdds), under: decAm(cu.bookOdds)}; }
     n++;
   }
   return n;
