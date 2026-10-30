@@ -1,0 +1,136 @@
+// NFL: this week's games, DraftKings lines and prop lines (via ESPN), player logs, what each defense allows by position.
+import {J, pool, dkLines, dloc, avg, r1, athleteId} from "./lib.mjs";
+import M from "../model.js";
+
+const SITE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+const CORE = "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl";
+const LOG = "https://site.web.api.espn.com/apis/common/v3/sports/football/nfl/athletes";
+const PREV = 2025;
+const PTYPES = {"Total Receptions": "REC", "Total Receiving Yards": "RECYDS", "Total Carries": "CAR", "Total Rushing Yards": "RUSHYDS",
+  "Total Pass Completions": "CMP", "Total Passing Yards": "PASSYDS", "Total Rushing Plus Receiving Yards": "RRY"};
+const POSOK = {REC: ["RB", "WR", "TE"], RECYDS: ["RB", "WR", "TE"], CAR: ["RB", "QB"], RUSHYDS: ["RB", "QB"], CMP: ["QB"], PASSYDS: ["QB"], RRY: ["RB", "WR"]};
+// log row: [MM-DD, opp, at, REC, RECYDS, CAR, RUSHYDS, CMP, PASSYDS, TD, TGT]
+const VAL = {REC: r => r[3], RECYDS: r => r[4], CAR: r => r[5], RUSHYDS: r => r[6], CMP: r => r[7], PASSYDS: r => r[8], RRY: r => r[4] + r[6]};
+const SKIP = new Set(["Out", "Injured Reserve", "Doubtful", "Suspended", "Physically Unable to Perform"]);
+const md = iso => dloc(iso).slice(5);
+const posOf = p => p === "FB" ? "RB" : p;
+const MUKEYS = ["RBRUSHYDS", "RBRECYDS", "WRRECYDS", "TERECYDS", "QBPASSYDS", "RBREC", "WRREC", "TEREC"];
+
+function parseLog(g) {
+  if (!g || !g.names) return [];
+  const st = (g.seasonTypes || []).find(s => /Regular Season/.test(s.displayName)); if (!st) return [];
+  const ix = k => g.names.indexOf(k), I = {rec: ix("receptions"), recy: ix("receivingYards"), car: ix("rushingAttempts"), rushy: ix("rushingYards"), cmp: ix("completions"), passy: ix("passingYards"), rtd: ix("rushingTouchdowns"), rctd: ix("receivingTouchdowns"), tgt: ix("receivingTargets")};
+  const v = (s, i) => i < 0 ? 0 : (parseFloat(String(s[i]).replace(/,/g, "")) || 0);
+  const rows = [];
+  for (const c of st.categories || []) for (const e of c.events || []) {
+    const m = (g.events || {})[e.eventId]; if (!m) continue; const s = e.stats;
+    rows.push([dloc(m.gameDate), m.opponent && m.opponent.abbreviation, m.atVs === "@" ? "@" : "vs", v(s, I.rec), v(s, I.recy), v(s, I.car), v(s, I.rushy), v(s, I.cmp), v(s, I.passy), v(s, I.rtd) + v(s, I.rctd), v(s, I.tgt)]);
+  }
+  return rows.sort((a, b) => a[0] < b[0] ? 1 : -1).map(r => [r[0].slice(5)].concat(r.slice(1)));
+}
+
+const teamResults = (s, ab) => ((s && s.events) || []).filter(e => e.competitions[0].status.type.completed).map(e => {
+  const cc = e.competitions[0].competitors, me = cc.find(x => x.team.abbreviation === ab), op = cc.find(x => x.team.abbreviation !== ab);
+  const sc = x => Number(x.score && x.score.value != null ? x.score.value : x.score);
+  return {id: e.id, row: [md(e.date), op.team.abbreviation, me.homeAway === "home" ? "vs" : "@", sc(me), sc(op)]};
+});
+
+export async function buildNFL(now = new Date()) {
+  const sb = await J(`${SITE}/scoreboard`);
+  if (!sb) throw new Error("ESPN NFL scoreboard unavailable");
+  const events = ((sb && sb.events) || []).filter(e => e.status.type.state !== "post");
+  const week = sb && sb.week ? sb.week.number : null;
+  const out = {asOf: now.toISOString(), week, games: [], cands: [], logs: {}, teams: {}, mu: {}};
+  if (!events.length) return out;
+
+  // All 32 teams: rosters (positions) and schedules (results, game ids for the defense numbers)
+  const tl = await J(`${SITE}/teams`), teamList = ((((((tl || {}).sports || [])[0] || {}).leagues || [])[0] || {}).teams || []).map(t => t.team);
+  if (!teamList.length) throw new Error("ESPN teams list unavailable");
+  const roster = {}, teams = {}, played = {};
+  await pool(teamList, 6, async t => {
+    const ab = t.abbreviation;
+    const [r, c, p] = await Promise.all([J(`${SITE}/teams/${t.id}/roster`), J(`${SITE}/teams/${t.id}/schedule`), J(`${SITE}/teams/${t.id}/schedule?season=${PREV}`)]);
+    for (const grp of (r && r.athletes) || []) for (const a of grp.items || []) roster[a.id] = {n: a.displayName, t: ab, pos: posOf((a.position && a.position.abbreviation) || ""), inj: a.injuries && a.injuries[0] && a.injuries[0].status};
+    const cur = teamResults(c, ab), prev = teamResults(p, ab);
+    teams[ab] = {cur: cur.map(x => x.row), prevN: prev.length, prevW: prev.filter(x => x.row[3] > x.row[4]).length, prevDiff: +(prev.reduce((s, x) => s + x.row[3] - x.row[4], 0) / (prev.length || 1)).toFixed(2)};
+    played[ab] = cur.map(x => x.id);
+  });
+
+  // Box scores of every game this season -> yards and catches allowed by position
+  const box = {};
+  await pool([...new Set(Object.values(played).flat())], 8, async id => {
+    const s = await J(`${SITE}/summary?event=${id}`); if (!s) return; const o = {};
+    for (const t of (s.boxscore && s.boxscore.players) || []) {
+      const a = Object.fromEntries(MUKEYS.map(k => [k, 0]));
+      for (const st of t.statistics || []) {
+        const K = st.keys || [], col = k => K.findIndex(x => x === k || x.split("/").includes(k));
+        for (const at of st.athletes || []) {
+          const pos = (roster[at.athlete.id] || {}).pos, num = k => { const i = col(k); if (i < 0) return 0; const raw = String(at.stats[i]); return parseFloat((raw.includes("/") && k === "completions" ? raw.split("/")[0] : raw).replace(/,/g, "")) || 0; };
+          if (st.name === "rushing" && pos === "RB") a.RBRUSHYDS += num("rushingYards");
+          if (st.name === "receiving" && ["RB", "WR", "TE"].includes(pos)) { a[pos + "RECYDS"] += num("receivingYards"); a[pos + "REC"] += num("receptions"); }
+          if (st.name === "passing" && pos === "QB") a.QBPASSYDS += num("passingYards");
+        }
+      }
+      o[t.team.abbreviation] = a;
+    }
+    box[id] = o;
+  });
+  const allowed = {};
+  for (const [ab, ids] of Object.entries(played)) { const a = Object.fromEntries(MUKEYS.map(k => [k, 0])); let n = 0;
+    for (const id of ids) { const b = box[id]; if (!b || !b[ab]) continue; const opp = Object.keys(b).find(k => k !== ab); if (!opp) continue; n++; MUKEYS.forEach(k => a[k] += b[opp][k]); }
+    if (n) allowed[ab] = {n, a: Object.fromEntries(Object.entries(a).map(([k, v]) => [k, r1(v / n)]))}; }
+  const mu = {};
+  for (const k of MUKEYS.concat(["RBTOT"])) {
+    const val = ab => k === "RBTOT" ? allowed[ab].a.RBRUSHYDS + allowed[ab].a.RBRECYDS : allowed[ab].a[k];
+    Object.keys(allowed).sort((x, y) => val(y) - val(x)).forEach((ab, i) => { const m = mu[ab] = mu[ab] || {a: {}, r: {}, n: allowed[ab].n}; m.a[k] = r1(val(ab)); m.r[k] = i + 1; });
+  }
+  const lgAvg = Object.fromEntries(MUKEYS.concat(["RBTOT"]).map(k => [k, Object.values(mu).reduce((s, m) => s + m.a[k], 0) / (Object.keys(mu).length || 1)]));
+  const muKey = (pos, m) => m === "RRY" ? (pos === "RB" ? "RBTOT" : null) : ["CAR", "RUSHYDS"].includes(m) ? (pos === "RB" ? "RBRUSHYDS" : null)
+    : ["CMP", "PASSYDS"].includes(m) ? "QBPASSYDS" : m === "REC" ? pos + "REC" : m === "RECYDS" ? pos + "RECYDS" : null;
+
+  // This week's games: lines, injuries, prop lines (no prices on ESPN; SportsGameOdds adds them later)
+  const games = [], props = [], inj = {};
+  await pool(events, 5, async e => {
+    const c = e.competitions[0], H = c.competitors.find(x => x.homeAway === "home"), A = c.competitors.find(x => x.homeAway === "away");
+    const tm = x => ({abbr: x.team.abbreviation, name: x.team.displayName, record: (x.records && x.records[0] && x.records[0].summary) || ""});
+    const base = `${CORE}/events/${e.id}/competitions/${e.id}/odds`;
+    const [o, s, pb] = await Promise.all([J(base + "?lang=en&region=us"), J(`${SITE}/summary?event=${e.id}`), J(base + "/100/propBets?lang=en&region=us&limit=1000")]);
+    const gi = [];
+    for (const t of (s && s.injuries) || []) for (const x of t.injuries || []) { gi.push([t.team.abbreviation, x.athlete.displayName, x.status]); inj[x.athlete.id] = x.status; }
+    games.push({id: e.id, date: e.date, venue: c.venue && c.venue.fullName, home: tm(H), away: tm(A), lines: dkLines(o) || {}, inj: gi});
+    const seen = {};
+    for (const it of (pb && pb.items) || []) { const nm = String((it.type && it.type.name) || "").replace(/\s*\(incl\. overtime\)/, ""), m = PTYPES[nm], aid = athleteId(it.athlete && it.athlete.$ref); if (!m || !aid) continue; (seen[aid + "|" + m] = seen[aid + "|" + m] || []).push(it); }
+    for (const [k, arr] of Object.entries(seen)) { const [aid, m] = k.split("|"); const l = arr[0].current && arr[0].current.target && arr[0].current.target.value; if (l != null) props.push({g: e.id, aid, m, l: Number(l)}); }
+  });
+  games.sort((a, b) => a.date < b.date ? -1 : 1);
+
+  const ids = [...new Set(props.map(p => p.aid))], logs = {};
+  await pool(ids, 8, async id => { const [c, p] = await Promise.all([J(`${LOG}/${id}/gamelog`), J(`${LOG}/${id}/gamelog?season=${PREV}`)]); logs[id] = {c: parseLog(c), p: parseLog(p)}; });
+
+  const G = Object.fromEntries(games.map(g => [g.id, g])), all = [];
+  for (const p of props) {
+    const R = roster[p.aid], L = logs[p.aid]; if (!R || !L || !(POSOK[p.m] || []).includes(R.pos)) continue;
+    const st = inj[p.aid] || R.inj; if (SKIP.has(st)) continue;
+    const g = G[p.g], h = R.t === g.home.abbr; if (!h && R.t !== g.away.abbr) continue;
+    const o = h ? g.away.abbr : g.home.abbr, cur = L.c, prev = L.p, both = cur.concat(prev); if (cur.length < 2) continue;
+    const V = VAL[p.m], vc = cur.map(V), vp = prev.map(V), vo = both.filter(r => r[1] === o).map(V);
+    const mk = muKey(R.pos, p.m), d = mk && mu[o], f = d ? M.defFactor(d.a[mk] / lgAvg[mk], d.n, 6) : 1;
+    let best = null;
+    for (const s of ["over", "under"]) {
+      const hs = M.hitStats(vc, vp, vo, p.l, s), pr = M.withDef(hs.pr0, s, f);
+      const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, s, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: mk ? 1 : 0,
+        hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh, aC: avg(vc), a10: avg(both.slice(0, 10).map(V)), aP: avg(vp), aH: avg(vo),
+        sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, q: st === "Questionable" ? 1 : 0, tg: avg(cur.map(r => r[10])) || 0, cr: avg(cur.map(r => r[5])) || 0, vc, vp, vo};
+      if (!best || c.pr > best.pr) best = c;
+    }
+    if (best && best.pr >= 0.55) all.push(best);
+  }
+  const cands = [], perG = {}, perP = {};
+  for (const c of all.sort((a, b) => M.score(b, "NFL") - M.score(a, "NFL"))) {
+    if ((perG[c.g] || 0) >= 16 || (perP[c.aid] || 0) >= 2) continue; perG[c.g] = (perG[c.g] || 0) + 1; perP[c.aid] = (perP[c.aid] || 0) + 1; cands.push(c);
+  }
+  cands.forEach(c => { const L = logs[c.aid]; out.logs[c.aid] = L.c.concat(L.p).slice(0, 8); });
+  const inPlay = new Set(games.flatMap(g => [g.home.abbr, g.away.abbr]));
+  Object.assign(out, {games, cands, teams: Object.fromEntries(Object.entries(teams).filter(([k]) => inPlay.has(k))), mu: Object.fromEntries(Object.entries(mu).map(([k, v]) => [k, {a: v.a, r: v.r}]))});
+  return out;
+}

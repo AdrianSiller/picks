@@ -1,0 +1,39 @@
+name: Actualizar picks
+on:
+  schedule:
+    - cron: "17 13 * * *"   # 7:17 am Ciudad de México: todo, con momios de SportsGameOdds
+    - cron: "47 20 * * *"   # 2:47 pm: bajas, líneas y props antes de los partidos (reusa momios de la mañana)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["scripts/**", "model.js", ".github/workflows/update.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: build
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Bajar datos y calcular picks
+        env:
+          SGO_API_KEY: ${{ secrets.SGO_API_KEY }}
+          # SportsGameOdds solo en la corrida de la mañana o a mano (el plan gratis tiene límite mensual)
+          RUN_SGO: ${{ (github.event.schedule == '17 13 * * *' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[sgo]')) && '1' || '0' }}
+        run: |
+          mkdir -p data
+          node scripts/build.mjs 2>&1 | tee data/build.log
+      - name: Guardar
+        run: |
+          git config user.name "picks-bot"
+          git config user.email "picks-bot@users.noreply.github.com"
+          git add data
+          git commit -m "Datos $(date -u '+%Y-%m-%d %H:%M') UTC" || exit 0
+          git pull --rebase origin main
+          git push

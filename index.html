@@ -1,0 +1,891 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#d9561a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Picks del Día</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column like a bet slip; sticky header with tabs; cards expand in place for detail */
+:root{
+  --bg:#f3f4f6; --surface:#ffffff; --ink:#141a24; --muted:#5d6676; --line:#dfe3ea;
+  --accent:#d9561a; --accent-soft:#fbe7dc; --team:#2a5ca8; --good:#1f8a4c; --good-soft:#dcf1e4; --warn:#b7791f; --warn-soft:#f8ecd3; --bad:#c03a3a;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1117; --surface:#161c26; --ink:#e8ebf0; --muted:#9aa3b2; --line:#283142;
+  --accent:#f07a3e; --accent-soft:#3a2418; --team:#7fa9ea; --good:#4cc27e; --good-soft:#163222; --warn:#e0a849; --warn-soft:#352a14; --bad:#ef6b6b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1117; --surface:#161c26; --ink:#e8ebf0; --muted:#9aa3b2; --line:#283142;
+  --accent:#f07a3e; --accent-soft:#3a2418; --team:#7fa9ea; --good:#4cc27e; --good-soft:#163222; --warn:#e0a849; --warn-soft:#352a14; --bad:#ef6b6b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+header .wrap{padding-block:14px 0}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+h1{white-space:nowrap;font-family:var(--f-display);font-weight:700;font-size:30px;letter-spacing:.01em;margin:0;line-height:1;text-transform:uppercase}
+h1 span{color:var(--accent)}
+.date{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:right}
+.src{font-size:12px;color:var(--muted);margin:6px 0 10px}
+.tabs{display:flex;gap:4px}
+.tab{flex:1;background:none;border:0;border-bottom:3px solid transparent;padding:10px 4px;font:600 15px var(--f-body);color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab:focus-visible,.card:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main .wrap{padding-block:16px 40px;display:flex;flex-direction:column;gap:12px}
+.lead{font-size:13px;color:var(--muted);margin:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;text-align:left;width:100%;color:inherit;font:inherit;display:block}
+.row{display:flex;gap:12px;align-items:flex-start}
+.rank{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1;color:var(--muted);width:26px;flex:none;text-align:center;padding-top:2px}
+.main{flex:1;min-width:0}
+.who{font-weight:600;font-size:16px}
+.meta{font-size:12.5px;color:var(--muted)}
+.pick{font-family:var(--f-display);font-weight:600;font-size:21px;letter-spacing:.01em;margin-top:4px;text-transform:uppercase}
+.price{flex:none;text-align:right}
+.price b{display:block;font-family:var(--f-mono);font-weight:600;font-size:21px;font-variant-numeric:tabular-nums;color:var(--accent)}
+.price small{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.why{font-family:var(--f-mono);font-size:12.5px;color:var(--ink);margin-top:8px;font-variant-numeric:tabular-nums}
+.prob{margin-top:10px}
+.bar{position:relative;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:3px}
+.bar u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+.probtxt{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:999px;letter-spacing:.02em}
+.c-good{background:var(--good-soft);color:var(--good)}
+.c-warn{background:var(--warn-soft);color:var(--warn)}
+.c-acc{background:var(--accent-soft);color:var(--accent)}
+.detail{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+.detail h3{font:600 12px var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.stat{background:var(--bg);border-radius:8px;padding:8px}
+.stat b{display:block;font-family:var(--f-mono);font-weight:500;font-size:15px;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--muted)}
+.chart{overflow-x:auto}
+svg text{font-family:var(--f-mono)}
+.note{font-size:12px;color:var(--muted);margin-top:8px}
+.game .teams{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.team{font-family:var(--f-display);font-weight:700;font-size:24px;text-transform:uppercase;line-height:1}
+.team small{display:block;font:400 12px var(--f-body);color:var(--muted);text-transform:none;margin-top:4px}
+.vs{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:center;white-space:nowrap}
+.lines{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.lines div{background:var(--bg);border-radius:8px;padding:8px;text-align:center}
+.lines span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.lines b{font-family:var(--f-mono);font-weight:500;font-size:13px;font-variant-numeric:tabular-nums}
+.inj{font-size:12.5px;margin-top:10px;color:var(--muted)}
+.inj b{color:var(--ink);font-weight:600}
+.mini{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}
+.mini:first-of-type{border-top:0}
+.mini .r{font-family:var(--f-mono);text-align:right;flex:none;font-variant-numeric:tabular-nums}
+.slip .legs{margin:10px 0 0;padding:0;list-style:none}
+.slip .legs li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}
+.slip .legs li .lp{font-family:var(--f-mono);flex:none}
+.slip .tot{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;padding-top:10px;border-top:2px solid var(--ink)}
+.slip .tot b{font-family:var(--f-mono);font-size:22px;font-weight:600;color:var(--accent)}
+.slip .legs li .lp,.mini .r b{color:var(--accent);font-weight:600}
+.slip h2{font-family:var(--f-display);font-weight:600;font-size:20px;text-transform:uppercase;margin:0}
+.l5{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:8px}
+.l5-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
+.l5 i{font-style:normal;font-family:var(--f-mono);font-size:13px;font-weight:500;min-width:26px;height:24px;line-height:24px;text-align:center;border-radius:6px;font-variant-numeric:tabular-nums}
+.l5 i.y{background:var(--good-soft);color:var(--good)}
+.l5 i.n{background:var(--bg);color:var(--muted)}
+.l5-note{font-size:10.5px;color:var(--muted);margin-left:2px}
+.l5 i.nj{background:transparent;border:1px dashed var(--line);color:var(--muted);font-size:11px}
+.l5 i.low{box-shadow:inset 0 -2px 0 var(--warn)}
+.l5 i sup{font-size:9px;margin-left:1px;color:var(--warn)}
+.filters{display:flex;flex-direction:column;gap:8px}
+.lgs{display:flex;gap:6px;flex-wrap:wrap}
+.lgb{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 12px;font:600 13px var(--f-body);cursor:pointer}
+.lgb[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.fsel{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px 4px 4px 12px}
+.fsel span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.fsel select{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:500 14px var(--f-body);padding:8px 4px}
+.fsel select:focus-visible,.lgb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tbs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.tb{background:var(--bg);border-radius:8px;padding:8px;min-width:0}
+.tb-h{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px}
+.tb-h b{font-family:var(--f-display);font-size:16px;color:var(--team)}
+.tb-h span{font-family:var(--f-mono);font-size:13px}
+.tb .l5{margin-top:4px;gap:3px}
+.tb .l5 i{min-width:0;flex:1;font-size:11.5px;padding:0 2px;height:22px;line-height:22px}
+.tb .l5 i.n{background:var(--surface)}
+.tb .l5-note{display:none}
+.l5-legend{font-size:10.5px;color:var(--muted);margin-top:3px}
+.team-line{font-size:13px;font-weight:600;color:var(--team)}
+.hits{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.hits div{background:var(--bg);border-radius:8px;padding:6px 8px}
+.hits b{display:block;font-family:var(--f-mono);font-weight:500;font-size:14px;font-variant-numeric:tabular-nums}
+.hits span{font-size:11px;color:var(--muted);line-height:1.2;display:block}
+.probtxt b{color:var(--ink)}
+.gloss{margin:0;display:grid;gap:8px}
+.gloss dt{font-weight:600;font-size:13px}
+.gloss dd{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+.gpick{margin-top:14px;padding:12px;border-radius:10px;background:var(--accent-soft);border:1px solid var(--accent)}
+.gpick.pass{background:var(--bg);border-color:var(--line)}
+.gpick-h{font:600 11.5px var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--accent)}
+.gpick.pass .gpick-h{color:var(--muted)}
+.gpick-main{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:4px 0 2px}
+.gpick-main span{font-family:var(--f-display);font-weight:600;font-size:21px;text-transform:uppercase}
+.gpick-main b{font-family:var(--f-mono);font-weight:600;font-size:21px;color:var(--accent)}
+.gpick-why{font-size:12.5px;margin-top:6px}
+.results summary{display:flex;justify-content:space-between;gap:10px;font:600 13px var(--f-body);cursor:pointer;list-style:none}
+.results summary::-webkit-details-marker{display:none}
+.results summary b{font-family:var(--f-mono)}.pos{color:var(--good)}.neg{color:var(--bad)}
+.mu td{text-align:center;font-family:var(--f-mono);font-size:12.5px;white-space:nowrap}
+.mu td small{display:block;color:var(--muted);font-size:10.5px}
+.mu td.mu-g b{color:var(--good)}.mu td.mu-b b{color:var(--bad, #c0392b)}
+.mu-notes{margin:8px 0 0;padding-left:18px;font-size:12.5px}.mu-notes li{margin:3px 0}
+.others{margin-top:10px}.others h4{margin:0 0 2px;font:600 11.5px var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+h3.sub{font:600 12px var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:14px 0 6px}
+.tablewrap{overflow-x:auto}
+table.opts,table.form{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+table.opts th,table.form th{font-weight:500;font-size:11px;color:var(--muted);text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
+table.opts td,table.form td{white-space:nowrap;text-align:right;padding:6px;border-bottom:1px solid var(--line);font-family:var(--f-mono)}
+table.opts th:first-child,table.opts td:first-child{text-align:left;font-family:var(--f-body)}
+table.opts tr.best td{color:var(--accent);font-weight:600}
+table.form tbody th{text-align:left;font:700 16px var(--f-display);color:var(--ink);border-bottom:1px solid var(--line)}
+table.form tbody th small{display:block;font:400 10.5px var(--f-body);color:var(--muted)}
+.dots{white-space:nowrap}
+.dots i{display:inline-block;width:18px;height:18px;line-height:18px;border-radius:4px;margin-left:2px;text-align:center;font:600 10px var(--f-body);font-style:normal}
+.dots i.w{background:var(--good-soft);color:var(--good)}
+.dots i.l{background:var(--bg);color:var(--muted)}
+.method{font-size:12.5px;color:var(--muted);line-height:1.5}
+.method summary{cursor:pointer;font-weight:600;color:var(--ink)}
+@media (prefers-reduced-motion:no-preference){.detail{animation:in .18s ease-out}@keyframes in{from{opacity:.4;transform:translateY(-4px)}to{opacity:1;transform:none}}}
+.sports{display:inline-flex;gap:4px;background:var(--bg);border-radius:999px;padding:3px;margin-top:10px}
+.sport{border:0;background:none;padding:6px 16px;border-radius:999px;font:700 14px var(--f-display);letter-spacing:.06em;color:var(--muted);cursor:pointer}
+.sport[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.price{max-width:88px}
+.price .nop{display:block;text-transform:none;letter-spacing:0;font-size:10.5px;line-height:1.25;margin-top:2px}
+.refresh{display:flex;align-items:center;gap:10px;margin-top:8px}
+.rbtn{border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:6px 14px;font:600 13px var(--f-body);cursor:pointer}
+.rbtn[disabled]{opacity:.6;cursor:wait}
+.rstat{font-size:12px;color:var(--muted)}
+.changes{border-left:3px solid var(--accent)}
+.changes ul{margin:6px 0 0;padding-left:18px;font-size:13px}.changes li{margin:3px 0}
+.loading{padding:40px 0;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <h1>Picks <span id="sport-name">NBA</span></h1>
+      <div class="date" id="date"></div>
+    </div>
+    <div class="sports" role="tablist" aria-label="Deporte">
+      <button class="sport" role="tab" id="s-nba" aria-selected="true">NBA</button>
+      <button class="sport" role="tab" id="s-nfl" aria-selected="false">NFL</button>
+      <button class="sport" role="tab" id="s-soc" aria-selected="false">Soccer</button>
+    </div>
+    <div class="src" id="src"></div>
+    <div class="refresh"><button class="rbtn" id="refresh" type="button">↻ Actualizar</button><span class="rstat" id="rstat"></span></div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="t-picks" aria-selected="true">Top 10</button>
+      <button class="tab" role="tab" id="t-games" aria-selected="false">Partidos</button>
+      <button class="tab" role="tab" id="t-parlays" aria-selected="false">Parlays</button>
+    </div>
+  </div>
+</header>
+<main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
+<script src="model.js"></script>
+
+<script>(async () => {
+const TZ = "America/Mexico_City";
+const pct = x => Math.round(x * 100) + "%";
+const fx = x => x == null || isNaN(x) ? "—" : (Math.round(x * 100) / 100).toFixed(2);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const phi = M.phi;
+const fmtDiff = d => (d > 0 ? "+" : "") + d.toFixed(1);
+const dateLbl = d => (d.length > 5 ? d.slice(5) : d).replace("-", "/");
+
+/* ---------- data ---------- */
+const getJSON = u => fetch(u + (u.includes("?") ? "&" : "?") + "t=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
+const LATEST = await getJSON("data/latest.json");
+const RESULTS = (await getJSON("data/results.json")) || {days: []};
+if (!LATEST) { document.getElementById("view").innerHTML = '<div class="loading">No se pudieron cargar los datos. Revisa tu conexión y recarga.</div>'; return; }
+const NBA_DATA = LATEST.nba, NBA_TEAMS = NBA_DATA.teams, NBA_OUTS = NBA_DATA.outs || {};
+const NFL_DATA = LATEST.nfl;
+const SOC_DATA = LATEST.soc;
+// Games that already started drop out of the picks
+const nowMs = Date.now();
+[NBA_DATA, NFL_DATA, SOC_DATA].forEach(D => { D.games = D.games.filter(g => new Date(g.date).getTime() > nowMs - 5 * 60e3); const ids = new Set(D.games.map(g => g.id)); if (D.cands) D.cands = D.cands.filter(c => ids.has(c.g)); });
+// Rushing + receiving yards (RRY) as an extra log column
+Object.values(NFL_DATA.logs || {}).forEach(rows => rows.forEach(r => { if (r.length === 11) r.push(r[4] + r[6]); }));
+
+let SOC, socGames, socModel, socSorted;
+const socOk = M.socOk, socScore = M.socScore;
+function socInit() {
+  SOC = M.buildSoccer(SOC_DATA);
+  socGames = Object.fromEntries(SOC_DATA.games.map(g => [g.id, g]));
+  socModel = Object.fromEntries(SOC.games.map(x => [x.id, x]));
+  SOC.cands.forEach((c, i) => { c.key = "s" + i; c.bk = c.p ? (SOC_DATA.games.find(g => g.id === c.g).lg === "Champions" && ["btts", "cor"].includes(c.k) ? "SportsGameOdds" : "DraftKings") : null; });
+  socSorted = SOC.cands.filter(socOk).sort((a, b) => socScore(b) - socScore(a));
+}
+socInit();
+const socWhen = d => new Date(d).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ});
+const socRange = () => { const ds = SOC_DATA.games.map(g => g.date).sort(); if (!ds.length) return "Sin partidos"; const f = d => new Date(d).toLocaleDateString("es-MX", {day: "numeric", month: "short", timeZone: TZ}); return f(ds[0]) === f(ds[ds.length - 1]) ? f(ds[0]) : `${f(ds[0])} – ${f(ds[ds.length - 1])}`; };
+const LGSHORT = {"Liga MX": "Liga MX", "La Liga": "La Liga", "Champions": "Champions"};
+
+// Does a team's past match support the pick? side "home"/"away" = which team of this game the row belongs to
+function socHit(c, r, side) {
+  const gf = r[4], ga = r[5], g = socGames[c.g], isH = side === "home";
+  switch (c.k) {
+    case "1x2": return c.side === "D" ? gf === ga : (c.side === "H") === isH ? gf > ga : gf < ga;
+    case "dc": return (c.side === "1X") === isH ? gf >= ga : gf <= ga;
+    case "hc": { const hcap = Number(g.lines.spreadHome); const m = gf - ga; return c.side === "H" ? (isH ? m + hcap > 0 : -m + hcap > 0) : (isH ? m + hcap < 0 : -m + hcap < 0); }
+    case "tot": return c.side === "O" ? gf + ga > c.line : gf + ga < c.line;
+    case "btts": return c.side === "Y" ? gf > 0 && ga > 0 : !(gf > 0 && ga > 0);
+    case "cor": { if (r[6] == null || r[7] == null || r[6] + r[7] === 0) return null; return c.side === "O" ? r[6] + r[7] > c.line : r[6] + r[7] < c.line; }
+  }
+  return null;
+}
+function socChipVal(c, r) { return c.k === "cor" ? (r[6] + r[7] || "–") : c.k === "tot" ? r[4] + r[5] : `${r[4]}-${r[5]}`; }
+function socTeamBlock(c, side) {
+  const g = socGames[c.g], t = g[side], rows = SOC.rowsOf(t.abbr);
+  const hits = rows.map(r => socHit(c, r, side)).filter(x => x !== null), n = hits.length, h = hits.filter(Boolean).length;
+  const last = rows.slice(0, 5).reverse();
+  return `<div class="tb"><div class="tb-h"><b>${esc(t.abbr)}</b><span>${n ? `${h} de ${n}` : "—"}</span></div>
+    <div class="l5">${last.map(r => { const x = socHit(c, r, side); return `<i class="${x === null ? "nj" : x ? "y" : "n"}" title="${dateLbl(r[0])} ${r[3] === "h" ? "vs" : "@"} ${r[2]} (${r[1]})">${socChipVal(c, r)}</i>`; }).join("")}<span class="l5-note">→</span></div></div>`;
+}
+const socWhat = c => ({"1x2": "resultado", "dc": "resultado", "hc": "resultado con handicap", "tot": "goles totales", "btts": "si anotaron ambos", "cor": "corners totales"}[c.k]);
+function socDetail(c) {
+  const g = socGames[c.g], m = socModel[c.g], L = g.lines;
+  const row = (lbl, pm, price) => `<tr><td>${lbl}</td><td>${pct(pm)}</td><td>${price ? pct(1 / price) : "—"}</td><td>${fx(price)}</td></tr>`;
+  return `<div class="detail">
+    <h3>Lo que proyecta el modelo</h3>
+    <div class="stats">
+      <div class="stat"><b>${m.lh.toFixed(1)}</b><span>Goles esp. ${esc(g.home.abbr)}</span></div>
+      <div class="stat"><b>${m.la.toFixed(1)}</b><span>Goles esp. ${esc(g.away.abbr)}</span></div>
+      <div class="stat"><b>${pct(m.pBTTS)}</b><span>Ambos anotan</span></div>
+      <div class="stat"><b>${m.lc.toFixed(1)}</b><span>Corners esperados</span></div>
+    </div>
+    <div class="tablewrap"><table class="opts"><thead><tr><th>Resultado</th><th>Modelo</th><th>Casa</th><th>Momio</th></tr></thead><tbody>
+      ${row(`Gana ${esc(g.home.abbr)}`, m.pH, L.mlHome)}${row("Empate", m.pD, L.draw)}${row(`Gana ${esc(g.away.abbr)}`, m.pA, L.mlAway)}
+    </tbody></table></div>
+    <h3 style="margin-top:14px">Cómo leer este pick</h3>
+    <dl class="gloss">
+      <dt>${esc(c.lbl)}</dt><dd>${{"1x2": "Apuestas al resultado final del partido (90 minutos).", "dc": "Doble oportunidad: ganas si ese equipo gana o si empatan.", "hc": `Handicap: al marcador de ${esc(c.lbl.split(" ")[0])} se le suma ${c.line > 0 ? "+" : ""}${c.line} goles antes de comparar.`, "tot": `Ganas si entre los dos equipos meten ${c.side === "O" ? "más" : "menos"} de ${c.line} goles.`, "btts": c.side === "Y" ? "Ganas si los dos equipos meten al menos un gol." : "Ganas si al menos uno de los dos equipos no anota.", "cor": `Ganas si entre los dos equipos suman ${c.side === "O" ? "más" : "menos"} de ${c.line} tiros de esquina.`}[c.k]}</dd>
+      <dt>Los cuadritos de cada equipo</dt><dd>Sus últimos 5 partidos (${socWhat(c)}), el más reciente a la derecha. Verde: ese partido habría cumplido el pick. El "X de Y" cuenta sus últimos 10 partidos de liga y torneos continentales; copas contra equipos de divisiones menores no cuentan.</dd>
+      ${c.p ? `<dt>Momio ${fx(c.p)}</dt><dd>Momio decimal de DraftKings: por cada $100 recibes $${Math.round(c.p * 100)} si se cumple (incluye tu apuesta).</dd>` : `<dt>Momio</dt><dd>La fuente no trae el momio de este mercado. Revísalo en tu casa: si paga ${fx(1 / c.pr)} o más, nuestra estimación dice que conviene.</dd>`}
+      <dt>Probabilidad estimada ${pct(c.pr)}</dt><dd>${c.mk != null ? `Promedio entre el modelo (${pct(c.pm)}) y la probabilidad de la casa sin su comisión (${pct(c.mk)})${g.lg === "Champions" ? "; en Champions pesa más la casa, porque los equipos vienen de ligas de nivel muy distinto" : ""}.` : `Viene del modelo (${pct(c.pm)}), ajustado hacia 50% porque no hay momio de la casa para compararlo.`}</dd>
+      ${c.e != null && c.e >= 0.04 ? `<dt>Valor +${Math.round(c.e * 100)}%</dt><dd>Diferencia entre nuestra estimación y la probabilidad que implica el momio.</dd>` : ""}
+    </dl>
+    <div class="note">${esc(g.away.name)} @ ${esc(g.home.name)} · ${esc(g.lg)} · ${socWhen(g.date)} · ${esc(g.venue || "")}</div>
+  </div>`;
+}
+function socCard(c, i) {
+  const g = socGames[c.g];
+  return `<button class="card" data-sk="${c.key}" aria-expanded="false">
+    <div class="row">
+      ${i != null ? `<div class="rank">${i + 1}</div>` : ""}
+      <div class="main">
+        <div class="who">${esc(g.away.name)} @ ${esc(g.home.name)}</div>
+        <div class="team-line">${esc(LGSHORT[g.lg] || g.lg)}</div>
+        <div class="meta">${socWhen(g.date)}</div>
+        <div class="pick">${esc(c.lbl)}</div>
+      </div>
+      <div class="price"><small>Momio</small><b>${c.p ? fx(c.p) : "—"}</b><small class="nop">${c.p ? "DraftKings" : "en tu casa"}</small></div>
+    </div>
+    <div class="tbs">${socTeamBlock(c, "away")}${socTeamBlock(c, "home")}</div>
+    <div class="prob">
+      <div class="bar"><i style="width:${c.pr * 100}%"></i>${c.imp ? `<u style="left:${c.imp * 100}%"></u>` : ""}</div>
+      <div class="probtxt"><span>Probabilidad estimada <b>${pct(c.pr)}</b></span><span>${c.imp ? `Según el momio ${pct(c.imp)}` : `Conviene si paga ${fx(1 / c.pr)} o más`}</span></div>
+    </div>
+    ${c.e != null && c.e >= 0.04 ? `<div class="chips"><span class="chip c-good">Valor +${Math.round(c.e * 100)}%</span></div>` : ""}
+    <div class="slot"></div>
+  </button>`;
+}
+function socWire(root) {
+  root.querySelectorAll(".card[data-sk]").forEach(el => el.addEventListener("click", () => {
+    const open = el.getAttribute("aria-expanded") === "true";
+    el.setAttribute("aria-expanded", String(!open));
+    const c = SOC.cands.find(x => x.key === el.dataset.sk);
+    el.querySelector(".slot").innerHTML = open ? "" : socDetail(c);
+  }));
+}
+function socTopFor(lg) { const out = [], per = {}; for (const c of socSorted) { if (lg && socGames[c.g].lg !== lg) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === 10) break; } return out; }
+function socViewPicks() {
+  if (filt.game) { const g = socGames[filt.game]; const list = SOC.cands.filter(c => c.g === filt.game && socOk(c)).sort((a, b) => socScore(b) - socScore(a));
+    return `<p class="lead">Picks de ${esc(g.away.name)} @ ${esc(g.home.name)}.</p>` + (list.length ? list.map(socCard).join("") : `<div class="card meta" style="cursor:default">Sin picks con sustento suficiente en este partido. Revisa la proyección en Partidos.</div>`); }
+  const top = socTopFor(filt.lg);
+  return resultsHtml() + `<p class="lead">Liga MX, La Liga y Champions de los próximos días. Cada pick muestra cuántas veces se habría cumplido en los últimos partidos de cada equipo y lo compara con la casa. Toca uno para ver la proyección del partido.</p>` + top.map(socCard).join("");
+}
+function socViewGames() {
+  const order = ["Liga MX", "La Liga", "Champions"];
+  return order.filter(lg => !filt.lg || lg === filt.lg).map(lg => {
+    const gs = SOC_DATA.games.filter(g => g.lg === lg && (!filt.game || g.id === filt.game));
+    if (!gs.length) return "";
+    return `<h3 class="sub" style="margin:4px 0 -2px">${lg}</h3>` + gs.map(g => {
+      const m = socModel[g.id], L = g.lines || {};
+      const props = SOC.cands.filter(c => c.g === g.id && socOk(c)).sort((a, b) => socScore(b) - socScore(a)).slice(0, 5);
+      const top = props[0], others = props.slice(1);
+      const form = t => { const rows = SOC.rowsOf(t.abbr).slice(0, 5).reverse(); return rows.map(r => `<i class="${r[4] > r[5] ? "w" : "l"}" title="${dateLbl(r[0])} ${r[3] === "h" ? "vs" : "@"} ${r[2]} ${r[4]}-${r[5]}">${r[4] > r[5] ? "G" : r[4] < r[5] ? "P" : "E"}</i>`).join(""); };
+      const cl = g.cl && g.cl.length ? g.cl[Math.floor(g.cl.length / 2)] : null;
+      return `<div class="card game" style="cursor:default">
+        <div class="teams">
+          <div class="team">${g.away.abbr}<small>${esc(g.away.name)} · ${g.away.record || ""}</small></div>
+          <div class="vs">@<br>${socWhen(g.date)}</div>
+          <div class="team" style="text-align:right">${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record || ""}</small></div>
+        </div>
+        ${top ? `<div class="gpick">
+          <div class="gpick-h">Pick sugerido</div>
+          <div class="gpick-main"><span>${esc(top.lbl)}</span><b>${top.p ? fx(top.p) : "—"}</b></div>
+          <div class="probtxt"><span>Probabilidad estimada <b>${pct(top.pr)}</b></span><span>${top.imp ? `Según el momio ${pct(top.imp)}` : `Conviene si paga ${fx(1 / top.pr)} o más`}</span></div>
+          <div class="gpick-why">${top.p ? `Es la opción con mejor combinación de probabilidad y valor: supera a la casa por ${Math.round(top.e * 100)} puntos.` : `La fuente no trae momio de este mercado; revísalo en tu casa.`}</div>
+        </div>
+        ${others.length ? `<div class="others"><h4>Otras opciones</h4>${others.map(c => `<div class="mini"><span><b>${esc(c.lbl)}</b></span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</div>` : ""}` : `<div class="gpick pass">
+          <div class="gpick-h">Sin pick sugerido</div>
+          <div class="gpick-why" style="margin-top:4px">Nuestra estimación queda muy cerca de la casa en todos los mercados; mejor pasar este partido.</div>
+        </div>`}
+        <h3 class="sub">Proyección</h3>
+        <div class="tablewrap"><table class="opts"><thead><tr><th></th><th>${esc(g.home.abbr)}</th><th>Empate</th><th>${esc(g.away.abbr)}</th></tr></thead><tbody>
+          <tr><td>Modelo</td><td>${pct(m.pH)}</td><td>${pct(m.pD)}</td><td>${pct(m.pA)}</td></tr>
+          <tr><td>Casa</td><td>${L.mlHome ? pct(1 / L.mlHome) : "—"}</td><td>${L.draw ? pct(1 / L.draw) : "—"}</td><td>${L.mlAway ? pct(1 / L.mlAway) : "—"}</td></tr>
+          <tr><td>Momio</td><td>${fx(L.mlHome)}</td><td>${fx(L.draw)}</td><td>${fx(L.mlAway)}</td></tr>
+        </tbody></table></div>
+        <div class="lines">
+          <div><span>Goles esperados</span><b>${m.lh.toFixed(1)} - ${m.la.toFixed(1)}</b></div>
+          <div><span>Ambos anotan</span><b>${pct(m.pBTTS)}</b></div>
+          <div><span>Corners esp.</span><b>${m.lc.toFixed(1)}${cl ? ` · línea ${cl}` : ""}</b></div>
+        </div>
+        <h3 class="sub">Cómo llegan (últimos 5)</h3>
+        <div class="tablewrap"><table class="form"><tbody>
+          <tr><th>${g.away.abbr}<small>visita</small></th><td class="dots">${form(g.away)}</td></tr>
+          <tr><th>${g.home.abbr}<small>local</small></th><td class="dots">${form(g.home)}</td></tr>
+        </tbody></table></div>
+        <div class="lines">
+          <div><span>Total ${L.total ?? "—"}</span><b>O ${fx(L.overOdds)} · U ${fx(L.underOdds)}</b></div>
+          <div><span>Handicap ${g.home.abbr}</span><b>${L.spreadHome ?? "—"} · ${fx(L.spreadHomeOdds)}</b></div>
+          <div><span>Ambos anotan</span><b>${g.btts ? `Sí ${fx(g.btts[0])} · No ${fx(g.btts[1])}` : "—"}</b></div>
+        </div>
+      </div>`;
+    }).join("");
+  }).join("") + `<p class="note">Últimos 5: G = ganó, P = perdió, E = empate, el más reciente a la derecha. El modelo usa los últimos 10 partidos de liga y torneos continentales de cada equipo.</p>`;
+}
+function socViewParlays() {
+  const pool = socTopFor(filt.lg).filter(c => c.p);
+  const combos = [];
+  for (let a = 0; a < pool.length; a++) for (let b = a + 1; b < pool.length; b++) { combos.push([pool[a], pool[b]]); for (let d = b + 1; d < pool.length; d++) combos.push([pool[a], pool[b], pool[d]]); }
+  const prob = cs => cs.reduce((s, c) => s * c.pr, 1), odds = cs => cs.reduce((s, c) => s * c.p, 1);
+  const pick = (f, n) => combos.filter(cs => cs.length === n).sort((x, y) => f(y) - f(x))[0];
+  const slips = [["Más sólido · 2 picks", "La pareja con mayor probabilidad combinada.", pick(prob, 2)], ["Mejor pago · 2 picks", "Mayor pago esperado: probabilidad × momio.", pick(cs => prob(cs) * odds(cs), 2)], ["Más sólido · 3 picks", "Los tres más consistentes, de partidos distintos.", pick(prob, 3)]].filter(s => s[2]);
+  return (filt.game ? `<p class="note" style="margin:0">Los parlays combinan partidos distintos, así que aquí no se filtra por partido${filt.lg ? ", solo por liga" : ""}.</p>` : "") + `<p class="lead">Armados con picks del top 10${filt.lg ? " de " + esc(filt.lg) : ""} que tienen momio, cada uno de un partido distinto.</p>` + slips.map(([t, d, cs]) => `<div class="card slip" style="cursor:default">
+      <h2>${t}</h2><div class="meta">${d}</div>
+      <ul class="legs">${cs.map(c => { const g = socGames[c.g]; return `<li><span><b>${esc(c.lbl)}</b><br><span class="team-line">${esc(g.away.abbr)} @ ${esc(g.home.abbr)} · ${esc(LGSHORT[g.lg])}</span></span><span class="lp">${fx(c.p)}</span></li>`; }).join("")}</ul>
+      <div class="tot"><span class="meta">Estimado ${pct(prob(cs))}</span><b>${fx(odds(cs))}</b></div>
+    </div>`).join("") + `<p class="note">La probabilidad combinada supone que los picks son independientes entre sí.</p>`;
+}
+function socMethod() {
+  return `<details class="method card" style="cursor:default"><summary>Cómo se calcula</summary>
+  <p>Para cada equipo se toman sus últimos 10 partidos de liga y torneos continentales (las copas contra divisiones menores no cuentan). Con los goles a favor y en contra se calcula su ataque y defensa, ajustados hacia el promedio de su liga cuando hay pocos partidos, y con eso los goles esperados de cada lado, con ventaja para el local. De ahí salen las probabilidades de cada resultado, ambos anotan, goles totales y handicap.</p>
+  <p>Corners: se promedian los corners que saca cada equipo y los que permite su rival, y se calcula la probabilidad de pasar la línea de la casa.</p>
+  <p>Cuando hay momio, la estimación final es el promedio del modelo y la probabilidad de la casa sin su comisión (en Champions pesa 75% la casa, porque comparar equipos de ligas tan distintas con solo sus resultados es poco confiable). Sin momio, la estimación se ajusta hacia 50%.</p>
+  <p>Momios: DraftKings vía ESPN para resultado, handicap y goles totales en las tres ligas; ambos anotan solo en Champions (vía SportsGameOdds). Doble oportunidad tiene momio cuando la casa ofrece el handicap +0.5. Corners todavía sin momio.</p></details>`;
+}
+
+const SPORTS = {
+  nba: {
+    name: "NBA", data: NBA_DATA, teams: NBA_TEAMS, outs: NBA_OUTS, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10, perPlayer: 1, minPr: 0.58, smallN: 15,
+    src: "Estadísticas ESPN · momios DraftKings (decimal)",
+    MK: {PTS: {lbl: "puntos", i: 4}, REB: {lbl: "rebotes", i: 5}, AST: {lbl: "asistencias", i: 6}, "3PM": {lbl: "triples", i: 7}},
+    POS: {G: "PG/SG", F: "SF/PF", C: "C"}, POSPL: {G: "PG y SG", F: "SF y PF", C: "C"},
+    hasPrices: true, defGames: "sus últimos 12 juegos", rookieNote: "novato, lesión o pocos partidos",
+    dateTxt: d => new Date(d).toLocaleDateString("es-MX", {weekday: "short", day: "numeric", month: "short", timeZone: TZ}),
+    when: d => new Date(d).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ}),
+    usage: c => [c.min, "Minutos por juego"],
+  },
+  soc: {
+    name: "Soccer", custom: true, data: SOC_DATA,
+    src: "Estadísticas ESPN · momios DraftKings vía ESPN y SportsGameOdds (decimal)",
+    dateTxt: () => socRange(),
+    views: {picks: socViewPicks, games: socViewGames, parlays: socViewParlays},
+  },
+  nfl: {
+    name: "NFL", data: NFL_DATA, teams: NFL_DATA.teams, outs: {}, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6, perPlayer: 1, minPr: 0.6, smallN: 10,
+    src: "Estadísticas ESPN · momios de props vía SportsGameOdds (decimal)",
+    MK: {REC: {lbl: "recepciones", i: 3}, RECYDS: {lbl: "yardas recibidas", i: 4}, CAR: {lbl: "acarreos", i: 5}, RUSHYDS: {lbl: "yardas por tierra", i: 6}, CMP: {lbl: "pases completos", i: 7}, PASSYDS: {lbl: "yardas por pase", i: 8}, ATD: {lbl: "touchdowns", i: 9}, RRY: {lbl: "yardas por tierra + recepción", i: 11}},
+    POS: {WR: "WR", TE: "TE", RB: "RB", QB: "QB"}, POSPL: {WR: "WR", TE: "TE", RB: "RB", QB: "QB"},
+    hasPrices: true, defGames: "sus partidos de esta temporada", rookieNote: "novato, lesión o pocos partidos",
+    dateTxt: () => "Semana " + NFL_DATA.week,
+    when: d => new Date(d).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ}),
+    usage: c => c.m === "RRY" ? [+((c.cr || 0) + (c.tg || 0)).toFixed(1), "Acarreos + targets"] : ["REC", "RECYDS", "ATD"].includes(c.m) ? [c.tg, "Targets por juego"] : c.pos === "QB" ? ["—", "Uso por juego"] : [c.cr, "Acarreos por juego"],
+  },
+};
+
+let S, DATA, MK, POS, POSPL, TEAMNAME, games, topPicks;
+const sideLbl = s => s === "over" ? "Over" : "Under";
+const pickLbl = c => c.m === "ATD" ? "Anota touchdown" : `${sideLbl(c.s)} ${c.l} ${MK[c.m].lbl}`;
+const lineWord = c => c.m === "ATD" ? "al menos 1 touchdown" : (c.s === "over" ? `más de ${c.l}` : `menos de ${c.l}`) + " " + MK[c.m].lbl;
+const hitOf = (c, v) => c.m === "ATD" ? v >= 1 : c.s === "over" ? v > c.l : v < c.l;
+const time = d => S.when(d);
+// Overs from players with a small or unstable role get a penalty: they depend on getting volume (yesterday: Lloyd with 3 carries)
+const lowRole = c => M.lowRole(c, S.name);
+const score = c => M.score(c, S.name);
+// One pick per player in a game's list: two picks of the same player move together (yesterday: Hubbard's two unders)
+const onePer = list => { const seen = new Set(); return list.filter(c => !c.out && !seen.has(c.aid) && seen.add(c.aid)); };
+const rivalFav = c => (c.s === "over" ? 1 : -1) * (c.f - 1);
+const tname = a => TEAMNAME[a] || a;
+
+function setSport(key) {
+  S = SPORTS[key];
+  ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).setAttribute("aria-selected", String(k === key)));
+  if (S.custom) {
+    document.getElementById("sport-name").textContent = S.name;
+    document.getElementById("src").textContent = S.src;
+    document.getElementById("date").innerHTML = esc(S.dateTxt()) + "<br>datos de las " + new Date(S.data.asOf).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
+    return;
+  }
+  DATA = S.data; MK = S.MK; POS = S.POS; POSPL = S.POSPL;
+  TEAMNAME = {}; DATA.games.forEach(g => { TEAMNAME[g.home.abbr] = g.home.name; TEAMNAME[g.away.abbr] = g.away.name; });
+  games = Object.fromEntries(DATA.games.map(g => [g.id, g]));
+  muPrep();
+  topPicks = M.topPicks(DATA.cands, S.name);
+  document.getElementById("sport-name").textContent = S.name;
+  document.getElementById("src").textContent = S.src;
+  document.getElementById("date").innerHTML = esc(S.dateTxt(DATA.asOf)) + "<br>datos de las " + new Date(DATA.asOf).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
+}
+
+/* ---------- team model ---------- */
+function gameModel(g) { return M.gameModel(g, S); }
+
+/* ---------- NFL matchup: what each defense allows by position (rank 1 = allows the most) ---------- */
+const MUKEY = c => { if (S.name !== "NFL" || !DATA.mu) return null;
+  if (c.m === "RRY") return "RBTOT";
+  if (c.pos === "RB" && ["CAR", "RUSHYDS"].includes(c.m)) return "RBRUSHYDS";
+  if (["RB", "WR", "TE"].includes(c.pos) && c.m === "RECYDS") return c.pos + "RECYDS";
+  if (["RB", "WR", "TE"].includes(c.pos) && c.m === "REC") return c.pos + "REC";
+  if (c.pos === "QB" && ["CMP", "PASSYDS"].includes(c.m)) return "QBPASSYDS";
+  return null; };
+const MULBL = {RBRUSHYDS: "yardas por tierra permitidas a RB", RBRECYDS: "yardas por recepción permitidas a RB", RBTOT: "yardas totales permitidas a RB", WRRECYDS: "yardas permitidas a WR", TERECYDS: "yardas permitidas a TE", QBPASSYDS: "yardas por pase permitidas", RBREC: "recepciones permitidas a RB", WRREC: "recepciones permitidas a WR", TEREC: "recepciones permitidas a TE"};
+let muTotN = 32;
+function muPrep() { if (!DATA.mu || DATA.mu.__prep) return; const ts = Object.keys(DATA.mu); muTotN = ts.length;
+  ts.forEach(t => { const m = DATA.mu[t]; m.a.RBTOT = +(m.a.RBRUSHYDS + m.a.RBRECYDS).toFixed(1); });
+  ts.slice().sort((x, y) => DATA.mu[y].a.RBTOT - DATA.mu[x].a.RBTOT).forEach((t, i) => DATA.mu[t].r.RBTOT = i + 1);
+  Object.defineProperty(DATA.mu, "__prep", {value: true}); }
+const muOf = (team, key) => { const m = DATA.mu && DATA.mu[team]; return m && m.a[key] != null ? {a: m.a[key], r: m.r[key], n: key === "RBTOT" ? muTotN : 32} : null; };
+const rankTxt = x => `#${x.r} de ${x.n}`;
+
+/* ---------- pick cards ---------- */
+function rivalTxt(c) {
+  const p = Math.round((c.f - 1) * 100);
+  if (Math.abs(p) < 3) return `${tname(c.o)} permite ${MK[c.m].lbl} normales a ${POSPL[c.pos] || c.pos}.`;
+  return `${tname(c.o)} permite ${Math.abs(p)}% ${p > 0 ? "más" : "menos"} ${MK[c.m].lbl} de lo normal a ${POSPL[c.pos] || c.pos}.`;
+}
+// Usage per game: minutes in NBA; targets + carries (or completions + carries for QBs) in NFL
+const usageOf = (c, r) => S.name === "NBA" ? r[3] : (c.pos === "QB" ? r[7] + r[5] : r[10] + r[5]);
+function usageAvg(c) { const rows = (DATA.logs[c.aid] || []).map(r => usageOf(c, r)).filter(u => u > 0); return rows.length ? rows.reduce((a, b) => a + b, 0) / rows.length : 0; }
+const isLow = (c, r, avg) => avg > 0 && usageOf(c, r) < 0.5 * avg;
+// The team's recent games in order, marking the ones the player missed; earlier games come from his log when the team list is short
+function recentSeq(c, n) {
+  const logs = DATA.logs[c.aid] || [], T = S.teams[c.t];
+  const team = T ? T.cur : [];
+  const used = new Set();
+  const items = team.map(tr => { const lr = logs.find(r => !used.has(r) && dateLbl(r[0]) === dateLbl(tr[0]) && r[1] === tr[1]); if (lr) { used.add(lr); return {row: lr}; } return {nj: true, d: tr[0], opp: tr[1]}; });
+  const firstPlayed = items.findIndex(i => i.row);
+  let seq = items;
+  if (firstPlayed > 0 && logs.filter(r => !used.has(r)).length === 0) seq = items.slice(firstPlayed); // rookie or new arrival: don't mark games before his first
+  seq = seq.slice(-n);
+  if (seq.length < n) { const prev = logs.filter(r => !used.has(r)); seq = prev.slice(0, n - seq.length).reverse().map(r => ({row: r})).concat(seq); }
+  return seq;
+}
+function last5(c) {
+  const seq = recentSeq(c, 5), idx = MK[c.m].i, avg = usageAvg(c);
+  if (!seq.length) return "";
+  let nj = false, low = false;
+  const chips = seq.map(it => {
+    if (it.nj) { nj = true; return `<i class="nj" title="No jugó: ${dateLbl(it.d)} vs ${it.opp}">NJ</i>`; }
+    const v = it.row[idx], lw = isLow(c, it.row, avg); if (lw) low = true;
+    return `<i class="${hitOf(c, v) ? "y" : "n"}${lw ? " low" : ""}" title="${dateLbl(it.row[0])} vs ${it.row[1]}">${v}${lw ? "<sup>↓</sup>" : ""}</i>`;
+  }).join("");
+  const legend = [nj ? "NJ: no jugó" : "", low ? "↓: jugó poco" : ""].filter(Boolean).join(" · ");
+  return `<div class="l5"><span class="l5-lbl">Últimos 5</span>${chips}<span class="l5-note">→ más reciente</span></div>${legend ? `<div class="l5-legend">${legend}</div>` : ""}`;
+}
+function hits(c) {
+  const cell = (h, label) => `<div><b>${h[1] ? `${h[0]} de ${h[1]}` : "—"}</b><span>${label}</span></div>`;
+  return `<div class="hits">${cell(c.h10, "Últimos 10 juegos")}${cell(c.hc, "Esta temporada")}${cell(c.hp, "Temporada pasada")}</div>`;
+}
+function why(c) { return `Cumplió ${c.h10[0]} de sus últimos ${c.h10[1]}` + (c.m === "ATD" ? "" : ` · promedia ${c.a10}`); }
+function chips(c) {
+  const out = [];
+  if (c.e != null && c.e >= 0.04) out.push(`<span class="chip c-good">Valor +${Math.round(c.e * 100)}%</span>`);
+  if (c.q) out.push(`<span class="chip c-warn">En duda por lesión</span>`);
+  if (c.sm) out.push(`<span class="chip c-warn">Muestra chica</span>`);
+  if (lowRole(c)) out.push(`<span class="chip c-warn">Rol chico: depende de que le den volumen</span>`);
+  if (c.hh[1] >= 2) out.push(`<span class="chip c-acc">Ante ${c.o}: cumplió ${c.hh[0]} de ${c.hh[1]}</span>`);
+  const fp = Math.round((c.f - 1) * 100), rf = rivalFav(c);
+  const mk = MUKEY(c), mx = mk && muOf(c.o, mk);
+  if (mx) { const good = mx.r <= Math.round(mx.n / 4), bad = mx.r > mx.n - Math.round(mx.n / 4);
+    if (good || bad) { const fav = (c.s === "over") === good; out.push(`<span class="chip ${fav ? "c-good" : "c-warn"}">Rival ${fav ? "a favor" : "en contra"}: ${c.o} es ${rankTxt(mx)} en ${MULBL[mk]}</span>`); } }
+  else if (c.hd && Math.abs(fp) >= 3) out.push(`<span class="chip ${rf > 0 ? "c-good" : "c-warn"}">Rival ${rf > 0 ? "a favor" : "en contra"}: ${c.o} permite ${Math.abs(fp)}% ${fp > 0 ? "más" : "menos"} ${MK[c.m].lbl} a ${POSPL[c.pos] || c.pos}</span>`);
+  return out.length ? `<div class="chips">${out.join("")}</div>` : "";
+}
+function gameChart(c) {
+  const rows = (DATA.logs[c.aid] || []).slice().reverse();
+  if (!rows.length) return "";
+  const idx = MK[c.m].i, vals = rows.map(r => r[idx]), line = c.m === "ATD" ? 0.5 : c.l;
+  const avgU = usageAvg(c);
+  const max = Math.max(line, ...vals) * 1.2 || 1;
+  const W = 340, H = 150, padL = 30, padB = 30, padT = 12, bw = (W - padL - 8) / rows.length;
+  const y = v => padT + (H - padT - padB) * (1 - Math.max(0, v) / max);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Últimos ${rows.length} juegos contra la línea ${line}">`;
+  svg += `<text x="${padL - 6}" y="${y(line) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${line}</text>`;
+  rows.forEach((r, i) => {
+    const v = r[idx], x = padL + i * bw + bw * 0.18, w = bw * 0.64, yy = y(v);
+    svg += `<rect x="${x}" y="${yy}" width="${w}" height="${Math.max(1, H - padB - yy)}" rx="2" fill="${hitOf(c, v) ? "var(--good)" : "var(--line)"}"></rect>`;
+    const lw = isLow(c, r, avgU);
+    svg += `<text x="${x + w / 2}" y="${yy - 3}" text-anchor="middle" font-size="10" fill="var(--ink)">${v}${lw ? "↓" : ""}</text>`;
+    svg += `<text x="${x + w / 2}" y="${H - padB + 12}" text-anchor="middle" font-size="9" fill="var(--muted)">${r[1]}</text>`;
+    svg += `<text x="${x + w / 2}" y="${H - padB + 23}" text-anchor="middle" font-size="8.5" fill="var(--muted)">${dateLbl(r[0])}</text>`;
+  });
+  svg += `<line x1="${padL}" x2="${W - 4}" y1="${y(line)}" y2="${y(line)}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line></svg>`;
+  return svg;
+}
+function detail(c) {
+  const g = games[c.g], u = S.usage(c);
+  return `<div class="detail">
+    <h3>${c.m === "ATD" ? "Touchdowns por juego" : `Cuántos ${MK[c.m].lbl} promedia`}</h3>
+    <div class="stats">
+      <div class="stat"><b>${c.aC ?? "—"}</b><span>Esta temporada</span></div>
+      <div class="stat"><b>${c.a10 ?? "—"}</b><span>Últimos 10</span></div>
+      <div class="stat"><b>${c.aP ?? "—"}</b><span>Temporada pasada</span></div>
+      <div class="stat"><b>${u[0] ?? "—"}</b><span>${u[1]}</span></div>
+    </div>
+    <h3>Sus últimos juegos contra la línea${c.m === "ATD" ? "" : ` de ${c.l}`}</h3>
+    <div class="chart">${gameChart(c)}</div>
+    ${(() => { const miss = recentSeq(c, 10).filter(i => i.nj); return miss.length ? `<div class="note"><b>No jugó esta temporada:</b> ${miss.map(i => `${dateLbl(i.d)} vs ${i.opp}`).join(", ")}. Esos juegos no cuentan en sus números.</div>` : ""; })()}
+    <div class="note">Cada barra es un juego, con el rival y la fecha abajo. ↓ marca juegos donde participó mucho menos de lo normal (${S.name === "NBA" ? "menos de la mitad de sus minutos promedio" : "menos de la mitad de sus targets y acarreos promedio"}); puede ser por lesión, faltas o un partido definido temprano. Verde: hizo ${lineWord(c)}, o sea que el pick se habría cumplido. La línea punteada es la línea de la casa. Los primeros juegos de la izquierda pueden ser de la temporada pasada, a veces con otro equipo.</div>
+    <h3 style="margin-top:14px">Cómo leer este pick</h3>
+    <dl class="gloss">
+      <dt>${pickLbl(c)}</dt><dd>Apuestas a que ${esc(c.n)} hace ${lineWord(c)} en el partido.</dd>
+      ${c.moved != null ? `<dt>Línea actualizada</dt><dd>La línea se movió de ${c.moved} a ${c.l} en las casas; el cálculo ya usa ${c.l}.</dd>` : ""}
+      ${c.p ? `<dt>Momio ${fx(c.p)}</dt><dd>Momio decimal: por cada $100 apostados recibes $${Math.round(c.p * 100)} si se cumple (incluye tu apuesta).</dd>` : `<dt>Momio</dt><dd>${c.altLine ? `Las casas tienen esta prop en ${c.altLine}, no en ${c.l}, así que el momio no aplica a esta línea.` : "No encontramos el momio de esta línea en las casas que consultamos."} Revísalo en tu casa: si paga menos de ${fx(1 / c.pr)}, nuestra estimación dice que no conviene.</dd>`}
+      <dt>Probabilidad estimada ${pct(c.pr)}</dt><dd>Qué tan seguido calculamos que se cumple, según cuántas veces lo ha logrado esta temporada, en sus últimos 10 juegos y la temporada pasada, ajustado por el rival.</dd>
+      ${c.hd ? `<dt>Rival ${rivalFav(c) >= 0 ? "a favor" : "en contra"}</dt><dd>${esc(rivalTxt(c))} Mide cómo defiende ese equipo a los de su posición contra cualquier rival, no al jugador en particular. ${Math.abs(rivalFav(c)) < 0.03 ? "El efecto es chico y casi no mueve el pick." : rivalFav(c) > 0 ? `Le ayuda al pick: sube la estimación de ${pct(c.pr0)} a ${pct(c.pr)}.` : `Le juega en contra: baja la estimación de ${pct(c.pr0)} a ${pct(c.pr)}.`}</dd>` : ""}
+      ${(() => { const mk = MUKEY(c), mx = mk && muOf(c.o, mk); if (!mx) return ""; return `<dt>Defensa de ${esc(c.o)}: ${rankTxt(mx)}</dt><dd>${esc(tname(c.o))} permite ${mx.a} ${MULBL[mk].replace(" permitidas", "")} por juego esta temporada. El #1 es la defensa que más permite, así que un número bajo favorece al over y uno alto al under.${mx.n < 32 ? ` Este ranking compara a ${mx.n} equipos.` : ""}</dd>`; })()}
+      ${c.imp ? `<dt>Probabilidad según el momio ${pct(c.imp)}</dt><dd>La probabilidad que la casa le da al pick (1 ÷ momio). Si nuestra estimación es más alta, el momio paga más de lo que debería.</dd>` : ""}
+      ${c.e != null && c.e >= 0.04 ? `<dt>Valor +${Math.round(c.e * 100)}%</dt><dd>Diferencia entre nuestra estimación y la de la casa. Aparece cuando es de 4 puntos o más.</dd>` : ""}
+      ${c.q ? `<dt>En duda por lesión</dt><dd>Aparece como "questionable" en el reporte de lesiones. Confirma que juegue antes de apostar.</dd>` : ""}
+      ${c.sm ? `<dt>Muestra chica</dt><dd>Hay pocos juegos para calcularlo (${S.rookieNote}). Tómalo con más cautela.</dd>` : ""}
+      ${c.hh[1] >= 2 ? `<dt>Ante ${c.o}: cumplió ${c.hh[0]} de ${c.hh[1]}</dt><dd>Su historial contra este mismo equipo: de los ${c.hh[1]} partidos que ha jugado contra ${esc(tname(c.o))} desde la temporada pasada, el pick se habría cumplido en ${c.hh[0]}.</dd>` : ""}
+    </dl>
+    <div class="note">${esc(g.away.name)} @ ${esc(g.home.name)} · ${time(g.date)} · ${esc(g.venue)}</div>
+  </div>`;
+}
+function pickCard(c, i) {
+  const k = `${c.aid}-${c.m}-${c.s}`;
+  return `<button class="card" data-k="${k}" aria-expanded="false">
+    <div class="row">
+      ${i != null ? `<div class="rank">${i + 1}</div>` : ""}
+      <div class="main">
+        <div class="who">${esc(c.n)}</div>
+        <div class="team-line">${esc(tname(c.t))} · ${POS[c.pos] || c.pos}</div>
+        <div class="meta">${c.h ? "En casa vs" : "De visita en"} ${esc(tname(c.o))} · ${time(games[c.g].date)}</div>
+        <div class="pick">${pickLbl(c)}</div>
+      </div>
+      <div class="price"><small>Momio</small><b>${c.p ? fx(c.p) : "—"}</b><small class="nop">${c.p ? esc(c.bk || "") + (c.moved != null ? ` · antes ${c.moved}` : "") : c.altLine ? `línea ${c.altLine} en ${esc(c.altBk)}` : "en tu casa"}</small></div>
+    </div>
+    ${last5(c)}
+    ${hits(c)}
+    <div class="prob">
+      <div class="bar"><i style="width:${c.pr * 100}%"></i>${c.imp ? `<u style="left:${c.imp * 100}%"></u>` : ""}</div>
+      <div class="probtxt"><span>Probabilidad estimada <b>${pct(c.pr)}</b></span><span>${c.imp ? `Según el momio ${pct(c.imp)}` : `Conviene si paga ${fx(1 / c.pr)} o más`}</span></div>
+    </div>
+    ${chips(c)}
+    <div class="slot"></div>
+  </button>`;
+}
+function wire(root) {
+  root.querySelectorAll(".card[data-k]").forEach(el => el.addEventListener("click", () => {
+    const open = el.getAttribute("aria-expanded") === "true";
+    el.setAttribute("aria-expanded", String(!open));
+    const c = DATA.cands.find(x => `${x.aid}-${x.m}-${x.s}` === el.dataset.k);
+    el.querySelector(".slot").innerHTML = open ? "" : detail(c);
+  }));
+}
+
+/* ---------- results of previous days ---------- */
+/* ---------- results of previous days (data/results.json, graded by the daily build) ---------- */
+function resultsHtml() {
+  const sp = S.name === "Soccer" ? "SOC" : S.name;
+  const days = (RESULTS.days || []).map(d => ({date: d.date, rows: d.items.filter(x => x.sport === sp)})).filter(d => d.rows.some(x => x.hit !== undefined));
+  if (!days.length) return "";
+  // Units: 1 per pick; picks without a price count at 1.91 (-110)
+  const tally = rows => { const done = rows.filter(x => x.hit === 0 || x.hit === 1); return {w: done.filter(x => x.hit).length, n: done.length, u: done.reduce((s, x) => s + (x.hit ? (x.p || 1.91) - 1 : -1), 0)}; };
+  const last = days[0], T = tally(last.rows), W = tally(days.slice(0, 7).flatMap(d => d.rows));
+  const u = x => `${x >= 0 ? "+" : ""}${x.toFixed(1)} u`;
+  const dname = d => new Date(d + "T12:00:00").toLocaleDateString("es-MX", {day: "numeric", month: "short"});
+  const st = x => x.hit === undefined ? `<span class="meta">pendiente</span>` : x.hit === null ? `<span class="meta">anulada</span>` : x.hit ? `<span class="pos">✓ pegó</span>` : `<span class="neg">✗ falló</span>`;
+  const act = x => x.act == null ? "" : `<br><span class="meta">${x.kind === "prop" ? (x.hit === null ? esc(x.act[0].toUpperCase() + x.act.slice(1)) : "Hizo " + esc(x.act)) : "Marcador " + esc(x.act)}</span>`;
+  return `<details class="card results" style="cursor:default"><summary><span>Cómo nos fue el ${dname(last.date)}</span><b class="${T.u >= 0 ? "pos" : "neg"}">${T.w} de ${T.n} · ${u(T.u)}</b></summary>
+    <div class="meta" style="margin:6px 0 4px">Últimos ${Math.min(7, days.length)} días: ${W.w} de ${W.n} · ${u(W.u)}. Unidades: 1 a cada pick (sin momio se toma 1.91).</div>
+    ${last.rows.map(x => `<div class="mini"><span><b>${esc(x.n || "")}</b> · ${esc(x.lbl)}${act(x)}</span><span class="r"><b>${x.p ? fx(x.p) : "—"}</b><br>${st(x)}</span></div>`).join("")}
+  </details>`;
+}
+
+/* ---------- Refresh: injuries, lineups, lines and prices straight from ESPN ---------- */
+const ESPN = {NBA: ["basketball", "nba"], NFL: ["football", "nfl"]};
+const getRaw = u => fetch(u, {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
+const A2D = a => { a = Number(a); return a ? +(a > 0 ? 1 + a / 100 : 1 + 100 / -a).toFixed(2) : null; };
+function dkLines(o) {
+  const dk = o && (o.items || []).find(i => i.provider && i.provider.id === "100"); if (!dk) return null;
+  const h = (dk.homeTeamOdds || {}).current || {}, a = (dk.awayTeamOdds || {}).current || {}, d2 = x => x == null ? null : +Number(x).toFixed(2);
+  const L = {provider: "DraftKings", spreadHome: h.pointSpread && h.pointSpread.american, spreadAway: a.pointSpread && a.pointSpread.american,
+    spreadHomeOdds: d2(h.spread && h.spread.decimal), spreadAwayOdds: d2(a.spread && a.spread.decimal), mlHome: d2(h.moneyLine && h.moneyLine.decimal), mlAway: d2(a.moneyLine && a.moneyLine.decimal),
+    total: dk.overUnder, overOdds: A2D(dk.overOdds), underOdds: A2D(dk.underOdds)};
+  if (dk.drawOdds && dk.drawOdds.moneyLine != null) L.draw = A2D(dk.drawOdds.moneyLine);
+  return L;
+}
+const PTYPE = {NBA: {"Total Points": "PTS", "Total Assists": "AST", "Total Rebounds": "REB", "Total 3-Point Field Goals": "3PM"},
+  NFL: {"Total Receptions": "REC", "Total Receiving Yards": "RECYDS", "Total Carries": "CAR", "Total Rushing Yards": "RUSHYDS", "Total Pass Completions": "CMP", "Total Passing Yards": "PASSYDS", "Total Rushing Plus Receiving Yards": "RRY"}};
+const OUTST = {NBA: new Set(["Out"]), NFL: new Set(["Out", "Injured Reserve", "Doubtful", "Suspended", "Inactive"])};
+const lineTxt = L => L && L.spreadHome != null ? `${L.spreadHome} · ML ${fx(L.mlAway)}/${fx(L.mlHome)}` : "";
+let lastRefresh = {};
+
+async function refreshPlayers(sp, D) {
+  const [sport, league] = ESPN[sp], SITE = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}`, CORE = `https://sports.core.api.espn.com/v2/sports/${sport}/leagues/${league}`;
+  const changes = [], outNames = {}; let ok = 0;
+  await Promise.all(D.games.map(async g => {
+    const base = `${CORE}/events/${g.id}/competitions/${g.id}/odds`;
+    const [s, o, pb] = await Promise.all([getRaw(`${SITE}/summary?event=${g.id}`), getRaw(base + "?lang=en&region=us"), getRaw(base + "/100/propBets?lang=en&region=us&limit=1000")]);
+    if (s || o) ok++;
+    const tag = `${g.away.abbr} @ ${g.home.abbr}`;
+    const state = s && s.header && s.header.competitions[0].status.type.state;
+    if (state && state !== "pre") { g.started = true; changes.push(`${tag} ya empezó: se quitó de los picks.`); return; }
+    if (s) {
+      const before = new Map((g.inj || []).map(i => [i[1], i[2]])), now = [];
+      for (const t of s.injuries || []) for (const x of t.injuries || []) now.push([t.team.abbreviation, x.athlete.displayName, x.status, x.athlete.id]);
+      for (const i of now) { if (before.get(i[1]) !== i[2]) changes.push(`${i[1]} (${i[0]}): ${before.get(i[1]) ? before.get(i[1]) + " → " : ""}${i[2]}.`); if (OUTST[sp].has(i[2])) (outNames[i[0]] = outNames[i[0]] || []).push(i[1]); }
+      g.inj = now.map(i => i.slice(0, 3)); g.injId = Object.fromEntries(now.map(i => [i[3], i[2]]));
+      // NBA starting lineups show up about half an hour before tip-off
+      const starters = []; for (const t of (s.boxscore && s.boxscore.players) || []) for (const st of t.statistics || []) for (const a of st.athletes || []) if (a.starter) starters.push(a.athlete.id);
+      if (starters.length >= 10 && !g.lineups) { g.lineups = new Set(starters); changes.push(`${tag}: titulares confirmados.`); }
+    }
+    const L = dkLines(o); if (L && L.mlHome) { if (lineTxt(L) !== lineTxt(g.lines)) changes.push(`${tag}: línea ${lineTxt(g.lines) || "—"} → ${lineTxt(L)}.`); g.lines = L; }
+    const props = {};
+    if (pb) { const seen = {};
+      for (const it of pb.items || []) { const nm = String((it.type && it.type.name) || "").replace(/\s*\(incl\. overtime\)/, ""), m = PTYPE[sp][nm], aid = (((it.athlete || {}).$ref || "").match(/athletes\/(\d+)/) || [])[1]; if (m && aid) (seen[aid + "|" + m] = seen[aid + "|" + m] || []).push(it); }
+      for (const [k, arr] of Object.entries(seen)) { const t = arr[0].current && arr[0].current.target; props[k] = {l: t ? Number(t.value) : null, po: arr[0].odds ? +arr[0].odds.decimal.value : null, pu: arr[1] && arr[1].odds ? +arr[1].odds.decimal.value : null}; } }
+    for (const c of D.cands.filter(c => c.g === g.id && !c.out)) {
+      const st = g.injId && g.injId[c.aid];
+      if (st && OUTST[sp].has(st)) { c.out = true; changes.push(`Sale ${c.n} (${st}): se quitó su pick.`); continue; }
+      if (g.lineups && sp === "NBA" && !g.lineups.has(c.aid) && c.min >= 28 && c.s === "over") changes.push(`${c.n} no aparece como titular: revisa sus minutos.`);
+      c.q = st && st !== "Active" ? 1 : 0;
+      const P = props[c.aid + "|" + c.m];
+      if (pb && !P) { c.out = true; changes.push(`${c.n}: la casa quitó la línea de ${MK[c.m].lbl} (suele pasar cuando no va a jugar).`); continue; }
+      if (!P || P.l == null) continue;
+      if (P.l !== c.l) {
+        const r = M.repricePr(c, P.l), old = c.l;
+        Object.assign(c, {moved: c.moved != null ? c.moved : old, l: P.l, hc: r.hc, h10: r.h10, hp: r.hp, hh: r.hh, pr0: +r.pr0.toFixed(3), pr: +r.pr.toFixed(3)});
+        if (sp === "NFL") { c.p = null; c.imp = null; c.e = null; c.bk = null; }
+        changes.push(`${c.n}: línea de ${MK[c.m].lbl} ${old} → ${P.l} (ahora ${pct(c.pr)}).`);
+      }
+      const price = c.s === "over" ? P.po : P.pu;
+      if (sp === "NBA" && price) { if (Math.abs(price - c.p) >= 0.05) changes.push(`${c.n}: momio ${fx(c.p)} → ${fx(price)}.`); c.p = price; c.bk = "DraftKings"; }
+      if (c.p) { c.imp = +(1 / c.p).toFixed(3); c.e = +(c.pr - c.imp).toFixed(3); }
+    }
+  }));
+  if (D.games.length && !ok) throw new Error("offline");
+  // NBA game model: injury cost from today's Out list and each player's minutes
+  if (sp === "NBA") { const outs = {};
+    for (const [t, names] of Object.entries(outNames)) for (const n of names) { const m = ((D.rmin || {})[t] || {})[n]; if (m) (outs[t] = outs[t] || []).push([n, m, Math.min(3, Math.round(m / 18 * 2) / 2)]); }
+    SPORTS.nba.outs = outs; }
+  D.games = D.games.filter(g => !g.started); const ids = new Set(D.games.map(g => g.id)); D.cands = D.cands.filter(c => ids.has(c.g));
+  return changes;
+}
+
+async function refreshSoccer(D) {
+  const changes = []; let ok = 0;
+  await Promise.all(D.games.map(async g => {
+    const slug = g.slug || {"Liga MX": "mex.1", "La Liga": "esp.1", "Champions": "uefa.champions"}[g.lg], tag = `${g.away.abbr} @ ${g.home.abbr}`;
+    const [s, o] = await Promise.all([getRaw(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/summary?event=${g.id}`), getRaw(`https://sports.core.api.espn.com/v2/sports/soccer/leagues/${slug}/events/${g.id}/competitions/${g.id}/odds?lang=en&region=us`)]);
+    if (s || o) ok++;
+    const state = s && s.header && s.header.competitions[0].status.type.state;
+    if (state && state !== "pre") { g.started = true; return; }
+    const ros = (s && s.rosters) || [];
+    if (ros.length === 2 && ros.every(r => (r.roster || []).some(p => p.starter)) && !g.lineups) { g.lineups = true; changes.push(`${tag}: alineaciones confirmadas.`); }
+    const L = dkLines(o); if (L && L.mlHome) { const was = `${fx((g.lines || {}).mlHome)}/${fx((g.lines || {}).draw)}/${fx((g.lines || {}).mlAway)}`, now = `${fx(L.mlHome)}/${fx(L.draw)}/${fx(L.mlAway)}`;
+      if (was !== now) changes.push(`${tag}: momios ${was} → ${now}.`); g.lines = L; }
+  }));
+  if (D.games.length && !ok) throw new Error("offline");
+  const n0 = D.games.length; D.games = D.games.filter(g => !g.started); if (D.games.length < n0) changes.push(`${n0 - D.games.length} partido(s) ya empezaron y se quitaron.`);
+  socInit();
+  return changes;
+}
+
+async function refresh() {
+  const btn = document.getElementById("refresh"), st = document.getElementById("rstat"), key = curSport;
+  btn.disabled = true; st.textContent = "Revisando bajas, alineaciones y líneas…";
+  try {
+    const changes = key === "soc" ? await refreshSoccer(SOC_DATA) : await refreshPlayers(SPORTS[key].name, SPORTS[key].data);
+    lastRefresh[key] = {at: new Date(), changes};
+    st.textContent = `Actualizado a las ${new Date().toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}`;
+    setSport(key); show(curTab);
+  } catch (e) { st.textContent = "No se pudo actualizar. Revisa tu conexión e intenta de nuevo."; }
+  btn.disabled = false;
+}
+function changesHtml() {
+  const R = lastRefresh[curSport]; if (!R) return "";
+  const list = R.changes.slice(0, 25);
+  return `<details class="card changes" style="cursor:default"${list.length ? " open" : ""}><summary>${list.length ? `${R.changes.length} cambio${R.changes.length > 1 ? "s" : ""} desde la carga` : "Sin cambios: todo sigue igual"}</summary>
+    ${list.length ? `<ul>${list.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${R.changes.length > 25 ? `<div class="meta">y ${R.changes.length - 25} más</div>` : ""}</details>`;
+}
+document.getElementById("refresh").addEventListener("click", refresh);
+
+/* ---------- views ---------- */
+function viewPicks() {
+  if (filt.game) { const list = onePer(DATA.cands.filter(c => c.g === filt.game).sort((a, b) => score(b) - score(a))).slice(0, 10); const g = games[filt.game];
+    return `<p class="lead">Picks de ${esc(g.away.name)} @ ${esc(g.home.name)}, ordenados por solidez.</p>` + (list.length ? list.map(pickCard).join("") : `<div class="card meta" style="cursor:default">Sin props con sustento suficiente en este partido.</div>`); }
+  return resultsHtml() + `<p class="lead">Ordenados por solidez: qué tanto se ha cumplido la línea en la temporada, los últimos 10 y la temporada pasada, más el margen del promedio sobre la línea.${S.name === "NFL" ? " Si un pick no trae momio es porque las casas tienen otra línea; revísalo en tu casa." : ""} Toca un pick para ver sus últimos juegos.</p>` + topPicks.map(pickCard).join("");
+}
+function viewGames() {
+  return DATA.games.filter(g => !filt.game || g.id === filt.game).map(g => {
+    const L = g.lines || {}, list = onePer(DATA.cands.filter(c => c.g === g.id).sort((a, b) => score(b) - score(a))).slice(0, 10);
+    const inj = g.inj.filter(i => i[2] === "Out").map(i => `${esc(i[1])} (${i[0]})`);
+    const dtd = g.inj.filter(i => i[2] !== "Out").map(i => `${esc(i[1])} (${i[0]})`);
+    const M = gameModel(g), B = M.best;
+    const fav = M.margin >= 0 ? g.home : g.away;
+    const rec = F => `${F.w}-${F.l}${F.t ? "-" + F.t : ""}`;
+    const formRow = (t, F, side) => `<tr><th>${t.abbr}<small>${side}</small></th><td>${rec(F)}</td><td>${fmtDiff(F.diff)}</td><td>${F.prevW}-${F.prevL} <span class="meta">(${fmtDiff(F.prevDiff)})</span></td><td class="dots">${F.last.slice(0, 5).map(r => `<i class="${r[3] > r[4] ? "w" : "l"}" title="${r[2]} ${r[1]} ${r[3]}-${r[4]}">${r[3] > r[4] ? "G" : r[3] < r[4] ? "P" : "E"}</i>`).join("")}</td></tr>`;
+    return `<div class="card game" style="cursor:default">
+      <div class="teams">
+        <div class="team">${g.away.abbr}<small>${esc(g.away.name)} · ${g.away.record}</small></div>
+        <div class="vs">@<br>${time(g.date)}</div>
+        <div class="team" style="text-align:right">${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record}</small></div>
+      </div>
+      ${B ? gamePickBox(g, M) : ""}
+      ${B ? `      <h3 class="sub">Moneyline o spread: las opciones</h3>
+      <table class="opts"><thead><tr><th>Opción</th><th>Momio</th><th>Estimado</th><th>Casa</th></tr></thead><tbody>
+        ${M.opts.map(o => `<tr class="${o === B && M.play ? "best" : ""}"><td>${esc(o.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", ""))}</td><td>${fx(o.price)}</td><td>${pct(o.p)}</td><td>${pct(o.imp)}</td></tr>`).join("")}
+      </tbody></table>` : ""}
+      ${matchupHtml(g)}
+      <h3 class="sub">Cómo llegan</h3>
+      <div class="tablewrap"><table class="form"><thead><tr><th></th><th>Récord</th><th>Dif.</th><th>Temp. pasada</th><th>Últimos</th></tr></thead><tbody>
+        ${formRow(g.away, M.A, "visita")}${formRow(g.home, M.H, "local")}
+      </tbody></table></div>
+      ${(M.H.inj || M.A.inj) ? `<div class="inj"><b>Ajuste por bajas:</b> ${[[g.away.abbr, M.A.inj], [g.home.abbr, M.H.inj]].filter(x => x[1]).map(x => `${x[0]} −${x[1]} pts (${(S.outs[x[0]] || []).map(o => esc(o[0])).join(", ")})`).join(" · ")}</div>` : ""}
+      <div class="note">Dif.: cuántos puntos gana o pierde en promedio por juego esta temporada (entre paréntesis, la temporada pasada). Últimos: G = ganó, P = perdió${S.name === "NFL" ? ", E = empate" : ""}, el más reciente primero.</div>
+      <div class="lines">
+        <div><span>Total ${L.total ?? "—"}</span><b>O ${fx(L.overOdds)} · U ${fx(L.underOdds)}</b></div>
+        <div><span>Moneyline</span><b>${fx(L.mlAway)} / ${fx(L.mlHome)}</b></div>
+        <div><span>Spread ${g.home.abbr}</span><b>${L.spreadHome ?? "—"} · ${fx(L.spreadHomeOdds)}</b></div>
+      </div>
+      <div class="inj">${inj.length ? `<b>Fuera:</b> ${inj.join(", ")}` : "Sin bajas confirmadas"}${dtd.length ? `<br><b>En duda:</b> ${dtd.join(", ")}` : ""}</div>
+      <div class="detail" style="animation:none">
+        <h3>Props de este partido (top ${list.length})</h3>
+        ${list.length ? list.map(c => `<div class="mini"><span><b>${esc(c.n)}</b> <span class="meta">(${esc(c.t)})</span> · ${pickLbl(c)}${last5(c)}</span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("") : `<div class="meta">Sin props con sustento suficiente.</div>`}
+      </div>
+    </div>`;
+  }).join("") + `<p class="note">Moneyline mostrado como visitante / local. El pick del partido se calcula con el diferencial de puntos de esta temporada y la pasada, más la ventaja de jugar en casa.${S.name === "NFL" ? " En NFL todavía no descuenta lesiones." : ""}</p>`;
+}
+function gamePickBox(g, M) {
+  const B = M.best, favH = M.margin >= 0, fav = favH ? g.home : g.away, dog = favH ? g.away : g.home, mg = Math.abs(M.margin).toFixed(1);
+  const L = g.lines || {}, favLine = favH ? L.spreadHome : L.spreadAway;
+  if (!M.play) return `<div class="gpick pass">
+      <div class="gpick-h">Sin pick sugerido</div>
+      <div class="gpick-why" style="margin-top:4px">Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos${favLine != null ? ` y la casa lo tiene en ${favLine}` : ""}: casi lo mismo, así que ni el moneyline ni el spread pagan de más. Mejor ve a los props de abajo.</div>
+    </div>`;
+  const team = B.side === "H" ? g.home : g.away, isFav = team === fav;
+  let why;
+  if (B.kind === "sp" && isFav && B.line > 0) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, y además la casa le da ${"+" + B.line}: cubre si gana o si pierde por menos de ${B.line}.`;
+  else if (B.kind === "sp" && !isFav && B.line < 0) why = `Proyectamos un partido cerrado (${esc(fav.name)} por unos ${mg}), pero el momio de ${esc(team.name)} ${B.line} paga más de lo que debería según nuestra estimación.`;
+  else if (B.kind === "sp" && isFav) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, más de los ${Math.abs(B.line)} que le pide el spread.`;
+  else if (B.kind === "sp") why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, pero con ${B.line > 0 ? "+" : ""}${B.line} ${esc(team.name)} cubre aunque pierda, siempre que sea por menos de ${B.line}.`;
+  else if (B.p < 0.5) why = `El modelo ve el partido casi parejo (${esc(fav.name)} por unos ${mg} puntos), mientras la casa da como favorito a ${esc((team === g.home ? g.away : g.home).name)}. Mezclando ambos le damos a ${esc(team.name)} ${pct(B.p)}, más de lo que implica su momio: es una apuesta de valor, gana menos de la mitad de las veces pero paga bien.`;
+  else if (isFav) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, y su momio paga más de lo que debería por esa probabilidad.`;
+  else why = `Ojo: proyectamos que ${esc(fav.name)} gana (por unos ${mg} puntos), pero la casa lo ve todavía más claro. ${esc(team.name)} pierde más veces de las que gana, pero su momio paga más de lo que debería: es una apuesta de valor, no de favorito.`;
+  return `<div class="gpick">
+      <div class="gpick-h">Pick sugerido</div>
+      <div class="gpick-main"><span>${esc(B.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", ""))}</span><b>${fx(B.price)}</b></div>
+      <div class="probtxt"><span>Probabilidad estimada <b>${pct(B.p)}</b></span><span>Según el momio ${pct(B.imp)}</span></div>
+      <div class="gpick-why">${why} Supera a la casa por ${Math.round(B.e * 100)} puntos.</div>
+    </div>`;
+}
+function matchupHtml(g) {
+  if (S.name !== "NFL" || !DATA.mu) return "";
+  const keys = [["RBRUSHYDS", "RB tierra"], ["RBRECYDS", "RB recep."], ["WRRECYDS", "WR yds"], ["TERECYDS", "TE yds"], ["QBPASSYDS", "Pase"]];
+  const cell = x => { if (!x) return "<td>—</td>"; const cls = x.r <= 8 ? "mu-g" : x.r >= 25 ? "mu-b" : ""; return `<td class="${cls}"><b>#${x.r}</b><small>${Math.round(x.a)}</small></td>`; };
+  const funnel = t => { const run = muOf(t, "RBRUSHYDS"), pass = muOf(t, "QBPASSYDS"); if (!run || !pass) return "";
+    if (run.r <= 10 && pass.r >= 20) return `${t}: embudo a la carrera (le corren fácil, defiende bien el pase)`;
+    if (pass.r <= 10 && run.r >= 20) return `${t}: embudo al pase (frena la carrera, le pasan fácil)`; return ""; };
+  const angle = (def, off) => { const best = keys.slice(0, 4).map(([k, l]) => [k, muOf(def, k)]).filter(x => x[1]).sort((a, b) => a[1].r - b[1].r)[0];
+    return best && best[1].r <= 6 ? `${def} es ${rankTxt(best[1])} en ${MULBL[best[0]]} (${best[1].a} por juego): favorece a los ${best[0].slice(0, 2)} de ${off}.` : ""; };
+  const notes = [funnel(g.away.abbr), funnel(g.home.abbr), angle(g.away.abbr, g.home.abbr), angle(g.home.abbr, g.away.abbr)].filter(Boolean);
+  return `<h3 class="sub">Matchup: qué permite cada defensa</h3>
+    <div class="tablewrap"><table class="form mu"><thead><tr><th>Defensa</th>${keys.map(k => `<th>${k[1]}</th>`).join("")}</tr></thead><tbody>
+      ${[g.away, g.home].map(t => `<tr><th>${t.abbr}<small>vs ${t === g.away ? g.home.abbr : g.away.abbr}</small></th>${keys.map(([k]) => cell(muOf(t.abbr, k))).join("")}</tr>`).join("")}
+    </tbody></table></div>
+    ${notes.length ? `<ul class="mu-notes">${notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
+    <div class="note">#1 = la defensa que más permite de 32 (abajo, yardas por juego). Verde: top 8 que más permite, favorece a la ofensiva rival. Rojo: de las que menos permiten.</div>`;
+}
+function viewParlays() {
+  const pool = topPicks.filter(c => !c.sm && !c.q && c.p);
+  const combos = [];
+  for (let a = 0; a < pool.length; a++) for (let b = a + 1; b < pool.length; b++) {
+    if (pool[a].g === pool[b].g) continue;
+    combos.push([pool[a], pool[b]]);
+    for (let d = b + 1; d < pool.length; d++) { if (new Set([pool[a].g, pool[b].g, pool[d].g]).size === 3) combos.push([pool[a], pool[b], pool[d]]); }
+  }
+  const prob = cs => cs.reduce((s, c) => s * c.pr, 1), odds = cs => cs.reduce((s, c) => s * c.p, 1);
+  const pick = (f, n) => combos.filter(cs => cs.length === n).sort((x, y) => f(y) - f(x))[0];
+  const slips = [
+    ["Más sólido · 2 picks", "La pareja con mayor probabilidad combinada.", pick(prob, 2)],
+    S.hasPrices ? ["Mejor pago · 2 picks", "Mayor pago esperado: probabilidad × momio.", pick(cs => prob(cs) * odds(cs), 2)] : null,
+    ["Más sólido · 3 picks", "Un pick por partido, los tres más consistentes.", pick(prob, 3)],
+  ].filter(s => s && s[2]);
+  return (filt.game ? `<p class="note" style="margin:0">Los parlays combinan partidos distintos, así que aquí se muestran sin filtro de partido.</p>` : "") + `<p class="lead">Armados solo con picks del top 10 con momio, de partidos distintos, sin muestra chica ni jugadores en duda, para que un mismo juego no arrastre a todo el parlay.</p>` + slips.map(([t, d, cs]) => `<div class="card slip" style="cursor:default">
+      <h2>${t}</h2><div class="meta">${d}</div>
+      <ul class="legs">${cs.map(c => `<li><span><b>${esc(c.n)}</b> · ${pickLbl(c)}<br><span class="team-line">${esc(tname(c.t))} · ${POS[c.pos] || c.pos}</span></span><span class="lp">${c.p ? fx(c.p) : "—"}</span></li>`).join("")}</ul>
+      <div class="tot"><span class="meta">Estimado ${pct(prob(cs))}</span>${S.hasPrices ? `<b>${fx(odds(cs))}</b>` : `<span class="meta">Momio combinado en tu casa</span>`}</div>
+    </div>`).join("") + `<p class="note">La probabilidad combinada supone que los picks son independientes entre sí. Los momios combinados pueden variar en tu casa de apuestas.</p>`;
+}
+function methodHtml() {
+  return `<details class="method card" style="cursor:default"><summary>Cómo se calcula</summary>
+  <p>Para cada prop de DraftKings se cuenta cuántas veces el jugador habría cumplido la línea: esta temporada (peso 40%), sus últimos 10 juegos (30%) y la temporada pasada (30%). Cada porcentaje se ajusta hacia 50% cuando hay pocos juegos, para que 3 de 3 no parezca infalible.</p>
+  <p>Rival por posición: para cada defensa se suma lo que hicieron los jugadores rivales de cada posición en ${S.defGames}, y se compara con el promedio de todos los equipos. Como la muestra es chica, el efecto se reduce y se limita a ±20%; luego mueve la probabilidad del pick hasta 6 puntos.</p>
+  ${S.name === "NBA"
+    ? `<p>Se descartan jugadores fuera por lesión, overs de jugadores con menos de 20 minutos y momios menores a 1.40. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>
+       <p>Bajas en moneyline y spread: se descuentan solo jugadores fuera hoy que sí venían jugando esta temporada (1 punto si juegan 15 a 19 minutos, 1.5 si juegan 20 a 27, 3 si juegan 28 o más).</p>`
+    : `<p>Se descartan jugadores fuera o dudosos (doubtful). Solo entran jugadores con rol real: 3.5 targets o más por juego en props de recepción y 8 acarreos o más en props de carrera. Los jugadores "questionable" aparecen marcados y pierden puntos en el orden.</p>
+       <p>Los momios de props vienen de SportsGameOdds (DraftKings primero; si no la tiene, FanDuel, BetMGM, Caesars o ESPN Bet), solo cuando la casa tiene exactamente la misma línea. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>`}
+  <p>Moneyline y spread: a cada equipo se le calcula un diferencial de puntos combinando esta temporada con la pasada (la pasada pesa menos). La diferencia entre ambos equipos, más ${S.hca} puntos por jugar en casa, da el margen proyectado. Esa probabilidad se promedia 50/50 con la de la casa (sin su comisión), porque un modelo sencillo exagera con equipos que cambiaron mucho desde la temporada pasada. Solo se marca pick cuando el resultado supera la probabilidad de la casa por 3 puntos o más.</p></details>`;
+}
+
+const views = {picks: viewPicks, games: viewGames, parlays: viewParlays};
+let filt = {game: "", lg: ""};
+function filterBar() {
+  const gs = S.custom ? SOC_DATA.games.filter(g => !filt.lg || g.lg === filt.lg) : DATA.games;
+  const when = S.custom ? socWhen : time;
+  const lgs = S.custom ? `<div class="lgs">${["", "Liga MX", "La Liga", "Champions"].map(l => `<button class="lgb" data-lg="${l}" aria-pressed="${filt.lg === l}">${l || "Todas"}</button>`).join("")}</div>` : "";
+  return `<div class="filters">${lgs}<label class="fsel"><span>Partido</span><select id="f-game"><option value="">Todos los partidos</option>${gs.map(g => `<option value="${g.id}"${filt.game === g.id ? " selected" : ""}>${esc(g.away.abbr)} @ ${esc(g.home.abbr)} · ${esc(when(g.date))}</option>`).join("")}</select></label></div>`;
+}
+function wireFilters(v) {
+  const sel = v.querySelector("#f-game"); if (sel) sel.addEventListener("change", () => { filt.game = sel.value; show(curTab); });
+  v.querySelectorAll(".lgb").forEach(b => b.addEventListener("click", () => { filt.lg = b.dataset.lg; filt.game = ""; show(curTab); }));
+}
+let curTab = "picks", curSport = "nba";
+function show(name) {
+  curTab = name;
+  ["picks", "games", "parlays"].forEach(n => document.getElementById("t-" + n).setAttribute("aria-selected", String(n === name)));
+  const v = document.getElementById("view");
+  if (S.custom) { v.innerHTML = changesHtml() + filterBar() + S.views[name]() + socMethod(); socWire(v); }
+  else { v.innerHTML = changesHtml() + filterBar() + views[name]() + methodHtml(); wire(v); }
+  wireFilters(v);
+  try { localStorage.setItem("tab", name); localStorage.setItem("sport", curSport); } catch (e) {}
+}
+function sport(key) { curSport = key; filt = {game: "", lg: ""}; setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Actualizado a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
+["picks", "games", "parlays"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
+["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).addEventListener("click", () => sport(k)));
+try { curTab = localStorage.getItem("tab") || "picks"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
+if (!views[curTab]) curTab = "picks"; if (!SPORTS[curSport]) curSport = "nba";
+sport(curSport);
+})();</script>
+</body>
+</html>
