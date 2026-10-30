@@ -164,6 +164,15 @@ table.form tbody th small{display:block;font:400 10.5px var(--f-body);color:var(
 .sport[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .price{max-width:88px}
 .price .nop{display:block;text-transform:none;letter-spacing:0;font-size:10.5px;line-height:1.25;margin-top:2px}
+.gmore{margin-top:12px}
+.gmore>summary{cursor:pointer;font:600 13px var(--f-body);color:var(--accent);list-style:none;padding:6px 0}
+.gmore>summary::-webkit-details-marker{display:none}
+.gmore>summary::after{content:" ▾"}.gmore[open]>summary::after{content:" ▴"}
+.glist>summary{cursor:pointer;font:600 13px var(--f-body);list-style:none}.glist>summary::-webkit-details-marker{display:none}
+.gl{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:9px 0;cursor:pointer;color:var(--ink);font:inherit}
+.gl-g{font:700 15px var(--f-display);letter-spacing:.02em}.gl-g small{display:block;font:400 11px var(--f-body);color:var(--muted)}
+.gl-p{font:600 13.5px var(--f-body);color:var(--accent);text-align:right}.gl-none{color:var(--muted);font-weight:500}
+.gl-o{font-family:var(--f-mono);text-align:right;min-width:46px}.gl-o b{display:block;color:var(--accent)}.gl-o small{display:block;font-size:11px;color:var(--muted)}
 .refresh{display:flex;align-items:center;gap:10px;margin-top:8px}
 .rbtn{border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:6px 14px;font:600 13px var(--f-body);cursor:pointer}
 .rbtn[disabled]{opacity:.6;cursor:wait}
@@ -311,7 +320,7 @@ function socWire(root) {
     el.querySelector(".slot").innerHTML = open ? "" : socDetail(c);
   }));
 }
-function socTopFor(lg) { const out = [], per = {}; for (const c of socSorted) { if (lg && socGames[c.g].lg !== lg) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === 10) break; } return out; }
+function socTopFor(lg) { const out = [], per = {}; for (const c of socSorted) { if (lg && socGames[c.g].lg !== lg) continue; if (!inDay(socGames[c.g])) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === 10) break; } return out; }
 function socViewPicks() {
   if (filt.game) { const g = socGames[filt.game]; const list = SOC.cands.filter(c => c.g === filt.game && socOk(c)).sort((a, b) => socScore(b) - socScore(a));
     return `<p class="lead">Picks de ${esc(g.away.name)} @ ${esc(g.home.name)}.</p>` + (list.length ? list.map(socCard).join("") : `<div class="card meta" style="cursor:default">Sin picks con sustento suficiente en este partido. Revisa la proyección en Partidos.</div>`); }
@@ -321,7 +330,7 @@ function socViewPicks() {
 function socViewGames() {
   const order = ["Liga MX", "La Liga", "Champions"];
   return order.filter(lg => !filt.lg || lg === filt.lg).map(lg => {
-    const gs = SOC_DATA.games.filter(g => g.lg === lg && (!filt.game || g.id === filt.game));
+    const gs = SOC_DATA.games.filter(g => g.lg === lg && (!filt.game || g.id === filt.game) && inDay(g));
     if (!gs.length) return "";
     return `<h3 class="sub" style="margin:4px 0 -2px">${lg}</h3>` + gs.map(g => {
       const m = socModel[g.id], L = g.lines || {};
@@ -345,6 +354,7 @@ function socViewGames() {
           <div class="gpick-h">Sin pick sugerido</div>
           <div class="gpick-why" style="margin-top:4px">Nuestra estimación queda muy cerca de la casa en todos los mercados; mejor pasar este partido.</div>
         </div>`}
+        <details class="gmore"${filt.game ? " open" : ""}><summary>Ver detalle del partido</summary>
         ${g.rot ? `<div class="inj">${[["a", g.away.abbr], ["h", g.home.abbr]].filter(([k]) => g.rot[k]).map(([k, t]) => g.rot[k].next != null ? `<b>${t}</b> juega Champions en ${g.rot[k].next} día${g.rot[k].next === 1 ? "" : "s"}: posible rotación` : `<b>${t}</b> viene de jugar Champions hace ${g.rot[k].prev} día${g.rot[k].prev === 1 ? "" : "s"}: posible cansancio`).join("<br>")}. El modelo le baja un poco el ataque.</div>` : ""}
         <h3 class="sub">Proyección</h3>
         <div class="tablewrap"><table class="opts"><thead><tr><th></th><th>${esc(g.home.abbr)}</th><th>Empate</th><th>${esc(g.away.abbr)}</th></tr></thead><tbody>
@@ -367,6 +377,7 @@ function socViewGames() {
           <div><span>Handicap ${g.home.abbr}</span><b>${L.spreadHome ?? "—"} · ${fx(L.spreadHomeOdds)}</b></div>
           <div><span>Ambos anotan</span><b>${g.btts ? `Sí ${fx(g.btts[0])} · No ${fx(g.btts[1])}` : "—"}</b></div>
         </div>
+        </details>
       </div>`;
     }).join("");
   }).join("") + `<p class="note">Últimos 5: G = ganó, P = perdió, E = empate, el más reciente a la derecha. El modelo usa los últimos 10 partidos de liga y torneos continentales de cada equipo.</p>`;
@@ -747,13 +758,26 @@ function changesHtml() {
 document.getElementById("refresh").addEventListener("click", refresh);
 
 /* ---------- views ---------- */
+const topNow = () => filt.day ? M.topPicks(DATA.cands.filter(c => games[c.g] && inDay(games[c.g])), S.name) : topPicks;
+// One line per game with the moneyline / spread pick, without opening the detail
+function gameLinesHtml() {
+  const gs = DATA.games.filter(inDay).filter(g => S.teams[g.home.abbr] && S.teams[g.away.abbr]); if (!gs.length) return "";
+  // Games with a pick first, then by kickoff
+  const ms = new Map(gs.map(g => [g.id, gameModel(g)])); gs.sort((x, y) => (ms.get(y.id).play - ms.get(x.id).play) || (x.date < y.date ? -1 : 1));
+  const rows = gs.map(g => { const m = ms.get(g.id), b = m.best;
+    return `<button class="gl" data-go="${g.id}"><span class="gl-g">${esc(g.away.abbr)} @ ${esc(g.home.abbr)}<small>${esc(time(g.date))}</small></span>${m.play
+      ? `<span class="gl-p">${esc(b.lbl.replace(" (moneyline)", " ML").replace(" (spread)", ""))}</span><span class="gl-o"><b>${fx(b.price)}</b><small>${pct(b.p)}</small></span>`
+      : `<span class="gl-p gl-none">Sin pick</span><span class="gl-o"><small>${m.margin >= 0 ? esc(g.home.abbr) : esc(g.away.abbr)} por ${Math.abs(m.margin).toFixed(1)}</small></span>`}</button>`; }).join("");
+  const n = gs.filter(g => ms.get(g.id).play).length;
+  return `<details class="card glist" style="cursor:default" open><summary>Moneyline y spread · ${n} pick${n === 1 ? "" : "s"} de ${gs.length} partidos</summary>${rows}<div class="meta" style="margin-top:6px">Toca un partido para ver por qué. "Sin pick": proyectamos casi lo mismo que la casa.</div></details>`;
+}
 function viewPicks() {
   if (filt.game) { const list = onePer(DATA.cands.filter(c => c.g === filt.game).sort((a, b) => score(b) - score(a))).slice(0, 10); const g = games[filt.game];
     return `<p class="lead">Picks de ${esc(g.away.name)} @ ${esc(g.home.name)}, ordenados por solidez.</p>` + (list.length ? list.map(pickCard).join("") : `<div class="card meta" style="cursor:default">Sin props con sustento suficiente en este partido.</div>`); }
-  return resultsHtml() + `<p class="lead">Ordenados por solidez: qué tanto se ha cumplido la línea en la temporada, los últimos 10 y la temporada pasada, más el margen del promedio sobre la línea.${S.name === "NFL" ? " Si un pick no trae momio es porque las casas tienen otra línea; revísalo en tu casa." : ""} Toca un pick para ver sus últimos juegos.</p>` + topPicks.map(pickCard).join("");
+  return resultsHtml() + `<p class="lead">Ordenados por solidez: qué tanto se ha cumplido la línea en la temporada, los últimos 10 y la temporada pasada, más el margen del promedio sobre la línea.${S.name === "NFL" ? " Si un pick no trae momio es porque las casas tienen otra línea; revísalo en tu casa." : ""} Toca un pick para ver sus últimos juegos.</p>` + gameLinesHtml() + topNow().map(pickCard).join("");
 }
 function viewGames() {
-  return DATA.games.filter(g => !filt.game || g.id === filt.game).map(g => {
+  return DATA.games.filter(g => (!filt.game || g.id === filt.game) && inDay(g)).map(g => {
     const L = g.lines || {}, list = onePer(DATA.cands.filter(c => c.g === g.id).sort((a, b) => score(b) - score(a))).slice(0, 10);
     const inj = g.inj.filter(i => i[2] === "Out").map(i => `${esc(i[1])} (${i[0]})`);
     const dtd = g.inj.filter(i => i[2] !== "Out").map(i => `${esc(i[1])} (${i[0]})`);
@@ -768,6 +792,7 @@ function viewGames() {
         <div class="team" style="text-align:right">${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record}</small></div>
       </div>
       ${B ? gamePickBox(g, M) : ""}
+      <details class="gmore"${filt.game ? " open" : ""}><summary>Ver detalle del partido</summary>
       ${B ? `      <h3 class="sub">Moneyline o spread: las opciones</h3>
       <table class="opts"><thead><tr><th>Opción</th><th>Momio</th><th>Estimado</th><th>Casa</th></tr></thead><tbody>
         ${M.opts.map(o => `<tr class="${o === B && M.play ? "best" : ""}"><td>${esc(o.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", ""))}</td><td>${fx(o.price)}</td><td>${pct(o.p)}</td><td>${pct(o.imp)}</td></tr>`).join("")}
@@ -790,6 +815,7 @@ function viewGames() {
         <h3>Props de este partido (top ${list.length})</h3>
         ${list.length ? list.map(c => `<div class="mini"><span><b>${esc(c.n)}</b> <span class="meta">(${esc(c.t)})</span> · ${pickLbl(c)}${last5(c)}</span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("") : `<div class="meta">Sin props con sustento suficiente.</div>`}
       </div>
+      </details>
     </div>`;
   }).join("") + `<p class="note">Moneyline mostrado como visitante / local. El pick del partido se calcula con el diferencial de puntos de esta temporada y la pasada, más la ventaja de jugar en casa.${S.name === "NFL" ? " En NFL todavía no descuenta lesiones." : ""}</p>`;
 }
@@ -842,7 +868,7 @@ function matchupHtml(g) {
     <div class="note">#1 = la defensa que más permite de 32 (abajo, yardas por juego). Verde: top 8 que más permite, favorece a la ofensiva rival. Rojo: de las que menos permiten.</div>`;
 }
 function viewParlays() {
-  const pool = topPicks.filter(c => !c.sm && !c.q && c.p);
+  const pool = topNow().filter(c => !c.sm && !c.q && c.p);
   const combos = [];
   for (let a = 0; a < pool.length; a++) for (let b = a + 1; b < pool.length; b++) {
     if (pool[a].g === pool[b].g) continue;
@@ -876,16 +902,30 @@ function methodHtml() {
 }
 
 const views = {picks: viewPicks, games: viewGames, parlays: viewParlays};
-let filt = {game: "", lg: ""};
+let filt = {game: "", lg: "", day: ""};
+const dayKey = d => new Date(d).toLocaleDateString("en-CA", {timeZone: TZ});
+function dayLbl(k) {
+  const today = dayKey(new Date()), tom = dayKey(new Date(Date.now() + 864e5));
+  if (k === today) return "Hoy"; if (k === tom) return "Mañana";
+  return new Date(k + "T12:00:00").toLocaleDateString("es-MX", {weekday: "short", day: "numeric", month: "short"});
+}
+const allGames = () => S.custom ? SOC_DATA.games : DATA.games;
+const inDay = g => !filt.day || dayKey(g.date) === filt.day;
 function filterBar() {
-  const gs = S.custom ? SOC_DATA.games.filter(g => !filt.lg || g.lg === filt.lg) : DATA.games;
+  const base = S.custom ? SOC_DATA.games.filter(g => !filt.lg || g.lg === filt.lg) : DATA.games;
+  const days = [...new Set(base.map(g => dayKey(g.date)))].sort();
+  if (filt.day && !days.includes(filt.day)) filt.day = "";
+  const gs = base.filter(inDay);
+  const dchips = days.length > 1 ? `<div class="lgs">${[""].concat(days).map(d => `<button class="lgb dayb" data-day="${d}" aria-pressed="${filt.day === d}">${d ? dayLbl(d) : "Todos los días"}</button>`).join("")}</div>` : "";
   const when = S.custom ? socWhen : time;
   const lgs = S.custom ? `<div class="lgs">${["", "Liga MX", "La Liga", "Champions"].map(l => `<button class="lgb" data-lg="${l}" aria-pressed="${filt.lg === l}">${l || "Todas"}</button>`).join("")}</div>` : "";
-  return `<div class="filters">${lgs}<label class="fsel"><span>Partido</span><select id="f-game"><option value="">Todos los partidos</option>${gs.map(g => `<option value="${g.id}"${filt.game === g.id ? " selected" : ""}>${esc(g.away.abbr)} @ ${esc(g.home.abbr)} · ${esc(when(g.date))}</option>`).join("")}</select></label></div>`;
+  return `<div class="filters">${lgs}${dchips}<label class="fsel"><span>Partido</span><select id="f-game"><option value="">Todos los partidos</option>${gs.map(g => `<option value="${g.id}"${filt.game === g.id ? " selected" : ""}>${esc(g.away.abbr)} @ ${esc(g.home.abbr)} · ${esc(when(g.date))}</option>`).join("")}</select></label></div>`;
 }
 function wireFilters(v) {
   const sel = v.querySelector("#f-game"); if (sel) sel.addEventListener("change", () => { filt.game = sel.value; show(curTab); });
-  v.querySelectorAll(".lgb").forEach(b => b.addEventListener("click", () => { filt.lg = b.dataset.lg; filt.game = ""; show(curTab); }));
+  v.querySelectorAll(".lgb:not(.dayb)").forEach(b => b.addEventListener("click", () => { filt.lg = b.dataset.lg; filt.game = ""; show(curTab); }));
+  v.querySelectorAll(".dayb").forEach(b => b.addEventListener("click", () => { filt.day = b.dataset.day; filt.game = ""; show(curTab); }));
+  v.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => { filt.game = b.dataset.go; show("games"); window.scrollTo(0, 0); }));
 }
 let curTab = "picks", curSport = "nba";
 function show(name) {
@@ -897,7 +937,7 @@ function show(name) {
   wireFilters(v);
   try { localStorage.setItem("tab", name); localStorage.setItem("sport", curSport); } catch (e) {}
 }
-function sport(key) { curSport = key; filt = {game: "", lg: ""}; setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Actualizado a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
+function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""}; setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Actualizado a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
 ["picks", "games", "parlays"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
 ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).addEventListener("click", () => sport(k)));
 try { curTab = localStorage.getItem("tab") || "picks"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
