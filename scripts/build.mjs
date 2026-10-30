@@ -8,6 +8,7 @@ import {buildSOC} from "./soc.mjs";
 import {priceNFL, priceUCL} from "./sgo.mjs";
 import {snapshot, grade} from "./results.mjs";
 import {dloc} from "./lib.mjs";
+import {botData} from "./botdata.mjs";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const DATA = path.join(ROOT, "data");
@@ -60,4 +61,5 @@ for (let i = 0; i < 10; i++) {
 // Days graded before this pipeline existed (or whose snapshot is gone) stay in the file
 const oldDays = read("results.json", {days: []}).days.filter(d => !days.some(x => x.date === d.date));
 write("results.json", {updatedAt: now.toISOString(), days: days.concat(oldDays).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 30)});
+await step("bot.json", () => write("bot.json", botData(latest, read("results.json", {days: []}), now)));
 log("done");
