@@ -34,7 +34,8 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         run: |
           { if [ ! -f data/telegram.json ]; then node scripts/alerts.mjs test; fi
-            if [ "${{ github.event.schedule }}" = "17 13 * * *" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then node scripts/alerts.mjs digest; fi
+            # Resumen por Telegram solo cuando se corre a mano (sin mensajes automáticos)
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then node scripts/alerts.mjs digest; fi
             echo "token presente: $([ -n "$TELEGRAM_TOKEN" ] && echo si || echo no)"; } 2>&1 | tee data/telegram.log
       - name: Guardar
         run: |
