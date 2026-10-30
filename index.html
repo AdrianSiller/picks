@@ -839,9 +839,11 @@ function contextHtml(g, M) {
 function gamePickBox(g, M) {
   const B = M.best, favH = M.margin >= 0, fav = favH ? g.home : g.away, dog = favH ? g.away : g.home, mg = Math.abs(M.margin).toFixed(1);
   const L = g.lines || {}, favLine = favH ? L.spreadHome : L.spreadAway;
+  const V = M.value, valueTxt = V ? `<div class="gpick-why" style="margin-top:8px"><b>Opción de valor (arriesgada):</b> ${esc(V.lbl.replace(" (moneyline)", " ML").replace(" (spread)", ""))} a ${fx(V.price)}. Gana menos de la mitad de las veces (${pct(V.p)}), pero paga más de lo que debería (la casa le da ${pct(V.imp)}). No es un pick sólido: solo si buscas momio alto y con poco dinero; nunca en parlay.</div>` : "";
   if (!M.play) return `<div class="gpick pass">
-      <div class="gpick-h">Sin pick sugerido</div>
+      <div class="gpick-h">Sin pick sólido</div>
       <div class="gpick-why" style="margin-top:4px">Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos${favLine != null ? ` y la casa lo tiene en ${favLine}` : ""}: casi lo mismo, así que ni el moneyline ni el spread pagan de más. Mejor ve a los props de abajo.${(() => { const fv = favML(g, M); return fv ? ` Si aun así quieres al favorito: ${esc(fv.t)} ML a ${fx(fv.o.price)} lo estimamos en ${pct(fv.o.p)} contra ${pct(fv.o.imp)} de la casa, <b class="v-${fv.v}">${fv.lbl}</b>.` : ""; })()}</div>
+      ${valueTxt}
     </div>`;
   const team = B.side === "H" ? g.home : g.away, isFav = team === fav;
   let why;
@@ -853,7 +855,7 @@ function gamePickBox(g, M) {
   else if (isFav) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, y su momio paga más de lo que debería por esa probabilidad.`;
   else why = `Ojo: proyectamos que ${esc(fav.name)} gana (por unos ${mg} puntos), pero la casa lo ve todavía más claro. ${esc(team.name)} pierde más veces de las que gana, pero su momio paga más de lo que debería: es una apuesta de valor, no de favorito.`;
   return `<div class="gpick">
-      <div class="gpick-h">Pick sugerido</div>
+      <div class="gpick-h">Pick sólido</div>
       <div class="gpick-main"><span>${esc(B.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", ""))}</span><b>${fx(B.price)}</b></div>
       <div class="probtxt"><span>Probabilidad estimada <b>${pct(B.p)}</b></span><span>Según el momio ${pct(B.imp)}</span></div>
       <div class="gpick-why">${why} Supera a la casa por ${Math.round(B.e * 100)} puntos.</div>
@@ -907,6 +909,7 @@ function methodHtml() {
     : `<p>Se descartan jugadores fuera o dudosos (doubtful). Solo entran jugadores con rol real: 3.5 targets o más por juego en props de recepción y 8 acarreos o más en props de carrera. Los jugadores "questionable" aparecen marcados y pierden puntos en el orden.</p>
        <p>Los momios de props vienen de SportsGameOdds (DraftKings primero; si no la tiene, FanDuel, BetMGM, Caesars o ESPN Bet), solo cuando la casa tiene exactamente la misma línea. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>`}
   <p>${S.name === "NBA" ? "Descanso: el equipo que juega la segunda noche seguida pierde 1.5 puntos en la proyección, y los overs de sus jugadores bajan un poco en el ranking." : "Clima: en estadios abiertos se toma el pronóstico de viento a la hora del partido. Con 15 mph o más, los overs de yardas por pase, pases completos y recepciones pierden 4 puntos de probabilidad (7 con 20 mph o más) y los unders ganan un poco."}</p>
+  <p>Pick sólido de moneyline o spread: la opción con más probabilidad de pegar (55% o más) que además paga al menos 2 puntos más de lo que debería. Si solo hay valor en el que pierde más seguido (menos de 55%), se muestra aparte como "opción de valor (arriesgada)" y no entra al top, a los parlays ni a los resultados.</p>
   <p>Moneyline y spread: a cada equipo se le calcula un diferencial de puntos combinando esta temporada con la pasada (la pasada pesa menos). La diferencia entre ambos equipos, más ${S.hca} puntos por jugar en casa, da el margen proyectado. Esa probabilidad se promedia 50/50 con la de la casa (sin su comisión), porque un modelo sencillo exagera con equipos que cambiaron mucho desde la temporada pasada. Solo se marca pick cuando el resultado supera la probabilidad de la casa por 3 puntos o más.</p></details>`;
 }
 

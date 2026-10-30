@@ -65,8 +65,12 @@
     const mk = [nv(L.mlHome, L.mlAway), nv(L.mlAway, L.mlHome), nv(L.spreadHomeOdds, L.spreadAwayOdds), nv(L.spreadAwayOdds, L.spreadHomeOdds)];
     opts.forEach((o, i) => { o.pm = o.p; if (mk[i] != null) o.p = 0.5 * o.p + 0.5 * mk[i]; });
     const opts2 = opts.filter(o => o.price && (o.kind === "ml" || !isNaN(o.line))).map(o => ({...o, imp: 1 / o.price, e: o.p - 1 / o.price}));
-    const best = opts2.slice().sort((a, b) => b.e - a.e)[0];
-    return {H, A, margin, opts: opts2, best, play: !!best && best.e >= 0.03};
+    // Solid pick first: the most likely option (55%+) that also pays at least a little more than it should.
+    // An underdog that only has value (wins less than 55%) is shown apart as a risky option, never as the pick.
+    const solid = opts2.filter(o => o.p >= 0.55 && o.e >= 0.02).sort((a, b) => b.p - a.p)[0];
+    const value = solid ? null : opts2.filter(o => o.p < 0.55 && o.e >= 0.04).sort((a, b) => b.e - a.e)[0] || null;
+    const best = solid || opts2.slice().sort((a, b) => b.e - a.e)[0];
+    return {H, A, margin, opts: opts2, best, play: !!solid, value};
   };
 
   /* ---------- soccer ---------- */
@@ -132,8 +136,9 @@
     }
     return {games, cands, lgMu, lgC, rowsOf};
   };
-  M.socOk = c => c.p ? (c.p >= 1.4 && c.e >= 0.03 && c.pr >= 0.45) : (c.pr >= 0.6 && c.pr <= 0.72);
-  M.socScore = c => c.p ? c.e * 2 + c.pr * 0.5 : (c.pr - 0.55) * 0.8 + 0.25;
+  // Soccer picks need support too: priced ones must hit at least 52% (value alone is not enough)
+  M.socOk = c => c.p ? (c.p >= 1.4 && c.e >= 0.03 && c.pr >= 0.52) : (c.pr >= 0.6 && c.pr <= 0.72);
+  M.socScore = c => c.p ? c.e * 1.5 + c.pr * 0.8 : (c.pr - 0.55) * 0.8 + 0.4;
   M.socTop = (cands, gamesById, lg, n = 10) => { const out = [], per = {};
     for (const c of cands.filter(M.socOk).sort((a, b) => M.socScore(b) - M.socScore(a))) { if (lg && gamesById[c.g].lg !== lg) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === n) break; }
     return out; };
