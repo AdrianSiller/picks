@@ -32,7 +32,8 @@
   M.topPicks = (cands, sport, n = 10) => {
     const cfg = M.CFG[sport], out = [], per = {};
     for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
-      if (c.out || c.pr < cfg.minPr) continue; if ((per[c.aid] || 0) >= cfg.perPlayer) continue;
+      // Same rule as game picks: support first, but never a price below what the probability is worth
+      if (c.out || c.pr < cfg.minPr || (c.p && c.e < -0.02)) continue; if ((per[c.aid] || 0) >= cfg.perPlayer) continue;
       per[c.aid] = (per[c.aid] || 0) + 1; out.push(c); if (out.length === n) break;
     }
     return out;
