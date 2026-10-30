@@ -89,6 +89,10 @@ export async function buildNBA(now = new Date()) {
   await pool(ids, 8, async id => { const [c, p] = await Promise.all([J(`${LOG}/${id}/gamelog`), J(`${LOG}/${id}/gamelog?season=${PREV}`)]); logs[id] = {c: parseLog(c), p: parseLog(p)}; });
 
   // Candidates: the better side of every prop with enough support
+  // Rest: days since each team's last game (1 = second night of a back-to-back)
+  const restOf = (ab, date) => { const cur = (teams[ab] || {}).cur || []; if (!cur.length) return null; const last = cur[cur.length - 1][0];
+    return Math.round((new Date(dloc(date) + "T12:00:00Z") - new Date(last + "T12:00:00Z")) / 864e5); };
+  games.forEach(g => { g.rest = {h: restOf(g.home.abbr, g.date), a: restOf(g.away.abbr, g.date)}; });
   const G = Object.fromEntries(games.map(g => [g.id, g])), all = [];
   for (const p of props) {
     const R = roster[p.aid], L = logs[p.aid]; if (!R || !L) continue;
@@ -105,6 +109,7 @@ export async function buildNBA(now = new Date()) {
         imp: +(1 / price).toFixed(3), e: +(pr - 1 / price).toFixed(3), hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh,
         aC: avg(vc), a10: avg(both.slice(0, 10).map(r => r[i])), aP: avg(vp), aH: avg(vo), min, sm: hs.hc[1] + hs.hp[1] < 15, vc, vp, vo};
       if (st && st !== "Active") c.q = 1;
+      if ((h ? g.rest.h : g.rest.a) === 1) c.b2b = 1;
       if (!best || c.pr > best.pr) best = c;
     }
     if (best && best.pr >= 0.55) all.push(best);

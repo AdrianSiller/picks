@@ -1,0 +1,39 @@
+name: Vigilar picks
+# Cada 30 minutos en horario de partidos: si un jugador de los picks de hoy queda fuera,
+# la casa quita su línea o la línea se mueve fuerte, manda un aviso por Telegram.
+on:
+  schedule:
+    - cron: "7,37 16-23 * * *"
+    - cron: "7,37 0-3 * * *"
+  workflow_dispatch:
+concurrency:
+  group: watch
+  cancel-in-progress: true
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Recuperar lo que ya se avisó
+        uses: actions/cache/restore@v4
+        with:
+          path: watch.json
+          key: watch-${{ github.run_id }}
+          restore-keys: watch-
+      - name: Revisar
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          WATCH_STATE: watch.json
+        run: |
+          [ -f watch.json ] || echo '{}' > watch.json
+          node scripts/alerts.mjs watch
+      - name: Guardar estado
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: watch.json
+          key: watch-${{ github.run_id }}

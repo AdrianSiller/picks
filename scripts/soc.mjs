@@ -46,5 +46,17 @@ export async function buildSOC(now = new Date(), nDays = 6) {
       return [dloc(e.date).slice(5), CODE[slug] || ((e.league && e.league.abbreviation) || "?").slice(0, 5), op.team.abbreviation, me.homeAway === "home" ? "h" : "a", sc(me), sc(op), corn(me), corn(op), klass(slug)];
     })).filter(Boolean);
   });
+  // Champions within a few days of a league match: rotation before it, fatigue after it
+  const yr = now.getUTCFullYear(), full = md => { const d = new Date(`${yr}-${md}T12:00:00Z`); return d - now > 60 * 864e5 ? new Date(`${yr - 1}-${md}T12:00:00Z`) : d; };
+  for (const g of games.filter(g => g.lg !== "Champions")) {
+    const gd = new Date(g.date), rot = {};
+    for (const side of ["home", "away"]) {
+      const ab = g[side].abbr, next = games.find(x => x.lg === "Champions" && (x.home.abbr === ab || x.away.abbr === ab) && new Date(x.date) > gd);
+      const dn = next ? (new Date(next.date) - gd) / 864e5 : 99;
+      const prev = (teams[ab] || []).find(r => r[1] === "UCL"), dp = prev ? (gd - full(prev[0])) / 864e5 : 99;
+      if (dn <= 4) rot[side[0]] = {next: Math.round(dn)}; else if (dp >= 0 && dp <= 3.5) rot[side[0]] = {prev: Math.round(dp)};
+    }
+    if (rot.h || rot.a) g.rot = rot;
+  }
   return {asOf: now.toISOString(), games, teams};
 }

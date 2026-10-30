@@ -27,7 +27,7 @@
   M.lowRole = (c, sport) => c.s === "over" && (sport === "NBA" ? c.min < 24 :
     (c.pos === "RB" && (c.cr || 0) < 10 && ["CAR", "RUSHYDS", "RRY"].includes(c.m)) || (["WR", "TE"].includes(c.pos) && (c.tg || 0) < 4 && ["REC", "RECYDS"].includes(c.m)));
   M.score = (c, sport) => { const marg = c.m === "ATD" || c.a10 == null ? 0 : (c.s === "over" ? 1 : -1) * (c.a10 - c.l) / Math.max(c.l, 1);
-    return c.pr * 0.8 + clamp(marg, -0.2, 0.4) * 0.5 - (c.sm ? 0.06 : 0) - (c.q ? 0.04 : 0) - (M.lowRole(c, sport) ? 0.05 : 0); };
+    return c.pr * 0.8 + clamp(marg, -0.2, 0.4) * 0.5 - (c.sm ? 0.06 : 0) - (c.q ? 0.04 : 0) - (M.lowRole(c, sport) ? 0.05 : 0) - (c.b2b && c.s === "over" ? 0.02 : 0); };
   M.CFG = {NBA: {perPlayer: 1, minPr: 0.58, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {perPlayer: 1, minPr: 0.6, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6}};
   M.topPicks = (cands, sport, n = 10) => {
     const cfg = M.CFG[sport], out = [], per = {};
@@ -50,7 +50,9 @@
     const H = M.teamForm(ctx.teams[g.home.abbr], ctx), A = M.teamForm(ctx.teams[g.away.abbr], ctx), L = g.lines || {};
     const inj = t => ((ctx.outs || {})[t] || []).reduce((s, x) => s + x[2], 0);
     H.inj = inj(g.home.abbr); A.inj = inj(g.away.abbr);
-    const margin = (H.net - H.inj) - (A.net - A.inj) + ctx.hca, sh = Number(L.spreadHome);
+    // Second night of a back-to-back costs about 1.5 points (NBA)
+    const rest = g.rest || {}, b2b = d => d === 1 ? 1.5 : 0; H.rest = rest.h; A.rest = rest.a;
+    const margin = (H.net - H.inj - b2b(rest.h)) - (A.net - A.inj - b2b(rest.a)) + ctx.hca, sh = Number(L.spreadHome);
     const pH = M.phi(margin / ctx.sd), cH = M.phi((margin + sh) / ctx.sd);
     const opts = [
       {lbl: `${g.home.abbr} gana (moneyline)`, p: pH, price: L.mlHome, side: "H", kind: "ml"},
@@ -86,6 +88,9 @@
     const games = [], cands = [];
     for (const g of D.games) {
       const mu = lgMu[g.lg], H = strength(g.home.abbr, g.lg), A = strength(g.away.abbr, g.lg), L = g.lines || {};
+      // Champions a few days later (likely rotation) or just played (fatigue)
+      const rot = g.rot || {}, tweak = (T, r) => { if (!r) return; if (r.next != null) { T.att *= 0.95; T.def *= 1.03; } else { T.att *= 0.97; T.def *= 1.02; } };
+      tweak(H, rot.h); tweak(A, rot.a);
       const lh = H.att * A.def / mu * HFA, la = A.att * H.def / mu * AFA;
       const Mx = []; for (let i = 0; i <= 10; i++) { Mx.push([]); for (let j = 0; j <= 10; j++) Mx[i].push(pois(i, lh) * pois(j, la)); }
       const P = f => { let s = 0; for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++) if (f(i, j)) s += Mx[i][j]; return s; };

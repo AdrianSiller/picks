@@ -345,6 +345,7 @@ function socViewGames() {
           <div class="gpick-h">Sin pick sugerido</div>
           <div class="gpick-why" style="margin-top:4px">Nuestra estimación queda muy cerca de la casa en todos los mercados; mejor pasar este partido.</div>
         </div>`}
+        ${g.rot ? `<div class="inj">${[["a", g.away.abbr], ["h", g.home.abbr]].filter(([k]) => g.rot[k]).map(([k, t]) => g.rot[k].next != null ? `<b>${t}</b> juega Champions en ${g.rot[k].next} día${g.rot[k].next === 1 ? "" : "s"}: posible rotación` : `<b>${t}</b> viene de jugar Champions hace ${g.rot[k].prev} día${g.rot[k].prev === 1 ? "" : "s"}: posible cansancio`).join("<br>")}. El modelo le baja un poco el ataque.</div>` : ""}
         <h3 class="sub">Proyección</h3>
         <div class="tablewrap"><table class="opts"><thead><tr><th></th><th>${esc(g.home.abbr)}</th><th>Empate</th><th>${esc(g.away.abbr)}</th></tr></thead><tbody>
           <tr><td>Modelo</td><td>${pct(m.pH)}</td><td>${pct(m.pD)}</td><td>${pct(m.pA)}</td></tr>
@@ -386,6 +387,7 @@ function socViewParlays() {
 function socMethod() {
   return `<details class="method card" style="cursor:default"><summary>Cómo se calcula</summary>
   <p>Para cada equipo se toman sus últimos 10 partidos de liga y torneos continentales (las copas contra divisiones menores no cuentan). Con los goles a favor y en contra se calcula su ataque y defensa, ajustados hacia el promedio de su liga cuando hay pocos partidos, y con eso los goles esperados de cada lado, con ventaja para el local. De ahí salen las probabilidades de cada resultado, ambos anotan, goles totales y handicap.</p>
+  <p>Champions entre semana: si un equipo juega Champions en los 4 días siguientes (posible rotación) o la jugó en los 3 días anteriores (cansancio), el modelo le baja un poco el ataque y le sube los goles en contra.</p>
   <p>Corners: se promedian los corners que saca cada equipo y los que permite su rival, y se calcula la probabilidad de pasar la línea de la casa.</p>
   <p>Cuando hay momio, la estimación final es el promedio del modelo y la probabilidad de la casa sin su comisión (en Champions pesa 75% la casa, porque comparar equipos de ligas tan distintas con solo sus resultados es poco confiable). Sin momio, la estimación se ajusta hacia 50%.</p>
   <p>Momios: DraftKings vía ESPN para resultado, handicap y goles totales en las tres ligas; ambos anotan solo en Champions (vía SportsGameOdds). Doble oportunidad tiene momio cuando la casa ofrece el handicap +0.5. Corners todavía sin momio.</p></details>`;
@@ -519,6 +521,8 @@ function chips(c) {
   if (c.q) out.push(`<span class="chip c-warn">En duda por lesión</span>`);
   if (c.sm) out.push(`<span class="chip c-warn">Muestra chica</span>`);
   if (lowRole(c)) out.push(`<span class="chip c-warn">Rol chico: depende de que le den volumen</span>`);
+  if (c.b2b) out.push(`<span class="chip c-warn">Segunda noche seguida: suele jugar menos minutos</span>`);
+  if (c.wind) out.push(`<span class="chip ${c.s === "over" ? "c-warn" : "c-good"}">Viento de ${c.wind} mph: le pega al pase</span>`);
   if (c.hh[1] >= 2) out.push(`<span class="chip c-acc">Ante ${c.o}: cumplió ${c.hh[0]} de ${c.hh[1]}</span>`);
   const fp = Math.round((c.f - 1) * 100), rf = rivalFav(c);
   const mk = MUKEY(c), mx = mk && muOf(c.o, mk);
@@ -769,6 +773,7 @@ function viewGames() {
         ${M.opts.map(o => `<tr class="${o === B && M.play ? "best" : ""}"><td>${esc(o.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", ""))}</td><td>${fx(o.price)}</td><td>${pct(o.p)}</td><td>${pct(o.imp)}</td></tr>`).join("")}
       </tbody></table>` : ""}
       ${matchupHtml(g)}
+      ${contextHtml(g, M)}
       <h3 class="sub">Cómo llegan</h3>
       <div class="tablewrap"><table class="form"><thead><tr><th></th><th>Récord</th><th>Dif.</th><th>Temp. pasada</th><th>Últimos</th></tr></thead><tbody>
         ${formRow(g.away, M.A, "visita")}${formRow(g.home, M.H, "local")}
@@ -787,6 +792,14 @@ function viewGames() {
       </div>
     </div>`;
   }).join("") + `<p class="note">Moneyline mostrado como visitante / local. El pick del partido se calcula con el diferencial de puntos de esta temporada y la pasada, más la ventaja de jugar en casa.${S.name === "NFL" ? " En NFL todavía no descuenta lesiones." : ""}</p>`;
+}
+// Rest (NBA) and weather (NFL) for a game card
+function contextHtml(g, M) {
+  const out = [];
+  if (g.rest) { const d = (t, x) => x == null ? "" : x === 1 ? `<b>${t}</b> juega la segunda noche seguida (−1.5 pts en la proyección)` : `${t} con ${x - 1} día${x - 1 === 1 ? "" : "s"} de descanso`;
+    const parts = [d(g.away.abbr, g.rest.a), d(g.home.abbr, g.rest.h)].filter(Boolean); if (parts.length) out.push(parts.join(" · ")); }
+  if (g.wx) out.push(g.wx.indoor ? "Estadio techado: el clima no influye." : `Clima al inicio: ${g.wx.temp}°F, viento ${g.wx.wind} mph (ráfagas ${g.wx.gust}), lluvia ${g.wx.rain}%.${g.wx.wind >= 15 ? " <b>Viento fuerte: baja el juego aéreo; los overs de pase y recepción se castigan.</b>" : ""}`);
+  return out.length ? `<div class="inj">${out.join("<br>")}</div>` : "";
 }
 function gamePickBox(g, M) {
   const B = M.best, favH = M.margin >= 0, fav = favH ? g.home : g.away, dog = favH ? g.away : g.home, mg = Math.abs(M.margin).toFixed(1);
@@ -858,6 +871,7 @@ function methodHtml() {
        <p>Bajas en moneyline y spread: se descuentan solo jugadores fuera hoy que sí venían jugando esta temporada (1 punto si juegan 15 a 19 minutos, 1.5 si juegan 20 a 27, 3 si juegan 28 o más).</p>`
     : `<p>Se descartan jugadores fuera o dudosos (doubtful). Solo entran jugadores con rol real: 3.5 targets o más por juego en props de recepción y 8 acarreos o más en props de carrera. Los jugadores "questionable" aparecen marcados y pierden puntos en el orden.</p>
        <p>Los momios de props vienen de SportsGameOdds (DraftKings primero; si no la tiene, FanDuel, BetMGM, Caesars o ESPN Bet), solo cuando la casa tiene exactamente la misma línea. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>`}
+  <p>${S.name === "NBA" ? "Descanso: el equipo que juega la segunda noche seguida pierde 1.5 puntos en la proyección, y los overs de sus jugadores bajan un poco en el ranking." : "Clima: en estadios abiertos se toma el pronóstico de viento a la hora del partido. Con 15 mph o más, los overs de yardas por pase, pases completos y recepciones pierden 4 puntos de probabilidad (7 con 20 mph o más) y los unders ganan un poco."}</p>
   <p>Moneyline y spread: a cada equipo se le calcula un diferencial de puntos combinando esta temporada con la pasada (la pasada pesa menos). La diferencia entre ambos equipos, más ${S.hca} puntos por jugar en casa, da el margen proyectado. Esa probabilidad se promedia 50/50 con la de la casa (sin su comisión), porque un modelo sencillo exagera con equipos que cambiaron mucho desde la temporada pasada. Solo se marca pick cuando el resultado supera la probabilidad de la casa por 3 puntos o más.</p></details>`;
 }
 

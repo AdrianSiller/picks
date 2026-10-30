@@ -29,6 +29,12 @@ jobs:
         run: |
           mkdir -p data
           node scripts/build.mjs 2>&1 | tee data/build.log
+      - name: Telegram
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        run: |
+          if [ ! -f data/telegram.json ]; then node scripts/alerts.mjs test; fi
+          if [ "${{ github.event.schedule }}" = "17 13 * * *" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then node scripts/alerts.mjs digest; fi
       - name: Guardar
         run: |
           git config user.name "picks-bot"

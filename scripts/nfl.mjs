@@ -14,6 +14,9 @@ const VAL = {REC: r => r[3], RECYDS: r => r[4], CAR: r => r[5], RUSHYDS: r => r[
 const SKIP = new Set(["Out", "Injured Reserve", "Doubtful", "Suspended", "Physically Unable to Perform"]);
 const md = iso => dloc(iso).slice(5);
 const posOf = p => p === "FB" ? "RB" : p;
+// Roofed or retractable stadiums by home team
+const DOMES = new Set(["ATL", "DAL", "DET", "HOU", "IND", "LV", "LAR", "LAC", "MIN", "NO", "ARI"]);
+const PASSM = new Set(["PASSYDS", "CMP", "REC", "RECYDS"]);
 const MUKEYS = ["RBRUSHYDS", "RBRECYDS", "WRRECYDS", "TERECYDS", "QBPASSYDS", "RBREC", "WRREC", "TEREC"];
 
 function parseLog(g) {
@@ -97,12 +100,24 @@ export async function buildNFL(now = new Date()) {
     const [o, s, pb] = await Promise.all([J(base + "?lang=en&region=us"), J(`${SITE}/summary?event=${e.id}`), J(base + "/100/propBets?lang=en&region=us&limit=1000")]);
     const gi = [];
     for (const t of (s && s.injuries) || []) for (const x of t.injuries || []) { gi.push([t.team.abbreviation, x.athlete.displayName, x.status]); inj[x.athlete.id] = x.status; }
-    games.push({id: e.id, date: e.date, venue: c.venue && c.venue.fullName, home: tm(H), away: tm(A), lines: dkLines(o) || {}, inj: gi});
+    games.push({id: e.id, date: e.date, venue: c.venue && c.venue.fullName, city: c.venue && c.venue.address && c.venue.address.city, home: tm(H), away: tm(A), lines: dkLines(o) || {}, inj: gi});
     const seen = {};
     for (const it of (pb && pb.items) || []) { const nm = String((it.type && it.type.name) || "").replace(/\s*\(incl\. overtime\)/, ""), m = PTYPES[nm], aid = athleteId(it.athlete && it.athlete.$ref); if (!m || !aid) continue; (seen[aid + "|" + m] = seen[aid + "|" + m] || []).push(it); }
     for (const [k, arr] of Object.entries(seen)) { const [aid, m] = k.split("|"); const l = arr[0].current && arr[0].current.target && arr[0].current.target.value; if (l != null) props.push({g: e.id, aid, m, l: Number(l)}); }
   });
   games.sort((a, b) => a.date < b.date ? -1 : 1);
+
+  // Weather at kickoff for open-air stadiums (Open-Meteo, free); wind is what hurts passing
+  await pool(games, 4, async g => {
+    if (DOMES.has(g.home.abbr)) { g.wx = {indoor: true}; return; }
+    const city = g.city; if (!city) return;
+    const geo = await J(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&country_code=US`);
+    const p = geo && geo.results && geo.results[0]; if (!p) return;
+    const f = await J(`https://api.open-meteo.com/v1/forecast?latitude=${p.latitude}&longitude=${p.longitude}&hourly=temperature_2m,wind_speed_10m,wind_gusts_10m,precipitation_probability&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=UTC&forecast_days=8`);
+    const hrs = f && f.hourly && f.hourly.time; if (!hrs) return;
+    const k = hrs.indexOf(g.date.slice(0, 13) + ":00"); if (k < 0) return;
+    g.wx = {temp: Math.round(f.hourly.temperature_2m[k]), wind: Math.round(f.hourly.wind_speed_10m[k]), gust: Math.round(f.hourly.wind_gusts_10m[k]), rain: f.hourly.precipitation_probability[k]};
+  });
 
   const ids = [...new Set(props.map(p => p.aid))], logs = {};
   await pool(ids, 8, async id => { const [c, p] = await Promise.all([J(`${LOG}/${id}/gamelog`), J(`${LOG}/${id}/gamelog?season=${PREV}`)]); logs[id] = {c: parseLog(c), p: parseLog(p)}; });
@@ -117,10 +132,13 @@ export async function buildNFL(now = new Date()) {
     const mk = muKey(R.pos, p.m), d = mk && mu[o], f = d ? M.defFactor(d.a[mk] / lgAvg[mk], d.n, 6) : 1;
     let best = null;
     for (const s of ["over", "under"]) {
-      const hs = M.hitStats(vc, vp, vo, p.l, s), pr = M.withDef(hs.pr0, s, f);
+      const hs = M.hitStats(vc, vp, vo, p.l, s), wind = (g.wx && g.wx.wind) || 0;
+      // Strong wind: passing and receiving overs lose, unders gain a little
+      const wadj = PASSM.has(p.m) && wind >= 15 ? (s === "over" ? (wind >= 20 ? -0.07 : -0.04) : (wind >= 20 ? 0.04 : 0.02)) : 0;
+      const pr = M.clamp(M.withDef(hs.pr0, s, f) + wadj, 0.05, 0.95);
       const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, el: p.l, s, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: mk ? 1 : 0,
         hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh, aC: avg(vc), a10: avg(both.slice(0, 10).map(V)), aP: avg(vp), aH: avg(vo),
-        sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, q: st === "Questionable" ? 1 : 0, tg: avg(cur.map(r => r[10])) || 0, cr: avg(cur.map(r => r[5])) || 0, vc, vp, vo};
+        sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, wind: wadj ? wind : 0, wadj, q: st === "Questionable" ? 1 : 0, tg: avg(cur.map(r => r[10])) || 0, cr: avg(cur.map(r => r[5])) || 0, vc, vp, vo};
       if (!best || c.pr > best.pr) best = c;
     }
     if (best && best.pr >= 0.55) all.push(best);
