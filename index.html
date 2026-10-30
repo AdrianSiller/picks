@@ -172,6 +172,7 @@ table.form tbody th small{display:block;font:400 10.5px var(--f-body);color:var(
 .gl{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:9px 0;cursor:pointer;color:var(--ink);font:inherit}
 .gl-g{font:700 15px var(--f-display);letter-spacing:.02em}.gl-g small{display:block;font:400 11px var(--f-body);color:var(--muted)}
 .gl-p{font:600 13.5px var(--f-body);color:var(--accent);text-align:right}.gl-none{color:var(--muted);font-weight:500}
+.gl-p small{display:block;font:500 11.5px var(--f-body);margin-top:2px}.v-fair{color:var(--good)}.v-meh{color:var(--warn)}.v-bad{color:var(--bad)}
 .gl-o{font-family:var(--f-mono);text-align:right;min-width:46px}.gl-o b{display:block;color:var(--accent)}.gl-o small{display:block;font-size:11px;color:var(--muted)}
 .refresh{display:flex;align-items:center;gap:10px;margin-top:8px}
 .rbtn{border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:6px 14px;font:600 13px var(--f-body);cursor:pointer}
@@ -759,6 +760,12 @@ document.getElementById("refresh").addEventListener("click", refresh);
 
 /* ---------- views ---------- */
 const topNow = () => filt.day ? M.topPicks(DATA.cands.filter(c => games[c.g] && inDay(games[c.g])), S.name) : topPicks;
+// Moneyline of the team we project to win, judged against its price: fair, a bit expensive or expensive
+function favML(g, m) {
+  const side = m.margin >= 0 ? "H" : "A", o = m.opts.find(x => x.kind === "ml" && x.side === side); if (!o) return null;
+  const v = o.e >= -0.015 ? "fair" : o.e >= -0.04 ? "meh" : "bad";
+  return {o, v, t: side === "H" ? g.home.abbr : g.away.abbr, lbl: {fair: "precio justo", meh: "un poco caro", bad: "caro, evitar"}[v]};
+}
 // One line per game with the moneyline / spread pick, without opening the detail
 function gameLinesHtml() {
   const gs = DATA.games.filter(inDay).filter(g => S.teams[g.home.abbr] && S.teams[g.away.abbr]); if (!gs.length) return "";
@@ -767,9 +774,11 @@ function gameLinesHtml() {
   const rows = gs.map(g => { const m = ms.get(g.id), b = m.best;
     return `<button class="gl" data-go="${g.id}"><span class="gl-g">${esc(g.away.abbr)} @ ${esc(g.home.abbr)}<small>${esc(time(g.date))}</small></span>${m.play
       ? `<span class="gl-p">${esc(b.lbl.replace(" (moneyline)", " ML").replace(" (spread)", ""))}</span><span class="gl-o"><b>${fx(b.price)}</b><small>${pct(b.p)}</small></span>`
-      : `<span class="gl-p gl-none">Sin pick</span><span class="gl-o"><small>${m.margin >= 0 ? esc(g.home.abbr) : esc(g.away.abbr)} por ${Math.abs(m.margin).toFixed(1)}</small></span>`}</button>`; }).join("");
+      : (() => { const fv = favML(g, m); return fv
+        ? `<span class="gl-p gl-none">Sin pick<small class="v-${fv.v}">${esc(fv.t)} ML · ${fv.lbl}</small></span><span class="gl-o"><b class="v-${fv.v}">${fx(fv.o.price)}</b><small>${pct(fv.o.p)}</small></span>`
+        : `<span class="gl-p gl-none">Sin pick</span><span class="gl-o"><small>${m.margin >= 0 ? esc(g.home.abbr) : esc(g.away.abbr)} por ${Math.abs(m.margin).toFixed(1)}</small></span>`; })()}</button>`; }).join("");
   const n = gs.filter(g => ms.get(g.id).play).length;
-  return `<details class="card glist" style="cursor:default" open><summary>Moneyline y spread · ${n} pick${n === 1 ? "" : "s"} de ${gs.length} partidos</summary>${rows}<div class="meta" style="margin-top:6px">Toca un partido para ver por qué. "Sin pick": proyectamos casi lo mismo que la casa.</div></details>`;
+  return `<details class="card glist" style="cursor:default" open><summary>Moneyline y spread · ${n} pick${n === 1 ? "" : "s"} de ${gs.length} partidos</summary>${rows}<div class="meta" style="margin-top:6px">Toca un partido para ver por qué. "Sin pick": ninguna opción paga más de lo que debería. Abajo va el moneyline del favorito con nuestra probabilidad: <b class="v-fair">precio justo</b> (si te late, no te cobran de más), <b class="v-meh">un poco caro</b> o <b class="v-bad">caro</b> (a la larga pierde aunque gane seguido).</div></details>`;
 }
 function viewPicks() {
   if (filt.game) { const list = onePer(DATA.cands.filter(c => c.g === filt.game).sort((a, b) => score(b) - score(a))).slice(0, 10); const g = games[filt.game];
@@ -832,7 +841,7 @@ function gamePickBox(g, M) {
   const L = g.lines || {}, favLine = favH ? L.spreadHome : L.spreadAway;
   if (!M.play) return `<div class="gpick pass">
       <div class="gpick-h">Sin pick sugerido</div>
-      <div class="gpick-why" style="margin-top:4px">Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos${favLine != null ? ` y la casa lo tiene en ${favLine}` : ""}: casi lo mismo, así que ni el moneyline ni el spread pagan de más. Mejor ve a los props de abajo.</div>
+      <div class="gpick-why" style="margin-top:4px">Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos${favLine != null ? ` y la casa lo tiene en ${favLine}` : ""}: casi lo mismo, así que ni el moneyline ni el spread pagan de más. Mejor ve a los props de abajo.${(() => { const fv = favML(g, M); return fv ? ` Si aun así quieres al favorito: ${esc(fv.t)} ML a ${fx(fv.o.price)} lo estimamos en ${pct(fv.o.p)} contra ${pct(fv.o.imp)} de la casa, <b class="v-${fv.v}">${fv.lbl}</b>.` : ""; })()}</div>
     </div>`;
   const team = B.side === "H" ? g.home : g.away, isFav = team === fav;
   let why;
