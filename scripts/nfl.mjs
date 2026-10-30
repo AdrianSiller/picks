@@ -118,7 +118,7 @@ export async function buildNFL(now = new Date()) {
     let best = null;
     for (const s of ["over", "under"]) {
       const hs = M.hitStats(vc, vp, vo, p.l, s), pr = M.withDef(hs.pr0, s, f);
-      const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, s, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: mk ? 1 : 0,
+      const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, el: p.l, s, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: mk ? 1 : 0,
         hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh, aC: avg(vc), a10: avg(both.slice(0, 10).map(V)), aP: avg(vp), aH: avg(vo),
         sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, q: st === "Questionable" ? 1 : 0, tg: avg(cur.map(r => r[10])) || 0, cr: avg(cur.map(r => r[5])) || 0, vc, vp, vo};
       if (!best || c.pr > best.pr) best = c;

@@ -681,11 +681,14 @@ async function refreshPlayers(sp, D) {
       const P = props[c.aid + "|" + c.m];
       if (pb && !P) { c.out = true; changes.push(`${c.n}: la casa quitó la línea de ${MK[c.m].lbl} (suele pasar cuando no va a jugar).`); continue; }
       if (!P || P.l == null) continue;
-      if (P.l !== c.l) {
+      // c.el: ESPN's line at build time (NFL prices may come from another book at a slightly different line)
+      const base = c.el != null ? c.el : c.l;
+      if (P.l !== base) {
+        c.el = P.l;
         const r = M.repricePr(c, P.l), old = c.l;
         Object.assign(c, {moved: c.moved != null ? c.moved : old, l: P.l, hc: r.hc, h10: r.h10, hp: r.hp, hh: r.hh, pr0: +r.pr0.toFixed(3), pr: +r.pr.toFixed(3)});
-        if (sp === "NFL") { c.p = null; c.imp = null; c.e = null; c.bk = null; }
-        changes.push(`${c.n}: línea de ${MK[c.m].lbl} ${old} → ${P.l} (ahora ${pct(c.pr)}).`);
+        if (sp === "NFL" && P.l !== old) { c.p = null; c.imp = null; c.e = null; c.bk = null; }
+        if (P.l !== old) changes.push(`${c.n}: línea de ${MK[c.m].lbl} ${old} → ${P.l} (ahora ${pct(c.pr)}).`);
       }
       const price = c.s === "over" ? P.po : P.pu;
       if (sp === "NBA" && price) { if (Math.abs(price - c.p) >= 0.05) changes.push(`${c.n}: momio ${fx(c.p)} → ${fx(price)}.`); c.p = price; c.bk = "DraftKings"; }
