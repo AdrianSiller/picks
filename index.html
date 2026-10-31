@@ -307,7 +307,7 @@ function socCard(c, i) {
     <div class="tbs">${socTeamBlock(c, "away")}${socTeamBlock(c, "home")}</div>
     <div class="prob">
       <div class="bar"><i style="width:${c.pr * 100}%"></i>${c.imp ? `<u style="left:${c.imp * 100}%"></u>` : ""}</div>
-      <div class="probtxt"><span>Probabilidad estimada <b>${pct(c.pr)}</b></span><span>${c.imp ? `Según el momio ${pct(c.imp)}` : `Conviene si paga ${fx(1 / c.pr)} o más`}</span></div>
+      <div class="probtxt"><span>Probabilidad estimada <b>${pct(c.pr)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / c.pr)}</b> o más</span></div>
     </div>
     ${c.pr >= 0.72 || (c.e != null && c.e >= 0.04) ? `<div class="chips">${c.pr >= 0.72 ? `<span class="chip c-good">Muy sólido</span>` : ""}${c.e != null && c.e >= 0.04 ? `<span class="chip c-acc">Valor +${Math.round(c.e * 100)}%</span>` : ""}</div>` : ""}
     <div class="slot"></div>
@@ -348,7 +348,7 @@ function socViewGames() {
         ${top ? `<div class="gpick">
           <div class="gpick-h">Pick sugerido</div>
           <div class="gpick-main"><span>${esc(top.lbl)}</span><b>${top.p ? (top.est ? "≈" : "") + fx(top.p) : "—"}</b></div>
-          <div class="probtxt"><span>Probabilidad estimada <b>${pct(top.pr)}</b></span><span>${top.imp ? `Según el momio ${pct(top.imp)}` : `Conviene si paga ${fx(1 / top.pr)} o más`}</span></div>
+          <div class="probtxt"><span>Probabilidad estimada <b>${pct(top.pr)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / top.pr)}</b> o más</span></div>
           <div class="gpick-why">${top.est ? `Momio estimado con el 1X2 de DraftKings (la casa no publica doble oportunidad en la fuente); revísalo en tu casa. ` : ""}${top.p ? `Es la opción con mejor combinación de probabilidad y valor: supera a la casa por ${Math.round(top.e * 100)} puntos.` : `La fuente no trae momio de este mercado; revísalo en tu casa.`}</div>
         </div>
         ${others.length ? `<div class="others"><h4>Otras opciones</h4>${others.map(c => `<div class="mini"><span><b>${esc(c.lbl)}</b></span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</div>` : ""}` : `<div class="gpick pass">
@@ -616,7 +616,7 @@ function pickCard(c, i) {
     ${hits(c)}
     <div class="prob">
       <div class="bar"><i style="width:${c.pr * 100}%"></i>${c.imp ? `<u style="left:${c.imp * 100}%"></u>` : ""}</div>
-      <div class="probtxt"><span>Probabilidad estimada <b>${pct(c.pr)}</b></span><span>${c.imp ? `Según el momio ${pct(c.imp)}` : `Conviene si paga ${fx(1 / c.pr)} o más`}</span></div>
+      <div class="probtxt"><span>Probabilidad estimada <b>${pct(c.pr)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / c.pr)}</b> o más</span></div>
     </div>
     ${chips(c)}
     <div class="slot"></div>
@@ -861,7 +861,7 @@ function gamePickBox(g, M) {
   return `<div class="gpick">
       <div class="gpick-h">Pick sólido</div>
       <div class="gpick-main"><span>${esc(B.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", ""))}</span><b>${fx(B.price)}</b></div>
-      <div class="probtxt"><span>Probabilidad estimada <b>${pct(B.p)}</b></span><span>Según el momio ${pct(B.imp)}</span></div>
+      <div class="probtxt"><span>Probabilidad estimada <b>${pct(B.p)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / B.p)}</b> o más</span></div>
       <div class="gpick-why">${why} Supera a la casa por ${Math.round(B.e * 100)} puntos.</div>
     </div>`;
 }
