@@ -206,9 +206,17 @@ table.form tbody th small{display:block;font:400 10.5px var(--f-body);color:var(
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 31 oct 12:00 a.m.</footer>
-<script src="model.js?v=20261031-0000"></script>
+<footer class="ver">Versión de la app: 31 oct 12:05 a.m.</footer>
+<script src="model.js?v=20261031-0005"></script>
 
+<script>
+// Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
+const APP_VERSION = "20261031-0005";
+fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
+  const m = t.match(/APP_VERSION = "([^"]+)"/);
+  if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
+}).catch(() => {});
+</script>
 <script>(async () => {
 const TZ = "America/Mexico_City";
 const pct = x => Math.round(x * 100) + "%";
