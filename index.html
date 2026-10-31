@@ -365,6 +365,8 @@ function socViewGames() {
         </tbody></table></div>
         <div class="lines">
           <div><span>Goles esperados</span><b>${m.lh.toFixed(1)} - ${m.la.toFixed(1)}</b></div>
+          <div><span>1 Up ${esc(g.home.abbr)} / ${esc(g.away.abbr)}</span><b>${pct(m.up1H)} · ${pct(m.up1A)}</b><small class="meta">justo ${fx(1 / m.up1H)} / ${fx(1 / m.up1A)}</small></div>
+          <div><span>2 Up ${esc(g.home.abbr)} / ${esc(g.away.abbr)}</span><b>${pct(m.up2H)} · ${pct(m.up2A)}</b><small class="meta">justo ${fx(1 / m.up2H)} / ${fx(1 / m.up2A)}</small></div>
           <div><span>Ambos anotan</span><b>${pct(m.pBTTS)}</b></div>
           <div><span>Corners esp.</span><b>${m.lc.toFixed(1)}${cl ? ` · línea ${cl}` : ""}</b></div>
         </div>
@@ -400,6 +402,7 @@ function socMethod() {
   return `<details class="method card" style="cursor:default"><summary>Cómo se calcula</summary>
   <p>Para cada equipo se toman sus últimos 10 partidos de liga y torneos continentales (las copas contra divisiones menores no cuentan). Con los goles a favor y en contra se calcula su ataque y defensa, ajustados hacia el promedio de su liga cuando hay pocos partidos, y con eso los goles esperados de cada lado, con ventaja para el local. De ahí salen las probabilidades de cada resultado, ambos anotan, goles totales y handicap.</p>
   <p>Champions entre semana: si un equipo juega Champions en los 4 días siguientes (posible rotación) o la jugó en los 3 días anteriores (cansancio), el modelo le baja un poco el ataque y le sube los goles en contra.</p>
+  <p>1 Up / 2 Up: la apuesta se paga como ganada si el equipo llega a ir arriba por 1 (o 2) goles en cualquier momento, aunque luego le empaten o le volteen. Se calcula siguiendo el marcador minuto a minuto con los goles esperados del modelo. "Justo" es el momio a partir del cual conviene; la fuente no trae el precio, revísalo en tu casa (en algunas casas, como bet365, el 2 Up paga lo mismo que el resultado normal).</p>
   <p>Corners: se promedian los corners que saca cada equipo y los que permite su rival, y se calcula la probabilidad de pasar la línea de la casa.</p>
   <p>Cuando hay momio, la estimación final es el promedio del modelo y la probabilidad de la casa sin su comisión (en Champions pesa 75% la casa, porque comparar equipos de ligas tan distintas con solo sus resultados es poco confiable). Sin momio, la estimación se ajusta hacia 50%.</p>
   <p>Momios: DraftKings vía ESPN para resultado, handicap y goles totales en las tres ligas; ambos anotan solo en Champions (vía SportsGameOdds). Doble oportunidad tiene momio cuando la casa ofrece el handicap +0.5. Corners todavía sin momio.</p></details>`;
