@@ -236,7 +236,7 @@ function socInit() {
   SOC = M.buildSoccer(SOC_DATA);
   socGames = Object.fromEntries(SOC_DATA.games.map(g => [g.id, g]));
   socModel = Object.fromEntries(SOC.games.map(x => [x.id, x]));
-  SOC.cands.forEach((c, i) => { c.key = "s" + i; c.bk = c.p ? (SOC_DATA.games.find(g => g.id === c.g).lg === "Champions" && ["btts", "cor"].includes(c.k) ? "SportsGameOdds" : "DraftKings") : null; });
+  SOC.cands.forEach((c, i) => { c.key = "s" + i; c.bk = c.p ? (c.est ? "estimado del 1X2" : SOC_DATA.games.find(g => g.id === c.g).lg === "Champions" && ["btts", "cor"].includes(c.k) ? "SportsGameOdds" : "DraftKings") : null; });
   socSorted = SOC.cands.filter(socOk).sort((a, b) => socScore(b) - socScore(a));
 }
 socInit();
@@ -302,7 +302,7 @@ function socCard(c, i) {
         <div class="meta">${socWhen(g.date)}</div>
         <div class="pick">${esc(c.lbl)}</div>
       </div>
-      <div class="price"><small>Momio</small><b>${c.p ? fx(c.p) : "—"}</b><small class="nop">${c.p ? "DraftKings" : "en tu casa"}</small></div>
+      <div class="price"><small>Momio</small><b>${c.p ? (c.est ? "≈" : "") + fx(c.p) : "—"}</b><small class="nop">${c.p ? esc(c.bk || "DraftKings") : "en tu casa"}</small></div>
     </div>
     <div class="tbs">${socTeamBlock(c, "away")}${socTeamBlock(c, "home")}</div>
     <div class="prob">
@@ -321,7 +321,7 @@ function socWire(root) {
     el.querySelector(".slot").innerHTML = open ? "" : socDetail(c);
   }));
 }
-function socTopFor(lg) { const out = [], per = {}; for (const c of socSorted) { if (lg && socGames[c.g].lg !== lg) continue; if (!inDay(socGames[c.g])) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === 10) break; } return out; }
+function socTopFor(lg) { const out = [], per = {}; for (const c of socSorted) { if (!c.p) continue; if (lg && socGames[c.g].lg !== lg) continue; if (!inDay(socGames[c.g])) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === 10) break; } return out; }
 function socViewPicks() {
   if (filt.game) { const g = socGames[filt.game]; const list = SOC.cands.filter(c => c.g === filt.game && socOk(c)).sort((a, b) => socScore(b) - socScore(a));
     return `<p class="lead">Picks de ${esc(g.away.name)} @ ${esc(g.home.name)}.</p>` + (list.length ? list.map(socCard).join("") : `<div class="card meta" style="cursor:default">Sin picks con sustento suficiente en este partido. Revisa la proyección en Partidos.</div>`); }
@@ -335,7 +335,7 @@ function socViewGames() {
     if (!gs.length) return "";
     return `<h3 class="sub" style="margin:4px 0 -2px">${lg}</h3>` + gs.map(g => {
       const m = socModel[g.id], L = g.lines || {};
-      const props = SOC.cands.filter(c => c.g === g.id && socOk(c)).sort((a, b) => socScore(b) - socScore(a)).slice(0, 5);
+      const props = SOC.cands.filter(c => c.g === g.id && socOk(c)).sort((a, b) => (!!b.p - !!a.p) || socScore(b) - socScore(a)).slice(0, 5);
       const top = props[0], others = props.slice(1);
       const form = t => { const rows = SOC.rowsOf(t.abbr).slice(0, 5).reverse(); return rows.map(r => `<i class="${r[4] > r[5] ? "w" : "l"}" title="${dateLbl(r[0])} ${r[3] === "h" ? "vs" : "@"} ${r[2]} ${r[4]}-${r[5]}">${r[4] > r[5] ? "G" : r[4] < r[5] ? "P" : "E"}</i>`).join(""); };
       const cl = g.cl && g.cl.length ? g.cl[Math.floor(g.cl.length / 2)] : null;
@@ -347,9 +347,9 @@ function socViewGames() {
         </div>
         ${top ? `<div class="gpick">
           <div class="gpick-h">Pick sugerido</div>
-          <div class="gpick-main"><span>${esc(top.lbl)}</span><b>${top.p ? fx(top.p) : "—"}</b></div>
+          <div class="gpick-main"><span>${esc(top.lbl)}</span><b>${top.p ? (top.est ? "≈" : "") + fx(top.p) : "—"}</b></div>
           <div class="probtxt"><span>Probabilidad estimada <b>${pct(top.pr)}</b></span><span>${top.imp ? `Según el momio ${pct(top.imp)}` : `Conviene si paga ${fx(1 / top.pr)} o más`}</span></div>
-          <div class="gpick-why">${top.p ? `Es la opción con mejor combinación de probabilidad y valor: supera a la casa por ${Math.round(top.e * 100)} puntos.` : `La fuente no trae momio de este mercado; revísalo en tu casa.`}</div>
+          <div class="gpick-why">${top.est ? `Momio estimado con el 1X2 de DraftKings (la casa no publica doble oportunidad en la fuente); revísalo en tu casa. ` : ""}${top.p ? `Es la opción con mejor combinación de probabilidad y valor: supera a la casa por ${Math.round(top.e * 100)} puntos.` : `La fuente no trae momio de este mercado; revísalo en tu casa.`}</div>
         </div>
         ${others.length ? `<div class="others"><h4>Otras opciones</h4>${others.map(c => `<div class="mini"><span><b>${esc(c.lbl)}</b></span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</div>` : ""}` : `<div class="gpick pass">
           <div class="gpick-h">Sin pick sugerido</div>

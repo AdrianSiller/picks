@@ -33,7 +33,7 @@
     const cfg = M.CFG[sport], out = [], per = {};
     for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
       // Same rule as game picks: support first, but never a price below what the probability is worth
-      if (c.out || c.pr < cfg.minPr || (c.p && c.e < -0.02)) continue; if ((per[c.aid] || 0) >= cfg.perPlayer) continue;
+      if (c.out || !c.p || c.pr < cfg.minPr || c.e < -0.02) continue; if ((per[c.aid] || 0) >= cfg.perPlayer) continue;
       per[c.aid] = (per[c.aid] || 0) + 1; out.push(c); if (out.length === n) break;
     }
     return out;
@@ -117,8 +117,12 @@
       if (L.mlAway) add({k: "1x2", side: "A", lbl: `Gana ${aN}`, pm: pA, mk: nv3(L.mlAway), p: L.mlAway});
       const sh = Number(L.spreadHome), sa = Number(L.spreadAway);
       const mk1 = sumInv ? nv3(L.mlHome) + nv3(L.draw) : null, mk2 = sumInv ? nv3(L.mlAway) + nv3(L.draw) : null;
-      add({k: "dc", side: "1X", lbl: `${hN} o empate`, pm: pH + pD, mk: mk1, p: sh === 0.5 ? L.spreadHomeOdds : (L.dc1 || null)});
-      add({k: "dc", side: "X2", lbl: `${aN} o empate`, pm: pA + pD, mk: mk2, p: sa === 0.5 ? L.spreadAwayOdds : (L.dc2 || null)});
+      // Double chance: the book's price when it offers the +0.5 handicap; otherwise estimated from its 1X2 prices
+      // (combining two outcomes keeps the book's margin; 1.5% off to be conservative)
+      const dcEst = (a, b) => a && b ? +(0.985 / (1 / a + 1 / b)).toFixed(2) : null;
+      const dc1 = sh === 0.5 ? L.spreadHomeOdds : (L.dc1 || null), dc2 = sa === 0.5 ? L.spreadAwayOdds : (L.dc2 || null);
+      add({k: "dc", side: "1X", lbl: `${hN} o empate`, pm: pH + pD, mk: mk1, p: dc1 || dcEst(L.mlHome, L.draw), est: !dc1 && !!dcEst(L.mlHome, L.draw)});
+      add({k: "dc", side: "X2", lbl: `${aN} o empate`, pm: pA + pD, mk: mk2, p: dc2 || dcEst(L.mlAway, L.draw), est: !dc2 && !!dcEst(L.mlAway, L.draw)});
       if (!isNaN(sh) && Math.abs(sh) >= 1.5 && sh % 1 !== 0) {
         const pHc = P((i, j) => i - j + sh > 0), mk = nv2(L.spreadHomeOdds, L.spreadAwayOdds);
         add({k: "hc", side: "H", lbl: `${hN} ${L.spreadHome}`, line: sh, pm: pHc, mk, p: L.spreadHomeOdds});
@@ -142,8 +146,9 @@
   M.socOk = c => c.p ? (c.p >= 1.2 && c.e >= -0.02 && c.pr >= 0.58) : (c.pr >= 0.62 && c.pr <= 0.75);
   // Ranked by probability; value adds at most 5 points, and picks without a price start a bit lower
   M.socScore = c => c.pr + (c.p ? 0 : -0.03);
+  // Top lists only take picks with a price in hand (real or estimated)
   M.socTop = (cands, gamesById, lg, n = 10) => { const out = [], per = {};
-    for (const c of cands.filter(M.socOk).sort((a, b) => M.socScore(b) - M.socScore(a))) { if (lg && gamesById[c.g].lg !== lg) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === n) break; }
+    for (const c of cands.filter(c => c.p && M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))) { if (lg && gamesById[c.g].lg !== lg) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === n) break; }
     return out; };
 
   if (typeof module !== "undefined" && module.exports) module.exports = M; else root.M = M;
