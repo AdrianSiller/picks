@@ -309,7 +309,7 @@ function socCard(c, i) {
       <div class="bar"><i style="width:${c.pr * 100}%"></i>${c.imp ? `<u style="left:${c.imp * 100}%"></u>` : ""}</div>
       <div class="probtxt"><span>Probabilidad estimada <b>${pct(c.pr)}</b></span><span>${c.imp ? `Según el momio ${pct(c.imp)}` : `Conviene si paga ${fx(1 / c.pr)} o más`}</span></div>
     </div>
-    ${c.e != null && c.e >= 0.04 ? `<div class="chips"><span class="chip c-good">Valor +${Math.round(c.e * 100)}%</span></div>` : ""}
+    ${c.pr >= 0.72 || (c.e != null && c.e >= 0.04) ? `<div class="chips">${c.pr >= 0.72 ? `<span class="chip c-good">Muy sólido</span>` : ""}${c.e != null && c.e >= 0.04 ? `<span class="chip c-acc">Valor +${Math.round(c.e * 100)}%</span>` : ""}</div>` : ""}
     <div class="slot"></div>
   </button>`;
 }
@@ -529,7 +529,8 @@ function hits(c) {
 function why(c) { return `Cumplió ${c.h10[0]} de sus últimos ${c.h10[1]}` + (c.m === "ATD" ? "" : ` · promedia ${c.a10}`); }
 function chips(c) {
   const out = [];
-  if (c.e != null && c.e >= 0.04) out.push(`<span class="chip c-good">Valor +${Math.round(c.e * 100)}%</span>`);
+  if (c.pr >= 0.72) out.push(`<span class="chip c-good">Muy sólido</span>`);
+  if (c.e != null && c.e >= 0.04) out.push(`<span class="chip c-acc">Valor +${Math.round(c.e * 100)}%</span>`);
   if (c.q) out.push(`<span class="chip c-warn">En duda por lesión</span>`);
   if (c.sm) out.push(`<span class="chip c-warn">Muestra chica</span>`);
   if (lowRole(c)) out.push(`<span class="chip c-warn">Rol chico: depende de que le den volumen</span>`);
@@ -904,12 +905,12 @@ function methodHtml() {
   <p>Para cada prop de DraftKings se cuenta cuántas veces el jugador habría cumplido la línea: esta temporada (peso 40%), sus últimos 10 juegos (30%) y la temporada pasada (30%). Cada porcentaje se ajusta hacia 50% cuando hay pocos juegos, para que 3 de 3 no parezca infalible.</p>
   <p>Rival por posición: para cada defensa se suma lo que hicieron los jugadores rivales de cada posición en ${S.defGames}, y se compara con el promedio de todos los equipos. Como la muestra es chica, el efecto se reduce y se limita a ±20%; luego mueve la probabilidad del pick hasta 6 puntos.</p>
   ${S.name === "NBA"
-    ? `<p>Se descartan jugadores fuera por lesión, overs de jugadores con menos de 20 minutos y momios menores a 1.40. El top 10 no incluye props cuyo momio está caro (que la casa les dé 2 puntos más de probabilidad que nosotros), aunque tengan buen historial. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>
+    ? `<p>Se descartan jugadores fuera por lesión, overs de jugadores con menos de 20 minutos y momios menores a 1.40. El top 10 se ordena por probabilidad: solo entran props con 62% o más, y no entran los de momio caro (que la casa les dé más de 2 puntos por encima de nuestra estimación). "Muy sólido" marca los de 72% o más. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>
        <p>Bajas en moneyline y spread: se descuentan solo jugadores fuera hoy que sí venían jugando esta temporada (1 punto si juegan 15 a 19 minutos, 1.5 si juegan 20 a 27, 3 si juegan 28 o más).</p>`
     : `<p>Se descartan jugadores fuera o dudosos (doubtful). Solo entran jugadores con rol real: 3.5 targets o más por juego en props de recepción y 8 acarreos o más en props de carrera. Los jugadores "questionable" aparecen marcados y pierden puntos en el orden.</p>
-       <p>Los momios de props vienen de SportsGameOdds (DraftKings primero; si no la tiene, FanDuel, BetMGM, Caesars o ESPN Bet), solo cuando la casa tiene exactamente la misma línea. El top 10 no incluye props cuyo momio está caro (que la casa les dé 2 puntos más de probabilidad que nosotros), aunque tengan buen historial. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>`}
+       <p>Los momios de props vienen de SportsGameOdds (DraftKings primero; si no la tiene, FanDuel, BetMGM, Caesars o ESPN Bet), solo cuando la casa tiene exactamente la misma línea. El top 10 se ordena por probabilidad: solo entran props con 62% o más, y no entran los de momio caro (que la casa les dé más de 2 puntos por encima de nuestra estimación). "Muy sólido" marca los de 72% o más. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>`}
   <p>${S.name === "NBA" ? "Descanso: el equipo que juega la segunda noche seguida pierde 1.5 puntos en la proyección, y los overs de sus jugadores bajan un poco en el ranking." : "Clima: en estadios abiertos se toma el pronóstico de viento a la hora del partido. Con 15 mph o más, los overs de yardas por pase, pases completos y recepciones pierden 4 puntos de probabilidad (7 con 20 mph o más) y los unders ganan un poco."}</p>
-  <p>Pick sólido de moneyline o spread: la opción con más probabilidad de pegar (55% o más) que además paga al menos 2 puntos más de lo que debería. Si solo hay valor en el que pierde más seguido (menos de 55%), se muestra aparte como "opción de valor (arriesgada)" y no entra al top, a los parlays ni a los resultados.</p>
+  <p>Pick sólido de moneyline o spread: la opción con más probabilidad de pegar (60% o más) cuyo momio sea justo (que la casa no le dé más de 2 puntos por encima de nuestra estimación). Si solo hay valor en el que pierde más seguido (menos de 60%), se muestra aparte como "opción de valor (arriesgada)" y no entra al top, a los parlays ni a los resultados.</p>
   <p>Moneyline y spread: a cada equipo se le calcula un diferencial de puntos combinando esta temporada con la pasada (la pasada pesa menos). La diferencia entre ambos equipos, más ${S.hca} puntos por jugar en casa, da el margen proyectado. Esa probabilidad se promedia 50/50 con la de la casa (sin su comisión), porque un modelo sencillo exagera con equipos que cambiaron mucho desde la temporada pasada. Solo se marca pick cuando el resultado supera la probabilidad de la casa por 3 puntos o más.</p></details>`;
 }
 

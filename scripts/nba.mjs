@@ -103,7 +103,7 @@ export async function buildNBA(now = new Date()) {
     const min = avg(cur.map(r => r[3])), d = def[o], f = M.defFactor(d && d.f[R.pos + p.m], d ? d.n : 0, 15);
     let best = null;
     for (const s of ["over", "under"]) {
-      const price = s === "over" ? p.po : p.pu; if (!price || price < 1.4) continue; if (s === "over" && min < 20) continue;
+      const price = s === "over" ? p.po : p.pu; if (!price || price < 1.25) continue; if (s === "over" && min < 20) continue;
       const hs = M.hitStats(vc, vp, vo, p.l, s), pr = M.withDef(hs.pr0, s, f);
       const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, s, p: price, bk: "DraftKings", pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: 1,
         imp: +(1 / price).toFixed(3), e: +(pr - 1 / price).toFixed(3), hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh,

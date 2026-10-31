@@ -28,7 +28,7 @@
     (c.pos === "RB" && (c.cr || 0) < 10 && ["CAR", "RUSHYDS", "RRY"].includes(c.m)) || (["WR", "TE"].includes(c.pos) && (c.tg || 0) < 4 && ["REC", "RECYDS"].includes(c.m)));
   M.score = (c, sport) => { const marg = c.m === "ATD" || c.a10 == null ? 0 : (c.s === "over" ? 1 : -1) * (c.a10 - c.l) / Math.max(c.l, 1);
     return c.pr * 0.8 + clamp(marg, -0.2, 0.4) * 0.5 - (c.sm ? 0.06 : 0) - (c.q ? 0.04 : 0) - (M.lowRole(c, sport) ? 0.05 : 0) - (c.b2b && c.s === "over" ? 0.02 : 0); };
-  M.CFG = {NBA: {perPlayer: 1, minPr: 0.58, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {perPlayer: 1, minPr: 0.6, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6}};
+  M.CFG = {NBA: {perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6}};
   M.topPicks = (cands, sport, n = 10) => {
     const cfg = M.CFG[sport], out = [], per = {};
     for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
@@ -68,8 +68,9 @@
     const opts2 = opts.filter(o => o.price && (o.kind === "ml" || !isNaN(o.line))).map(o => ({...o, imp: 1 / o.price, e: o.p - 1 / o.price}));
     // Solid pick first: the most likely option (55%+) that also pays at least a little more than it should.
     // An underdog that only has value (wins less than 55%) is shown apart as a risky option, never as the pick.
-    const solid = opts2.filter(o => o.p >= 0.55 && o.e >= 0.02).sort((a, b) => b.p - a.p)[0];
-    const value = solid ? null : opts2.filter(o => o.p < 0.55 && o.e >= 0.04).sort((a, b) => b.e - a.e)[0] || null;
+    // Solid = the most likely option with 60%+ whose price is fair or better (at most 2 points below our estimate)
+    const solid = opts2.filter(o => o.p >= 0.60 && o.e >= -0.02).sort((a, b) => b.p - a.p)[0];
+    const value = solid ? null : opts2.filter(o => o.p < 0.60 && o.e >= 0.04).sort((a, b) => b.e - a.e)[0] || null;
     const best = solid || opts2.slice().sort((a, b) => b.e - a.e)[0];
     return {H, A, margin, opts: opts2, best, play: !!solid, value};
   };
@@ -138,9 +139,9 @@
     return {games, cands, lgMu, lgC, rowsOf};
   };
   // Soccer picks need support too: priced ones must hit at least 52% (value alone is not enough)
-  M.socOk = c => c.p ? (c.p >= 1.4 && c.e >= 0.02 && c.pr >= 0.52) : (c.pr >= 0.6 && c.pr <= 0.72);
+  M.socOk = c => c.p ? (c.p >= 1.2 && c.e >= -0.02 && c.pr >= 0.58) : (c.pr >= 0.62 && c.pr <= 0.75);
   // Ranked by probability; value adds at most 5 points, and picks without a price start a bit lower
-  M.socScore = c => c.pr + (c.p ? clamp(c.e, 0, 0.1) * 0.5 : -0.03);
+  M.socScore = c => c.pr + (c.p ? 0 : -0.03);
   M.socTop = (cands, gamesById, lg, n = 10) => { const out = [], per = {};
     for (const c of cands.filter(M.socOk).sort((a, b) => M.socScore(b) - M.socScore(a))) { if (lg && gamesById[c.g].lg !== lg) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === n) break; }
     return out; };
