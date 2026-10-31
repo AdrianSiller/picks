@@ -138,8 +138,9 @@
     return {games, cands, lgMu, lgC, rowsOf};
   };
   // Soccer picks need support too: priced ones must hit at least 52% (value alone is not enough)
-  M.socOk = c => c.p ? (c.p >= 1.4 && c.e >= 0.03 && c.pr >= 0.52) : (c.pr >= 0.6 && c.pr <= 0.72);
-  M.socScore = c => c.p ? c.e * 1.5 + c.pr * 0.8 : (c.pr - 0.55) * 0.8 + 0.4;
+  M.socOk = c => c.p ? (c.p >= 1.4 && c.e >= 0.02 && c.pr >= 0.52) : (c.pr >= 0.6 && c.pr <= 0.72);
+  // Ranked by probability; value adds at most 5 points, and picks without a price start a bit lower
+  M.socScore = c => c.pr + (c.p ? clamp(c.e, 0, 0.1) * 0.5 : -0.03);
   M.socTop = (cands, gamesById, lg, n = 10) => { const out = [], per = {};
     for (const c of cands.filter(M.socOk).sort((a, b) => M.socScore(b) - M.socScore(a))) { if (lg && gamesById[c.g].lg !== lg) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === n) break; }
     return out; };

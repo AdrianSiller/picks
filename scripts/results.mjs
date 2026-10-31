@@ -13,16 +13,16 @@ export function snapshot(data, now, hours = 30) {
   for (const sport of ["NBA", "NFL"]) {
     const D = data[sport.toLowerCase()]; if (!D || !D.games.length) continue;
     const G = Object.fromEntries(D.games.map(g => [g.id, g])), cfg = M.CFG[sport];
-    for (const c of M.topPicks(D.cands, sport)) if (soon(G[c.g])) items.push({sport, kind: "prop", g: c.g, aid: c.aid, n: c.n, t: c.t, m: c.m, l: c.l, s: c.s, p: c.p || null, lbl: propLbl(sport, c)});
+    for (const c of M.topPicks(D.cands, sport)) if (soon(G[c.g])) items.push({sport, kind: "prop", d: G[c.g].date, g: c.g, aid: c.aid, n: c.n, t: c.t, m: c.m, l: c.l, s: c.s, p: c.p || null, lbl: propLbl(sport, c)});
     for (const g of D.games) { if (!soon(g) || !D.teams[g.home.abbr] || !D.teams[g.away.abbr]) continue;
       const gm = M.gameModel(g, {...cfg, teams: D.teams, outs: D.outs || {}});
-      if (gm.play) items.push({sport, kind: "game", g: g.id, side: gm.best.side, bet: gm.best.kind, line: gm.best.line, p: gm.best.price, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: gm.best.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", "")}); }
+      if (gm.play) items.push({sport, kind: "game", d: g.date, g: g.id, side: gm.best.side, bet: gm.best.kind, line: gm.best.line, p: gm.best.price, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: gm.best.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", "")}); }
   }
   const S = data.soc;
   if (S && S.games.length) {
     const B = M.buildSoccer(S), G = Object.fromEntries(S.games.map(g => [g.id, g])), seen = new Set();
     const add = (c, why) => { const g = G[c.g]; if (!soon(g) || seen.has(c.g + c.k + c.side)) return; seen.add(c.g + c.k + c.side);
-      items.push({sport: "SOC", kind: "soc", g: c.g, k: c.k, side: c.side, line: c.line, p: c.p || null, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: c.lbl, why}); };
+      items.push({sport: "SOC", kind: "soc", d: g.date, g: c.g, k: c.k, side: c.side, line: c.line, p: c.p || null, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: c.lbl, why}); };
     M.socTop(B.cands, G, null).forEach(c => add(c, "top"));
     for (const g of S.games) { const best = B.cands.filter(c => c.g === g.id && M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))[0]; if (best) add(best, "game"); }
   }

@@ -44,12 +44,15 @@ write("latest.json", latest);
 log("latest.json", (JSON.stringify(latest).length / 1024).toFixed(0) + " KB", `NBA ${nba.games.length} games/${nba.cands.length} props · NFL ${nfl.games.length}/${nfl.cands.length} · soccer ${soc.games.length}`);
 
 // Today's snapshot (overwritten by later runs of the same day) and grading of the last 10 days
-const today = dloc(now.toISOString(), "America/Mexico_City");
-const snap = read(`snap/${today}.json`, null);
-const items = snapshot(latest, now);
-// Keep items already in the snapshot whose game started (later runs no longer see them as upcoming)
-const merged = snap ? snap.items.filter(x => !items.some(y => y.sport === x.sport && y.g === x.g)).concat(items) : items;
-write(`snap/${today}.json`, {date: today, items: merged});
+// Each pick goes to the snapshot of its game's day (Mexico City), so a late run never mixes tomorrow into today
+const items = snapshot(latest, now), byDay = {};
+for (const x of items) (byDay[dloc(x.d || now.toISOString(), "America/Mexico_City")] = byDay[dloc(x.d || now.toISOString(), "America/Mexico_City")] || []).push(x);
+for (const [d, its] of Object.entries(byDay)) {
+  const snap = read(`snap/${d}.json`, null);
+  // Picks of games that already started stay as they were; the rest are replaced by this run's version
+  const kept = snap ? snap.items.filter(x => !its.some(y => y.sport === x.sport && y.g === x.g)) : [];
+  write(`snap/${d}.json`, {date: d, items: kept.concat(its)});
+}
 
 const days = [];
 for (let i = 0; i < 10; i++) {
