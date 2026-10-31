@@ -242,7 +242,7 @@ function socInit() {
 socInit();
 const socWhen = d => new Date(d).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ});
 const socRange = () => { const ds = SOC_DATA.games.map(g => g.date).sort(); if (!ds.length) return "Sin partidos"; const f = d => new Date(d).toLocaleDateString("es-MX", {day: "numeric", month: "short", timeZone: TZ}); return f(ds[0]) === f(ds[ds.length - 1]) ? f(ds[0]) : `${f(ds[0])} – ${f(ds[ds.length - 1])}`; };
-const LGSHORT = {"Liga MX": "Liga MX", "La Liga": "La Liga", "Champions": "Champions"};
+const LGSHORT = {"Liga MX": "Liga MX", "La Liga": "La Liga", "Premier": "Premier League", "Bundesliga": "Bundesliga", "Champions": "Champions"};
 
 // Does a team's past match support the pick? side "home"/"away" = which team of this game the row belongs to
 function socHit(c, r, side) {
@@ -326,10 +326,10 @@ function socViewPicks() {
   if (filt.game) { const g = socGames[filt.game]; const list = SOC.cands.filter(c => c.g === filt.game && socOk(c)).sort((a, b) => socScore(b) - socScore(a));
     return `<p class="lead">Picks de ${esc(g.away.name)} @ ${esc(g.home.name)}.</p>` + (list.length ? list.map(socCard).join("") : `<div class="card meta" style="cursor:default">Sin picks con sustento suficiente en este partido. Revisa la proyección en Partidos.</div>`); }
   const top = socTopFor(filt.lg);
-  return resultsHtml() + `<p class="lead">Liga MX, La Liga y Champions de los próximos días. Cada pick muestra cuántas veces se habría cumplido en los últimos partidos de cada equipo y lo compara con la casa. Toca uno para ver la proyección del partido.</p>` + top.map(socCard).join("");
+  return resultsHtml() + `<p class="lead">Liga MX, La Liga, Premier, Bundesliga y Champions de los próximos días. Cada pick muestra cuántas veces se habría cumplido en los últimos partidos de cada equipo y lo compara con la casa. Toca uno para ver la proyección del partido.</p>` + top.map(socCard).join("");
 }
 function socViewGames() {
-  const order = ["Liga MX", "La Liga", "Champions"];
+  const order = ["Liga MX", "La Liga", "Premier", "Bundesliga", "Champions"];
   return order.filter(lg => !filt.lg || lg === filt.lg).map(lg => {
     const gs = SOC_DATA.games.filter(g => g.lg === lg && (!filt.game || g.id === filt.game) && inDay(g));
     if (!gs.length) return "";
@@ -723,7 +723,7 @@ async function refreshPlayers(sp, D) {
 async function refreshSoccer(D) {
   const changes = []; let ok = 0;
   await Promise.all(D.games.map(async g => {
-    const slug = g.slug || {"Liga MX": "mex.1", "La Liga": "esp.1", "Champions": "uefa.champions"}[g.lg], tag = `${g.away.abbr} @ ${g.home.abbr}`;
+    const slug = g.slug || {"Liga MX": "mex.1", "La Liga": "esp.1", "Premier": "eng.1", "Bundesliga": "ger.1", "Champions": "uefa.champions"}[g.lg], tag = `${g.away.abbr} @ ${g.home.abbr}`;
     const [s, o] = await Promise.all([getRaw(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/summary?event=${g.id}`), getRaw(`https://sports.core.api.espn.com/v2/sports/soccer/leagues/${slug}/events/${g.id}/competitions/${g.id}/odds?lang=en&region=us`)]);
     if (s || o) ok++;
     const state = s && s.header && s.header.competitions[0].status.type.state;
@@ -930,7 +930,7 @@ function filterBar() {
   const gs = base.filter(inDay);
   const dchips = days.length > 1 ? `<div class="lgs">${[""].concat(days).map(d => `<button class="lgb dayb" data-day="${d}" aria-pressed="${filt.day === d}">${d ? dayLbl(d) : "Todos los días"}</button>`).join("")}</div>` : "";
   const when = S.custom ? socWhen : time;
-  const lgs = S.custom ? `<div class="lgs">${["", "Liga MX", "La Liga", "Champions"].map(l => `<button class="lgb" data-lg="${l}" aria-pressed="${filt.lg === l}">${l || "Todas"}</button>`).join("")}</div>` : "";
+  const lgs = S.custom ? `<div class="lgs">${["", "Liga MX", "La Liga", "Premier", "Bundesliga", "Champions"].map(l => `<button class="lgb" data-lg="${l}" aria-pressed="${filt.lg === l}">${l || "Todas"}</button>`).join("")}</div>` : "";
   return `<div class="filters">${lgs}${dchips}<label class="fsel"><span>Partido</span><select id="f-game"><option value="">Todos los partidos</option>${gs.map(g => `<option value="${g.id}"${filt.game === g.id ? " selected" : ""}>${esc(g.away.abbr)} @ ${esc(g.home.abbr)} · ${esc(when(g.date))}</option>`).join("")}</select></label></div>`;
 }
 function wireFilters(v) {
