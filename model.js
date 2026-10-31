@@ -77,7 +77,7 @@
 
   /* ---------- soccer ---------- */
   M.SOC_SKIP = new Set(["CUP", "QUAL", "FRI"]);
-  // "1 Up" / "2 Up": the bet pays as a win if the team goes ahead by k goals at any moment of the match.
+  // "1 Up": the bet pays as a win if the team goes ahead by k (=1) goals at any moment of the match.
   // Goals arrive minute by minute (Poisson); we follow the score difference and stop when it reaches +k.
   M.everAhead = (lt, lo, k = 1, steps = 180) => {
     const ph = lt / steps, pa = lo / steps, W = 12; let dist = new Map([[0, 1]]), hit = 0;
@@ -118,7 +118,7 @@
       const sumInv = (L.mlHome && L.draw && L.mlAway) ? 1 / L.mlHome + 1 / L.draw + 1 / L.mlAway : null;
       const nv3 = x => sumInv ? (1 / x) / sumInv : null;
       const nv2 = (a, b) => a && b ? (1 / a) / (1 / a + 1 / b) : null;
-      const gi = {id: g.id, lh, la, lc, pH, pD, pA, pBTTS: P((i, j) => i > 0 && j > 0), H, A, up1H: M.everAhead(lh, la, 1), up1A: M.everAhead(la, lh, 1), up2H: M.everAhead(lh, la, 2), up2A: M.everAhead(la, lh, 2)};
+      const gi = {id: g.id, lh, la, lc, pH, pD, pA, pBTTS: P((i, j) => i > 0 && j > 0), H, A, up1H: M.everAhead(lh, la, 1), up1A: M.everAhead(la, lh, 1)};
       games.push(gi);
       // Model weight vs the market: lower in Champions, where teams come from leagues of very different level
       const wM = g.lg === "Champions" ? 0.25 : 0.5;

@@ -336,7 +336,7 @@ function socViewGames() {
     return `<h3 class="sub" style="margin:4px 0 -2px">${lg}</h3>` + gs.map(g => {
       const m = socModel[g.id], L = g.lines || {};
       const props = SOC.cands.filter(c => c.g === g.id && socOk(c)).sort((a, b) => (!!b.p - !!a.p) || socScore(b) - socScore(a)).slice(0, 5);
-      const top = props[0], others = props.slice(1);
+      const top = props.find(c => c.p), others = props.filter(c => c !== top);
       const form = t => { const rows = SOC.rowsOf(t.abbr).slice(0, 5).reverse(); return rows.map(r => `<i class="${r[4] > r[5] ? "w" : "l"}" title="${dateLbl(r[0])} ${r[3] === "h" ? "vs" : "@"} ${r[2]} ${r[4]}-${r[5]}">${r[4] > r[5] ? "G" : r[4] < r[5] ? "P" : "E"}</i>`).join(""); };
       const cl = g.cl && g.cl.length ? g.cl[Math.floor(g.cl.length / 2)] : null;
       return `<div class="card game" style="cursor:default">
@@ -349,12 +349,13 @@ function socViewGames() {
           <div class="gpick-h">Pick sugerido</div>
           <div class="gpick-main"><span>${esc(top.lbl)}</span><b>${top.p ? (top.est ? "≈" : "") + fx(top.p) : "—"}</b></div>
           <div class="probtxt"><span>Probabilidad estimada <b>${pct(top.pr)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / top.pr)}</b> o más</span></div>
-          <div class="gpick-why">${top.est ? `Momio estimado con el 1X2 de DraftKings (la casa no publica doble oportunidad en la fuente); revísalo en tu casa. ` : ""}${top.p ? `Es la opción con mejor combinación de probabilidad y valor: supera a la casa por ${Math.round(top.e * 100)} puntos.` : `La fuente no trae momio de este mercado; revísalo en tu casa.`}</div>
+          <div class="gpick-why">${top.est ? `Momio estimado con el 1X2 de DraftKings (la casa no publica doble oportunidad en la fuente); revísalo en tu casa. ` : ""}${top.p ? `Es la opción con más probabilidad de pegar que tiene momio justo; supera a la casa por ${Math.round(top.e * 100)} puntos.` : `La fuente no trae momio de este mercado; revísalo en tu casa.`}</div>
         </div>
         ${others.length ? `<div class="others"><h4>Otras opciones</h4>${others.map(c => `<div class="mini"><span><b>${esc(c.lbl)}</b></span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</div>` : ""}` : `<div class="gpick pass">
-          <div class="gpick-h">Sin pick sugerido</div>
-          <div class="gpick-why" style="margin-top:4px">Nuestra estimación queda muy cerca de la casa en todos los mercados; mejor pasar este partido.</div>
-        </div>`}
+          <div class="gpick-h">Sin pick con momio</div>
+          <div class="gpick-why" style="margin-top:4px">${others.length ? "Ninguna opción sólida trae momio en la fuente. Abajo van las que sí tienen sustento; compáralas en tu casa." : "Nuestra estimación queda muy cerca de la casa en todos los mercados; mejor pasar este partido."}</div>
+        </div>
+        ${others.length ? `<div class="others"><h4>Opciones sin momio</h4>${others.map(c => `<div class="mini"><span><b>${esc(c.lbl)}</b><br><span class="meta">Conviene si tu casa paga ${fx(1 / c.pr)} o más</span></span><span class="r"><b>—</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</div>` : ""}`}
         <details class="gmore"${filt.game ? " open" : ""}><summary>Ver detalle del partido</summary>
         ${g.rot ? `<div class="inj">${[["a", g.away.abbr], ["h", g.home.abbr]].filter(([k]) => g.rot[k]).map(([k, t]) => g.rot[k].next != null ? `<b>${t}</b> juega Champions en ${g.rot[k].next} día${g.rot[k].next === 1 ? "" : "s"}: posible rotación` : `<b>${t}</b> viene de jugar Champions hace ${g.rot[k].prev} día${g.rot[k].prev === 1 ? "" : "s"}: posible cansancio`).join("<br>")}. El modelo le baja un poco el ataque.</div>` : ""}
         <h3 class="sub">Proyección</h3>
@@ -365,11 +366,12 @@ function socViewGames() {
         </tbody></table></div>
         <div class="lines">
           <div><span>Goles esperados</span><b>${m.lh.toFixed(1)} - ${m.la.toFixed(1)}</b></div>
-          <div><span>1 Up ${esc(g.home.abbr)} / ${esc(g.away.abbr)}</span><b>${pct(m.up1H)} · ${pct(m.up1A)}</b><small class="meta">justo ${fx(1 / m.up1H)} / ${fx(1 / m.up1A)}</small></div>
-          <div><span>2 Up ${esc(g.home.abbr)} / ${esc(g.away.abbr)}</span><b>${pct(m.up2H)} · ${pct(m.up2A)}</b><small class="meta">justo ${fx(1 / m.up2H)} / ${fx(1 / m.up2A)}</small></div>
+
           <div><span>Ambos anotan</span><b>${pct(m.pBTTS)}</b></div>
           <div><span>Corners esp.</span><b>${m.lc.toFixed(1)}${cl ? ` · línea ${cl}` : ""}</b></div>
         </div>
+        <h3 class="sub">1 Up (se paga si va arriba por 1 gol en cualquier momento)</h3>
+        ${[g.home, g.away].map((t, i) => { const p = i ? m.up1A : m.up1H; return `<div class="mini"><span><b>1 Up ${esc(t.name)}</b><br><span class="meta">Conviene si tu casa paga ${fx(1 / p)} o más</span></span><span class="r"><b>${pct(p)}</b></span></div>`; }).join("")}
         <h3 class="sub">Cómo llegan (últimos 5)</h3>
         <div class="tablewrap"><table class="form"><tbody>
           <tr><th>${g.away.abbr}<small>visita</small></th><td class="dots">${form(g.away)}</td></tr>
@@ -402,7 +404,7 @@ function socMethod() {
   return `<details class="method card" style="cursor:default"><summary>Cómo se calcula</summary>
   <p>Para cada equipo se toman sus últimos 10 partidos de liga y torneos continentales (las copas contra divisiones menores no cuentan). Con los goles a favor y en contra se calcula su ataque y defensa, ajustados hacia el promedio de su liga cuando hay pocos partidos, y con eso los goles esperados de cada lado, con ventaja para el local. De ahí salen las probabilidades de cada resultado, ambos anotan, goles totales y handicap.</p>
   <p>Champions entre semana: si un equipo juega Champions en los 4 días siguientes (posible rotación) o la jugó en los 3 días anteriores (cansancio), el modelo le baja un poco el ataque y le sube los goles en contra.</p>
-  <p>1 Up / 2 Up: la apuesta se paga como ganada si el equipo llega a ir arriba por 1 (o 2) goles en cualquier momento, aunque luego le empaten o le volteen. Se calcula siguiendo el marcador minuto a minuto con los goles esperados del modelo. "Justo" es el momio a partir del cual conviene; la fuente no trae el precio, revísalo en tu casa (en algunas casas, como bet365, el 2 Up paga lo mismo que el resultado normal).</p>
+  <p>1 Up: la apuesta se paga como ganada si el equipo llega a ir arriba por 1 gol en cualquier momento, aunque luego le empaten o le volteen. Se calcula siguiendo el marcador minuto a minuto con los goles esperados del modelo. La fuente no trae su momio: compáralo en tu casa con el "conviene si paga".</p>
   <p>Corners: se promedian los corners que saca cada equipo y los que permite su rival, y se calcula la probabilidad de pasar la línea de la casa.</p>
   <p>Cuando hay momio, la estimación final es el promedio del modelo y la probabilidad de la casa sin su comisión (en Champions pesa 75% la casa, porque comparar equipos de ligas tan distintas con solo sus resultados es poco confiable). Sin momio, la estimación se ajusta hacia 50%.</p>
   <p>Momios: DraftKings vía ESPN para resultado, handicap y goles totales en las tres ligas; ambos anotan solo en Champions (vía SportsGameOdds). Doble oportunidad tiene momio cuando la casa ofrece el handicap +0.5. Corners todavía sin momio.</p></details>`;
