@@ -14,8 +14,11 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
 const DATA = path.join(ROOT, "data");
 const read = (f, d) => { try { return JSON.parse(fs.readFileSync(path.join(DATA, f), "utf8")); } catch (e) { return d; } };
 const write = (f, v) => { fs.mkdirSync(path.dirname(path.join(DATA, f)), {recursive: true}); fs.writeFileSync(path.join(DATA, f), JSON.stringify(v)); };
-const now = new Date(), key = process.env.SGO_API_KEY, runSgo = process.env.RUN_SGO !== "0";
+const now = new Date(), key = process.env.SGO_API_KEY;
 const prev = read("latest.json", {});
+// RUN_SGO: "1" always, "0" never, "auto" (default) once per Mexico City day (the free plan has a monthly limit)
+const today0 = dloc(now.toISOString(), "America/Mexico_City"), mode = process.env.RUN_SGO || "auto";
+const runSgo = mode === "1" || (mode === "auto" && dloc(prev.sgoAt || "2000-01-01T00:00:00Z", "America/Mexico_City") !== today0);
 const t0 = Date.now(), log = (...a) => console.log(`[${((Date.now() - t0) / 1000).toFixed(0)}s]`, ...a);
 
 async function step(name, f, fallback) {
@@ -39,7 +42,7 @@ if (runSgo && key) {
   for (const g of soc.games) { const o = og.get(g.id); if (o) { if (o.btts) g.btts = o.btts; if (o.corn) g.corn = o.corn; } }
 }
 
-const latest = {generatedAt: now.toISOString(), nba, nfl, soc};
+const latest = {generatedAt: now.toISOString(), sgoAt: runSgo && key ? now.toISOString() : prev.sgoAt, nba, nfl, soc};
 write("latest.json", latest);
 log("latest.json", (JSON.stringify(latest).length / 1024).toFixed(0) + " KB", `NBA ${nba.games.length} games/${nba.cands.length} props · NFL ${nfl.games.length}/${nfl.cands.length} · soccer ${soc.games.length}`);
 

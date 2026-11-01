@@ -1,8 +1,9 @@
 name: Actualizar picks
 on:
   schedule:
-    - cron: "17 13 * * *"   # 7:17 am Ciudad de México: todo, con momios de SportsGameOdds
-    - cron: "47 20 * * *"   # 2:47 pm: bajas, líneas y props antes de los partidos (reusa momios de la mañana)
+    # GitHub suele retrasar los horarios varias horas, así que corre seguido (hora de Ciudad de México):
+    # 5:23, 8:23, 11:23 am, 2:23 y 5:23 pm. SportsGameOdds solo en la primera corrida de cada día.
+    - cron: "23 11,14,17,20,23 * * *"
   workflow_dispatch:
   push:
     branches: [main]
@@ -25,7 +26,7 @@ jobs:
         env:
           SGO_API_KEY: ${{ secrets.SGO_API_KEY }}
           # SportsGameOdds solo en la corrida de la mañana o a mano (el plan gratis tiene límite mensual)
-          RUN_SGO: ${{ (github.event.schedule == '17 13 * * *' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[sgo]')) && '1' || '0' }}
+          RUN_SGO: ${{ (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[sgo]')) && '1' || 'auto' }}
         run: |
           mkdir -p data
           node scripts/build.mjs 2>&1 | tee data/build.log

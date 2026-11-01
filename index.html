@@ -206,12 +206,12 @@ table.form tbody th small{display:block;font:400 10.5px var(--f-body);color:var(
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 31 oct 12:05 a.m.</footer>
-<script src="model.js?v=20261031-0005"></script>
+<footer class="ver">Versión de la app: 1 nov 11:25 a.m.</footer>
+<script src="model.js?v=20261101-1125"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261031-0005";
+const APP_VERSION = "20261101-1125";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -463,13 +463,16 @@ const onePer = list => { const seen = new Set(); return list.filter(c => !c.out 
 const rivalFav = c => (c.s === "over" ? 1 : -1) * (c.f - 1);
 const tname = a => TEAMNAME[a] || a;
 
+// "datos de las 7:23 a.m." for today's build, with the weekday when it is older
+const dataWhen = iso => { const d = new Date(iso), t = d.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
+  return dayKey(d) === dayKey(new Date()) ? `datos de las ${t}` : `datos del ${d.toLocaleDateString("es-MX", {weekday: "short", timeZone: TZ})} ${t}`; };
 function setSport(key) {
   S = SPORTS[key];
   ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).setAttribute("aria-selected", String(k === key)));
   if (S.custom) {
     document.getElementById("sport-name").textContent = S.name;
     document.getElementById("src").textContent = S.src;
-    document.getElementById("date").innerHTML = esc(S.dateTxt()) + "<br>datos de las " + new Date(S.data.asOf).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
+    document.getElementById("date").innerHTML = esc(S.dateTxt()) + "<br>" + dataWhen(S.data.asOf);
     return;
   }
   DATA = S.data; MK = S.MK; POS = S.POS; POSPL = S.POSPL;
@@ -479,7 +482,7 @@ function setSport(key) {
   topPicks = M.topPicks(DATA.cands, S.name);
   document.getElementById("sport-name").textContent = S.name;
   document.getElementById("src").textContent = S.src;
-  document.getElementById("date").innerHTML = esc(S.dateTxt(DATA.asOf)) + "<br>datos de las " + new Date(DATA.asOf).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
+  document.getElementById("date").innerHTML = esc(S.dateTxt(DATA.asOf)) + "<br>" + dataWhen(DATA.asOf);
 }
 
 /* ---------- team model ---------- */
@@ -761,7 +764,7 @@ async function refresh() {
   try {
     const changes = key === "soc" ? await refreshSoccer(SOC_DATA) : await refreshPlayers(SPORTS[key].name, SPORTS[key].data);
     lastRefresh[key] = {at: new Date(), changes};
-    st.textContent = `Actualizado a las ${new Date().toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}`;
+    st.textContent = `Revisado en vivo a las ${new Date().toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}`;
     setSport(key); show(curTab);
   } catch (e) { st.textContent = "No se pudo actualizar. Revisa tu conexión e intenta de nuevo."; }
   btn.disabled = false;
@@ -868,13 +871,13 @@ function gamePickBox(g, M) {
   else if (B.kind === "sp" && isFav) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, más de los ${Math.abs(B.line)} que le pide el spread.`;
   else if (B.kind === "sp") why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, pero con ${B.line > 0 ? "+" : ""}${B.line} ${esc(team.name)} cubre aunque pierda, siempre que sea por menos de ${B.line}.`;
   else if (B.p < 0.5) why = `El modelo ve el partido casi parejo (${esc(fav.name)} por unos ${mg} puntos), mientras la casa da como favorito a ${esc((team === g.home ? g.away : g.home).name)}. Mezclando ambos le damos a ${esc(team.name)} ${pct(B.p)}, más de lo que implica su momio: es una apuesta de valor, gana menos de la mitad de las veces pero paga bien.`;
-  else if (isFav) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, y su momio paga más de lo que debería por esa probabilidad.`;
+  else if (isFav) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos; es la opción con más probabilidad de pegar.`;
   else why = `Ojo: proyectamos que ${esc(fav.name)} gana (por unos ${mg} puntos), pero la casa lo ve todavía más claro. ${esc(team.name)} pierde más veces de las que gana, pero su momio paga más de lo que debería: es una apuesta de valor, no de favorito.`;
   return `<div class="gpick">
       <div class="gpick-h">Pick sólido</div>
       <div class="gpick-main"><span>${esc(B.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", ""))}</span><b>${fx(B.price)}</b></div>
       <div class="probtxt"><span>Probabilidad estimada <b>${pct(B.p)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / B.p)}</b> o más</span></div>
-      <div class="gpick-why">${why} Supera a la casa por ${Math.round(B.e * 100)} puntos.</div>
+      <div class="gpick-why">${why} ${B.e >= 0.01 ? `Supera a la casa por ${Math.round(B.e * 100)} puntos.` : "Su momio es justo para esa probabilidad."}</div>
     </div>`;
 }
 function matchupHtml(g) {
@@ -965,7 +968,7 @@ function show(name) {
   wireFilters(v);
   try { localStorage.setItem("tab", name); localStorage.setItem("sport", curSport); } catch (e) {}
 }
-function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""}; setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Actualizado a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
+function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""}; setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Revisado en vivo a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
 ["picks", "games", "parlays"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
 ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).addEventListener("click", () => sport(k)));
 try { curTab = localStorage.getItem("tab") || "picks"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
