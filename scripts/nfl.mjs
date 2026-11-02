@@ -142,6 +142,10 @@ export async function buildNFL(now = new Date()) {
   const statusOf = aid => inj[aid] || (roster[aid] || {}).inj;
   function teamUsage(ab) {
     const T = usage[ab]; if (!T || !T.n) return null;
+    // Players back from a long injury (no games this season) use last season's volume, when we have their log
+    for (const [aid, Rr] of Object.entries(roster)) { if (Rr.t !== ab || T.P[aid] || !["RB", "WR", "TE"].includes(Rr.pos) || SKIP.has(statusOf(aid))) continue;
+      const L = logs[aid]; if (!L || !L.p.length || L.c.length) continue; const n = L.p.length;
+      T.P[aid] = {n, tg: L.p.reduce((s, r) => s + r[10], 0), car: L.p.reduce((s, r) => s + r[5], 0), back: true}; }
     const ids = Object.keys(T.P).filter(aid => roster[aid] && roster[aid].t === ab && ["RB", "WR", "TE"].includes(roster[aid].pos));
     const shT = aid => T.tgG ? T.P[aid].tg / T.P[aid].n / T.tgG : 0, shC = aid => T.carG ? T.P[aid].car / T.P[aid].n / T.carG : 0;
     // Players already out last game are left out of the base: their teammates' recent numbers already show it
@@ -153,8 +157,9 @@ export async function buildNFL(now = new Date()) {
     const vm = {}, notes = [];
     for (const a of active) vm[a] = {t: sumT ? M.clamp(1 / Math.max(sumT, 0.6), 0.75, 1.4) : 1, c: roster[a].pos === "RB" && sumC ? M.clamp(1 / Math.max(sumC, 0.5), 0.7, 1.5) : 1};
     for (const a of ids.filter(a => SKIP.has(statusOf(a)) && T.last[a])) { if (shT(a) >= 0.12) notes.push(`Sin ${roster[a].n} (${Math.round(shT(a) * 100)}% de los targets)`); else if (roster[a].pos === "RB" && shC(a) >= 0.25) notes.push(`Sin ${roster[a].n} (${Math.round(shC(a) * 100)}% de los acarreos)`); }
-    for (const a of active.filter(a => !T.last[a] && T.P[a].n >= 2 && (shT(a) >= 0.15 || (roster[a].pos === "RB" && shC(a) >= 0.3)))) notes.push(`Regresa ${roster[a].n} (no jugó el último partido)`);
-    return {vm, notes};
+    for (const a of active.filter(a => !T.last[a] && T.P[a].n >= 2 && (shT(a) >= 0.12 || (roster[a].pos === "RB" && shC(a) >= 0.2)))) notes.push(`Regresa ${roster[a].n} (${T.P[a].back ? "sin jugar esta temporada; se usa su volumen de la pasada" : "no jugó el último partido"})`);
+    const dbg = ids.map(a => ({n: roster[a].n, pos: roster[a].pos, st: statusOf(a) || "", last: !!T.last[a], back: !!T.P[a].back, g: T.P[a].n, shT: +shT(a).toFixed(2), shC: +shC(a).toFixed(2)})).filter(x => x.shT >= 0.05 || x.shC >= 0.05);
+    return {vm, notes, dbg, sumT: +sumT.toFixed(2), sumC: +sumC.toFixed(2)};
   }
   const TU = {}; games.forEach(g => [g.home.abbr, g.away.abbr].forEach(ab => { TU[ab] = teamUsage(ab); }));
   games.forEach(g => { const nh = TU[g.home.abbr] && TU[g.home.abbr].notes, na = TU[g.away.abbr] && TU[g.away.abbr].notes; if ((nh && nh.length) || (na && na.length)) g.usage = {h: nh || [], a: na || []}; });
@@ -196,6 +201,7 @@ export async function buildNFL(now = new Date()) {
   }
   cands.forEach(c => { const L = logs[c.aid]; out.logs[c.aid] = L.c.concat(L.p).slice(0, 8); });
   const inPlay = new Set(games.flatMap(g => [g.home.abbr, g.away.abbr]));
+  out.usageDebug = Object.fromEntries(Object.entries(TU).filter(([, v]) => v).map(([k, v]) => [k, {sumT: v.sumT, sumC: v.sumC, players: v.dbg}]));
   Object.assign(out, {games, cands, teams: Object.fromEntries(Object.entries(teams).filter(([k]) => inPlay.has(k))), mu: Object.fromEntries(Object.entries(mu).map(([k, v]) => [k, {a: v.a, r: v.r}]))});
   return out;
 }
