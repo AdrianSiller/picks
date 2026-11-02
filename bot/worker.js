@@ -282,6 +282,9 @@ async function handle(env, chat, key, editId) {
     if (res.length === 1) return handle(env, chat, res[0].key);
     if (res.length) return tg(env, "sendMessage", {chat_id: chat, text: "Encontré varios, ¿cuál?", reply_markup: {inline_keyboard: [...res.map(r => [btn(r.b, r.key)]), [btn("🏠 Inicio", "home")]]}});
     return tg(env, "sendMessage", {chat_id: chat, text: `No encontré "${key.slice(2)}" en los picks de hoy. Prueba con el apellido o el nombre del equipo.`, reply_markup: HOME}); }
+  if (key && key.startsWith("dt:")) { const g = allGames(B).find(x => x.id === key.slice(3));
+    await sendLong(env, chat, g ? (g.tl || g.t) : "Ese partido ya no está en la lista.");
+    return tg(env, "sendMessage", {chat_id: chat, text: "¿Algo más?", reply_markup: HOME}); }
   if (key && key.startsWith("chk:")) {
     for (const id of key.slice(4).split(",")) await sendLong(env, chat, await live(B, id));
     return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: "¿Algo más?", reply_markup: {inline_keyboard: [[btn("🔄 Volver a revisar", key)], ...HOME.inline_keyboard]}}), "el menú");
@@ -301,7 +304,7 @@ async function handle(env, chat, key, editId) {
     if (v.imgs && v.imgs.length) { const r = await tg(env, "sendMediaGroup", {chat_id: chat, media: v.imgs.map(u => ({type: "photo", media: u}))}); if (!r.ok) for (const u of v.imgs) await tg(env, "sendPhoto", {chat_id: chat, photo: u}); }
     await sendLong(env, chat, v.send + "\n\n" + B.foot);
     const next = view(B, v.after), kb = next.kb || HOME;
-    const keyb = {inline_keyboard: [...(v.live && B.v >= 3 ? [[btn("🔄 Revisar en vivo (bajas y alineaciones)", `chk:${v.live}`)]] : []),
+    const keyb = {inline_keyboard: [...(v.live && B.v >= 3 ? [[btn("🔍 Más detalle", `dt:${v.live}`), btn("🔄 Revisar en vivo", `chk:${v.live}`)]] : []),
       ...tools(env, B, v, key), ...kb.inline_keyboard]};
     return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: keyb}), "el menú");
   }
