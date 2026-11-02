@@ -18,7 +18,7 @@ const SHORT = {PTS: "pts", REB: "reb", AST: "ast", "3PM": "triples", REC: "rec",
 const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
 const reg = x => { const r = hash([x.sport, x.kind, x.g, x.aid, x.m, x.l, x.s, x.side, x.bet, x.k, x.line, x.team].join("|")); BETS[r] = x; return r; };
 const propBet = (sp, c, d) => reg({sport: sp, kind: "prop", d, g: c.g, aid: c.aid, m: c.m, l: c.l, s: c.s, p: c.p, pr: c.pr, lbl: `${c.n} ${propLbl(sp, c)}`, b: `${c.n.split(" ").slice(-1)[0]} ${c.s === "over" ? "O" : "U"}${c.l} ${SHORT[c.m] || c.m}`});
-const gameBet = (sp, g, o) => reg({sport: sp, kind: "game", d: g.date, g: g.id, side: o.side, bet: o.kind, line: o.line, p: o.price, pr: o.p, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${gameLbl(o.lbl)}`, b: gameLbl(o.lbl)});
+const gameBet = (sp, g, o) => reg({sport: sp, kind: "game", d: g.date, g: g.id, side: o.side, bet: o.kind, line: o.line, p: o.price, pr: o.p, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${o.kind === "tot" ? "Total " + o.lbl : gameLbl(o.lbl)}`, b: `${o.kind === "tot" ? `${g.away.abbr}@${g.home.abbr} ` : ""}${o.kind === "tot" ? o.lbl : gameLbl(o.lbl)}`});
 const up1Bet = (g, side, pr) => reg({sport: "SOC", kind: "up1", nomark: 1, d: g.date, g: g.id, team: side, pr, lbl: `${g.away.abbr} @ ${g.home.abbr} · 1 Up ${side === "H" ? g.home.abbr : g.away.abbr}`, b: `1 Up ${side === "H" ? g.home.abbr : g.away.abbr}`});
 const socBet = (g, c) => reg({sport: "SOC", kind: "soc", d: g.date, g: g.id, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p, pr: c.pr, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${c.lbl}`, b: (s => s.length > 40 ? s.slice(0, 39) + "…" : s)(`${g.away.abbr}@${g.home.abbr}: ${c.lbl}`)});
 
@@ -102,6 +102,24 @@ function whyGame(g, m) {
   if (g.rest && (g.rest.h === 1 || g.rest.a === 1)) L.push(`Segunda noche seguida: ${[g.rest.a === 1 ? g.away.abbr : null, g.rest.h === 1 ? g.home.abbr : null].filter(Boolean).join(" y ")}`);
   return L.map(t => `   ${esc(t)}`);
 }
+// Game total and "no pick" explanations
+function whyTot(g, t) {
+  const L = [`Proyectamos ~${t.proj.toFixed(0)} puntos (línea ${t.line}): ${g.home.abbr} ~${t.eh.toFixed(0)} y ${g.away.abbr} ~${t.ea.toFixed(0)}`,
+    `Por partido este año: ${g.home.abbr} mete ${t.h.cpf.toFixed(1)} y recibe ${t.h.cpa.toFixed(1)} · ${g.away.abbr} mete ${t.a.cpf.toFixed(1)} y recibe ${t.a.cpa.toFixed(1)}`,
+    `Modelo ${pct(t.pm)} al over · casa ${pct(t.mk)}`];
+  if (g.rest && (g.rest.h === 1 || g.rest.a === 1)) L.push("Segunda noche seguida para uno de los dos (menos piernas, menos puntos)");
+  return L.map(x => `   ${esc(x)}`);
+}
+function whyNo(g, m) {
+  const fav = m.margin >= 0 ? g.home.abbr : g.away.abbr, top = m.opts.slice().sort((a, b) => b.p - a.p)[0];
+  return [`   Proyectamos ${esc(fav)} por ~${Math.abs(m.margin).toFixed(1)}${g.lines && g.lines.spreadHome != null ? ` y la casa tiene ${esc(g.home.abbr)} ${g.lines.spreadHome}` : ""}`,
+    ...(top ? [`   Lo más probable: ${esc(gameLbl(top.lbl))} con ${pct(top.p)}${top.p >= 0.6 ? `, pero a ${fx(top.price)} paga menos de lo que vale` : " (pedimos 60%)"}`] : [])];
+}
+function totLine(g, t) {
+  if (!t) return [];
+  if (t.play) return [`📈 <b>Total</b>: ${esc(t.best.lbl)} · <b>${fx(t.best.price)}</b> · ${pct(t.best.p)}`, ...whyTot(g, t)];
+  return [`📈 Total ${t.line}: sin pick${t.far ? " (el modelo y la casa están muy lejos; algo no estamos viendo)" : ` (proyectamos ~${t.proj.toFixed(0)}, ${Math.abs(t.proj - t.line) < 4 ? "casi igual a la línea" : "pero no alcanza el 60%"})`}`];
+}
 const propLine = (sp, c, i, brief) => brief ? `${i != null ? `${i + 1}. ` : "• "}<b>${esc(c.n)}</b> (${esc(c.t)}) · ${propLbl(sp, c)} · <b>${fx(c.p)}</b> · ${pct(c.pr)}${c.q ? " ⚠️ en duda" : ""}` : `${i != null ? `${i + 1}. ` : "• "}<b>${esc(c.n)}</b> (${esc(c.t)}) · ${propLbl(sp, c)} · <b>${fx(c.p)}</b> · ${pct(c.pr)}${c.q ? " ⚠️ en duda" : ""}` +
   (c.mv === -1 ? `\n   📉 <i>la línea se movió en contra (abrió en ${c.ol})</i>` : c.mv === 1 ? `\n   📈 <i>la línea se movió a favor (abrió en ${c.ol})</i>` : "") + (c.h10 ? `\n   <i>cumplió ${c.h10[0]} de ${c.h10[1]}${c.hc && c.hc[1] ? `, esta temporada ${c.hc[0]} de ${c.hc[1]}` : ""}</i>` : "");
 
@@ -118,19 +136,21 @@ function players(sp, D, now, hours) {
   for (const g of games) {
     const m = model(g), tag = `${g.away.abbr} @ ${g.home.abbr}`;
     if (m && m.play) mlBets.push(gameBet(sp, g, m.best));
+    if (m && m.tot && m.tot.play) { mlBets.push(gameBet(sp, g, m.tot.best)); mlRows.push(`📈 ${esc(tag)} (${hora(g.date)}): <b>Total ${esc(m.tot.best.lbl)}</b> · ${fx(m.tot.best.price)} · ${pct(m.tot.best.p)}`); }
     if (m && m.play) mlRows.push(`🎯 ${esc(tag)} (${hora(g.date)}): <b>${esc(gameLbl(m.best.lbl))}</b> · ${fx(m.best.price)} · ${pct(m.best.p)}`);
     const props = []; const seen = new Set();
     for (const c of D.cands.filter(c => c.g === g.id && !M.fails(c, sp)).sort((a, b) => M.score(b, sp) - M.score(a, sp))) { if (seen.has(c.aid)) continue; seen.add(c.aid); props.push(c); if (props.length === 8) break; }
     const L = [`<b>${esc(g.away.name)} @ ${esc(g.home.name)}</b>`, hora(g.date), ""];
     if (m && m.play) L.push(`🎯 <b>Pick de partido</b>: ${esc(gameLbl(m.best.lbl))} · <b>${fx(m.best.price)}</b> · ${pct(m.best.p)}`, ...whyGame(g, m));
-    else if (m) L.push(`🎯 Sin pick sólido de ML o spread (proyectamos casi lo mismo que la casa).`);
+    else if (m) L.push(`🎯 Sin pick sólido de ML o spread`, ...whyNo(g, m));
+    if (m) L.push(...totLine(g, m.tot));
     if (m && m.value) L.push(`💸 Opción de valor (arriesgada): ${esc(gameLbl(m.value.lbl))} · ${fx(m.value.price)} · ${pct(m.value.p)}`);
     const L0 = g.lines || {}; if (L0.total) L.push(`Total ${L0.total} · ML ${g.away.abbr} ${fx(L0.mlAway)} / ${g.home.abbr} ${fx(L0.mlHome)}`);
     const outs = (g.inj || []).filter(i => i[2] === "Out").map(i => `${i[1]} (${i[0]})`);
     if (outs.length) L.push(`Fuera: ${esc(outs.join(", "))}`);
     L.push("", props.length ? `<b>Props sólidos (${props.length})</b>` : "Ningún prop de este partido pasa los filtros. Mejor no forzarlo.", ...props.flatMap(c => [propLine(sp, c, null, true), ...whyProp(sp, c, D, g, 4)]));
-    gameList.push({id: g.id, d: g.date, solid: !!((m && m.play) || props.length), b: `${g.away.abbr} @ ${g.home.abbr} · ${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}`, t: L.join("\n"),
-      bets: [...(m && m.play ? [gameBet(sp, g, m.best)] : []), ...props.map(c => propBet(sp, c, g.date))],
+    gameList.push({id: g.id, d: g.date, solid: !!((m && m.play) || (m && m.tot && m.tot.play) || props.length), b: `${g.away.abbr} @ ${g.home.abbr} · ${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}`, t: L.join("\n"),
+      bets: [...(m && m.play ? [gameBet(sp, g, m.best)] : []), ...(m && m.tot && m.tot.play ? [gameBet(sp, g, m.tot.best)] : []), ...props.map(c => propBet(sp, c, g.date))],
       chk: {sp: sp.toLowerCase(), h: g.home.abbr, a: g.away.abbr, outs: (g.inj || []).filter(i => i[2] === "Out").map(i => i[1]), props: props.map(c => ({aid: c.aid, n: c.n, lbl: propLbl(sp, c)}))}});
   }
   // Search: every player with props in these games (solid or not, with the reason) and every team
@@ -144,7 +164,7 @@ function players(sp, D, now, hours) {
     return {n: c0.n, t: c0.t, sp: sp.toLowerCase(), aid: c0.aid, txt: L.join("\n"), refs: sorted.filter(c => c.p).map(c => propBet(sp, c, g.date))};
   });
   const teams = games.map(g => ({names: [g.home.abbr, g.home.name, g.away.abbr, g.away.name], key: `${sp.toLowerCase()}:g:${g.id}`, b: `${g.away.abbr} @ ${g.home.abbr}`}));
-  const mlTxt = [`<b>${icon} · Picks de partido (ML / spread)</b>`, "", ...(mlRows.length ? mlRows : ["Hoy ningún partido tiene un pick sólido de ML o spread."])];
+  const mlTxt = [`<b>${icon} · Picks de partido (ML, spread y total)</b>`, "", ...(mlRows.length ? mlRows : ["Hoy ningún partido tiene un pick sólido de ML, spread o total."])];
   return {top: topTxt.join("\n"), ml: mlTxt.join("\n"), all: [topTxt.join("\n"), mlTxt.join("\n")].join("\n\n"), games: gameList, bets: {top: topBets, ml: mlBets, all: [...topBets, ...mlBets]}, find, teams};
 }
 
@@ -187,14 +207,14 @@ function soccer(S, now, hours) {
 function record(R) {
   const days = (R.days || []).filter(d => d.items.some(x => x.hit === 0 || x.hit === 1)); if (!days.length) return "Todavía no hay resultados calificados.";
   const NAME = {NBA: "🏀 NBA", NFL: "🏈 NFL", SOC: "⚽ Soccer"}, SK = {"1x2": "resultado", dc: "doble oport.", dc1h: "doble oport. 1T", hc: "handicap", tot: "goles", btts: "ambos anotan", cor: "corners", tt: "goles por equipo"};
-  const kind = x => x.kind === "prop" ? "Props de jugadores" : x.kind === "game" ? (x.bet === "sp" ? "Spread" : "ML") : (s => s[0].toUpperCase() + s.slice(1))(SK[x.k] || "otros");
+  const kind = x => x.kind === "prop" ? "Props de jugadores" : x.kind === "game" ? (x.bet === "sp" ? "Spread" : x.bet === "tot" ? "Total (over/under)" : "ML") : (s => s[0].toUpperCase() + s.slice(1))(SK[x.k] || "otros");
   const fmt = arr => { const d = arr.filter(x => x.hit === 0 || x.hit === 1), w = d.filter(x => x.hit).length, u = d.reduce((s, x) => s + (x.hit ? (x.p || 1.91) - 1 : -1), 0); return {d, w, u, txt: `${w}/${d.length}`}; };
   const block = (title, items) => {
     const L = [`<b>${title}</b>`]; let any = false;
     for (const sp of ["NBA", "NFL", "SOC"]) {
       const it = items.filter(x => x.sport === sp), t = fmt(it); if (!t.d.length) continue; any = true;
       const by = {}; t.d.forEach(x => (by[kind(x)] = by[kind(x)] || []).push(x));
-      const ORDER = ["Props de jugadores", "Spread", "ML"], rank = k => ORDER.includes(k) ? ORDER.indexOf(k) : 3;
+      const ORDER = ["Props de jugadores", "Spread", "ML", "Total (over/under)"], rank = k => ORDER.includes(k) ? ORDER.indexOf(k) : 3;
       L.push(`${NAME[sp]} <b>${t.txt}</b> · ${t.u >= 0 ? "+" : ""}${t.u.toFixed(1)} u`);
       Object.entries(by).sort((a, b) => rank(a[0]) - rank(b[0]) || b[1].length - a[1].length).forEach(([k, a]) => L.push(`   ${k} ${fmt(a).txt}`));
       L.push("");

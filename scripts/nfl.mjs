@@ -57,7 +57,8 @@ export async function buildNFL(now = new Date()) {
     const [r, c, p] = await Promise.all([J(`${SITE}/teams/${t.id}/roster`), J(`${SITE}/teams/${t.id}/schedule`), J(`${SITE}/teams/${t.id}/schedule?season=${PREV}`)]);
     for (const grp of (r && r.athletes) || []) for (const a of grp.items || []) roster[a.id] = {grp: grp.position, n: a.displayName, t: ab, pos: posOf((a.position && a.position.abbreviation) || ""), inj: a.injuries && a.injuries[0] && a.injuries[0].status};
     const cur = teamResults(c, ab), prev = teamResults(p, ab);
-    teams[ab] = {cur: cur.map(x => x.row), prevN: prev.length, prevW: prev.filter(x => x.row[3] > x.row[4]).length, prevDiff: +(prev.reduce((s, x) => s + x.row[3] - x.row[4], 0) / (prev.length || 1)).toFixed(2)};
+    teams[ab] = {cur: cur.map(x => x.row), prevN: prev.length, prevW: prev.filter(x => x.row[3] > x.row[4]).length, prevDiff: +(prev.reduce((s, x) => s + x.row[3] - x.row[4], 0) / (prev.length || 1)).toFixed(2),
+      prevPF: +(prev.reduce((s, x) => s + x.row[3], 0) / (prev.length || 1)).toFixed(1), prevPA: +(prev.reduce((s, x) => s + x.row[4], 0) / (prev.length || 1)).toFixed(1)};
     played[ab] = cur.map(x => x.id);
   });
 

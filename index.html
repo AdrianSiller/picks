@@ -218,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 1:00 p.m.</footer>
-<script src="model.js?v=20261102-1300"></script>
+<footer class="ver">Versión de la app: 2 nov 2:45 p.m.</footer>
+<script src="model.js?v=20261102-1445"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-1300";
+const APP_VERSION = "20261102-1445";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -736,7 +736,7 @@ function viewPerf() {
   const by = (r, f) => { const g = {}; r.forEach(x => { const k = f(x); if (k != null) (g[k] = g[k] || []).push(x); }); return g; };
   const ALL = T(all), ME = T(rows), mk = sp === "NBA" ? SPORTS.nba.MK : SPORTS.nfl.MK;
   const SK = {"1x2": "Resultado", dc: "Doble oportunidad", dc1h: "Doble oport. medio tiempo", hc: "Handicap asiático", tot: "Goles over/under", btts: "Ambos anotan", cor: "Corners", tt: "Goles por equipo"};
-  const kind = x => x.kind === "prop" ? "Props de jugador" : x.kind === "game" ? "Moneyline / spread" : SK[x.k] || "Soccer";
+  const kind = x => x.kind === "prop" ? "Props de jugador" : x.kind === "game" ? (x.bet === "tot" ? "Total (over/under)" : x.bet === "sp" ? "Spread" : "Moneyline") : SK[x.k] || "Soccer";
   const market = x => x.kind === "prop" && x.m ? `${(mk[x.m] || {lbl: x.m}).lbl} · ${x.s}` : x.kind === "soc" && x.k ? `${SK[x.k] || x.k}${x.k === "tot" ? (x.side === "O" ? " · over" : " · under") : x.k === "dc" || x.k === "dc1h" ? (x.side === "1X" ? " · local" : " · visita") : ""}` : null;
   const conf = x => x.pr == null ? null : x.pr >= 0.72 ? "72%+ (muy sólido)" : x.pr >= 0.66 ? "66–71%" : x.pr >= 0.6 ? "60–65%" : "menos de 60%";
   const price = x => !x.p ? "sin momio" : x.p < 1.5 ? "menos de 1.50" : x.p < 1.8 ? "1.50–1.79" : x.p < 2.1 ? "1.80–2.09" : "2.10 o más";
@@ -930,6 +930,9 @@ function viewGames() {
         <div class="team" style="text-align:right">${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record}</small></div>
       </div>
       ${B ? gamePickBox(g, M) : ""}
+      ${M.tot ? `<div class="gpick${M.tot.play ? "" : " pass"}" style="margin-top:8px"><div class="gpick-h">${M.tot.play ? "Total (over/under)" : "Total: sin pick"}</div>
+        ${M.tot.play ? `<div class="gpick-main"><span>${esc(M.tot.best.lbl)}</span><b>${fx(M.tot.best.price)}</b></div><div class="probtxt"><span>Probabilidad estimada <b>${pct(M.tot.best.p)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / M.tot.best.p)}</b> o más</span></div>` : ""}
+        <div class="gpick-why">Proyectamos ~${M.tot.proj.toFixed(0)} puntos contra la línea de ${M.tot.line} (${esc(g.home.abbr)} ~${M.tot.eh.toFixed(0)}, ${esc(g.away.abbr)} ~${M.tot.ea.toFixed(0)}). Este año ${esc(g.home.abbr)} mete ${M.tot.h.cpf.toFixed(1)} y recibe ${M.tot.h.cpa.toFixed(1)}; ${esc(g.away.abbr)} mete ${M.tot.a.cpf.toFixed(1)} y recibe ${M.tot.a.cpa.toFixed(1)}. Modelo ${pct(M.tot.pm)} al over, casa ${pct(M.tot.mk)}.${M.tot.far ? " El modelo y la casa están muy lejos: algo no estamos viendo, mejor no." : ""}</div></div>` : ""}
       <details class="gmore"${filt.game ? " open" : ""}><summary>Ver detalle del partido</summary>
       ${B ? `      <h3 class="sub">Moneyline o spread: las opciones</h3>
       <table class="opts"><thead><tr><th>Opción</th><th>Momio</th><th>Estimado</th><th>Casa</th></tr></thead><tbody>

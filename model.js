@@ -86,6 +86,27 @@
     const net = (n * diff + cfg.prevK * cfg.prevW * T.prevDiff) / (n + cfg.prevK);
     return {n, w, l, t, diff, net, prevW: T.prevW, prevL: T.prevN - T.prevW, prevDiff: T.prevDiff, last: T.cur.slice().reverse()};
   };
+  // Game total (over/under): what each team scores and allows (this season, leaning on last season early on),
+  // scaled by the league average, minus tired legs.
+  M.totalModel = (g, ctx, H, A) => {
+    const L = g.lines || {}, line = Number(L.total); if (!line || !L.overOdds || !L.underOdds) return null;
+    const T = ctx.teams, sp = ctx.sp || ctx.name, K = ctx.prevK || 8;
+    const rate = t => { const x = T[t]; if (!x) return null; const n = x.cur.length, pf = n ? x.cur.reduce((s, r) => s + r[3], 0) / n : 0, pa = n ? x.cur.reduce((s, r) => s + r[4], 0) / n : 0;
+      const ppf = x.prevPF || pf, ppa = x.prevPA || pa; return {n, pf: (n * pf + K * ppf) / (n + K), pa: (n * pa + K * ppa) / (n + K), cpf: pf, cpa: pa}; };
+    if (!ctx.__lg) { const all = Object.keys(T).map(rate).filter(Boolean); ctx.__lg = all.reduce((s, r) => s + r.pf, 0) / (all.length || 1); }
+    const h = rate(g.home.abbr), a = rate(g.away.abbr); if (!h || !a) return null;
+    const lg = ctx.__lg, rest = g.rest || {};
+    // Absences are not subtracted: long ones already show in this season's averages and the book prices the new ones
+    const eh = h.pf * a.pa / lg - (rest.h === 1 ? 1 : 0), ea = a.pf * h.pa / lg - (rest.a === 1 ? 1 : 0);
+    const proj = eh + ea, sd = sp === "NFL" ? 13 : 18, pm = 1 - M.phi((line - proj) / sd);
+    const mk = (1 / L.overOdds) / (1 / L.overOdds + 1 / L.underOdds), cal = M.calAdj(`${sp}|game`);
+    // The book weighs 60%; if the model is 30+ points away from it, it is probably missing something: no pick
+    const pO = clamp(0.4 * pm + 0.6 * mk, 0.02, 0.98), far = Math.abs(pm - mk) > 0.3;
+    const opts = [{lbl: `Over ${line}`, side: "O", p: clamp(pO + cal, 0.02, 0.98), price: L.overOdds}, {lbl: `Under ${line}`, side: "U", p: clamp(1 - pO + cal, 0.02, 0.98), price: L.underOdds}]
+      .map(o => ({...o, kind: "tot", line, imp: 1 / o.price, e: o.p - 1 / o.price, cal}));
+    const best = far ? null : opts.filter(o => o.p >= 0.60 && o.e >= -0.02).sort((x, y) => y.p - x.p)[0] || null;
+    return {far, line, proj: +proj.toFixed(1), eh: +eh.toFixed(1), ea: +ea.toFixed(1), h, a, pm, mk, opts, best, play: !!best};
+  };
   // ctx: {teams, outs, hca, sd, prevK, prevW}; outs[team] = [[name, minutes, points], ...]
   M.gameModel = (g, ctx) => {
     const H = M.teamForm(ctx.teams[g.home.abbr], ctx), A = M.teamForm(ctx.teams[g.away.abbr], ctx), L = g.lines || {};
@@ -113,7 +134,7 @@
     const solid = opts2.filter(o => o.p >= 0.60 && o.e >= -0.02).sort((a, b) => b.p - a.p)[0];
     const value = solid ? null : opts2.filter(o => o.p < 0.60 && o.e >= 0.04).sort((a, b) => b.e - a.e)[0] || null;
     const best = solid || opts2.slice().sort((a, b) => b.e - a.e)[0];
-    return {H, A, margin, opts: opts2, best, play: !!solid, value};
+    return {H, A, margin, opts: opts2, best, play: !!solid, value, tot: M.totalModel(g, ctx, H, A)};
   };
 
   /* ---------- soccer ---------- */

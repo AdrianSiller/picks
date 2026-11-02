@@ -60,7 +60,8 @@ export async function buildNBA(now = new Date()) {
     const [r, c, p] = await Promise.all([J(`${SITE}/teams/${id}/roster`), J(`${SITE}/teams/${id}/schedule`), J(`${SITE}/teams/${id}/schedule?season=${PREV}`)]);
     for (const a of (r && r.athletes) || []) roster[a.id] = {n: a.displayName, t: ab, pos: posOf((a.position && a.position.abbreviation) || "G"), inj: a.injuries && a.injuries[0] && a.injuries[0].status};
     const cur = teamResults(c, ab), prev = teamResults(p, ab);
-    teams[ab] = {cur: cur.map(x => x.row), prevN: prev.length, prevW: prev.filter(x => x.row[3] > x.row[4]).length, prevDiff: +(prev.reduce((s, x) => s + x.row[3] - x.row[4], 0) / (prev.length || 1)).toFixed(2)};
+    teams[ab] = {cur: cur.map(x => x.row), prevN: prev.length, prevW: prev.filter(x => x.row[3] > x.row[4]).length, prevDiff: +(prev.reduce((s, x) => s + x.row[3] - x.row[4], 0) / (prev.length || 1)).toFixed(2),
+      prevPF: +(prev.reduce((s, x) => s + x.row[3], 0) / (prev.length || 1)).toFixed(1), prevPA: +(prev.reduce((s, x) => s + x.row[4], 0) / (prev.length || 1)).toFixed(1)};
     recent[ab] = cur.map(x => x.id).reverse().concat(prev.map(x => x.id).reverse()).slice(0, 12);
   });
 
