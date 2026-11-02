@@ -1,8 +1,8 @@
-[5s] NBA ok
-[9s] NFL ok
+[7s] NBA ok
+[10s] NFL ok
 [19s] Soccer ok
 [19s] calibración {"_n":50,"NBA|prop|over":-0.027,"NBA|prop|under":-0.05,"NBA|game":-0.034,"NFL|prop|over":-0.05,"NFL|prop|under":-0.038,"NFL|game":-0.024,"SOC|soc":0}
-[19s] latest.json 325 KB NBA 15 games/161 props · NFL 1/16 · soccer 49
+[19s] latest.json 327 KB NBA 15 games/161 props · NFL 1/16 · soccer 49
 [19s] candidatos guardados 1115
 [20s] grade 2026-11-02 ok
 [20s] bot.json ok
