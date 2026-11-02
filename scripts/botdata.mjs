@@ -142,6 +142,29 @@ function soccer(S, now, hours) {
   return out;
 }
 
+// Record per sport, split by kind of pick: last graded day, last 7 days and everything kept
+function record(R) {
+  const days = (R.days || []).filter(d => d.items.some(x => x.hit === 0 || x.hit === 1)); if (!days.length) return "Todavía no hay resultados calificados.";
+  const NAME = {NBA: "🏀 NBA", NFL: "🏈 NFL", SOC: "⚽ Soccer"}, SK = {"1x2": "resultado", dc: "doble oport.", dc1h: "doble oport. 1T", hc: "handicap", tot: "goles", btts: "ambos anotan", cor: "corners", tt: "goles por equipo"};
+  const kind = x => x.kind === "prop" ? "props" : x.kind === "game" ? "ML/spread" : SK[x.k] || "otros";
+  const fmt = arr => { const d = arr.filter(x => x.hit === 0 || x.hit === 1), w = d.filter(x => x.hit).length, u = d.reduce((s, x) => s + (x.hit ? (x.p || 1.91) - 1 : -1), 0); return {d, w, u, txt: `${w}/${d.length}`}; };
+  const block = (title, items) => {
+    const L = [`<b>${title}</b>`]; let any = false;
+    for (const sp of ["NBA", "NFL", "SOC"]) {
+      const it = items.filter(x => x.sport === sp), t = fmt(it); if (!t.d.length) continue; any = true;
+      const by = {}; t.d.forEach(x => (by[kind(x)] = by[kind(x)] || []).push(x));
+      const parts = Object.entries(by).sort((a, b) => b[1].length - a[1].length).map(([k, a]) => `${k} ${fmt(a).txt}`);
+      L.push(`${NAME[sp]} <b>${t.txt}</b> (${Math.round(t.w / t.d.length * 100)}%) · ${parts.join(" · ")} · ${t.u >= 0 ? "+" : ""}${t.u.toFixed(1)} u`);
+    }
+    const all = fmt(items); if (any) L.push(`<i>Todo: ${all.txt} · ${all.u >= 0 ? "+" : ""}${all.u.toFixed(1)} u</i>`);
+    return any ? L.join("\n") : null;
+  };
+  const day = days[0], when = d => new Date(d + "T12:00:00").toLocaleDateString("es-MX", {day: "numeric", month: "short"});
+  const flat = ds => ds.flatMap(d => d.items), last7 = days.filter(d => (new Date(day.date) - new Date(d.date)) / 864e5 < 7), oldest = days[days.length - 1].date;
+  return ["<b>📊 Cómo nos fue</b>", "", block(`Último día (${when(day.date)})`, day.items), "", block("Últimos 7 días", flat(last7)), ...(days.length > last7.length ? ["", block(`Desde el ${when(oldest)}`, flat(days))] : []),
+    "", "<i>u = unidades: 1 por pick con el momio de DraftKings.</i>"].filter(x => x != null).join("\n");
+}
+
 function results(R) {
   const day = (R.days || []).find(d => d.items.some(x => x.hit === 0 || x.hit === 1)); if (!day) return "Todavía no hay resultados calificados.";
   const NAME = {NBA: "🏀 NBA", NFL: "🏈 NFL", SOC: "⚽ Soccer"}, L = [`<b>Cómo nos fue el ${new Date(day.date + "T12:00:00").toLocaleDateString("es-MX", {day: "numeric", month: "short"})}</b>`];
@@ -158,7 +181,7 @@ export function botData(latest, R, now) {
   const at = new Date(latest.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
   BETS = {};
   const out = {v: 3, generatedAt: latest.generatedAt, foot: `<i>Datos de las ${at} · antes de apostar dale ↻ Actualizar en la app</i>`,
-    nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: results(R)};
+    nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: record(R), resd: results(R)};
   out.bets = BETS;
   return out;
 }
