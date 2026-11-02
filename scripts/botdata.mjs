@@ -17,9 +17,10 @@ let BETS = {};
 const SHORT = {PTS: "pts", REB: "reb", AST: "ast", "3PM": "triples", REC: "rec", RECYDS: "yd rec", CAR: "acarreos", RUSHYDS: "yd tierra", CMP: "comp", PASSYDS: "yd pase", RRY: "yd t+r"};
 const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
 const reg = x => { const r = hash([x.sport, x.kind, x.g, x.aid, x.m, x.l, x.s, x.side, x.bet, x.k, x.line, x.team].join("|")); BETS[r] = x; return r; };
-const propBet = (sp, c, d) => reg({sport: sp, kind: "prop", d, g: c.g, aid: c.aid, m: c.m, l: c.l, s: c.s, p: c.p, lbl: `${c.n} ${propLbl(sp, c)}`, b: `${c.n.split(" ").slice(-1)[0]} ${c.s === "over" ? "O" : "U"}${c.l} ${SHORT[c.m] || c.m}`});
-const gameBet = (sp, g, o) => reg({sport: sp, kind: "game", d: g.date, g: g.id, side: o.side, bet: o.kind, line: o.line, p: o.price, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${gameLbl(o.lbl)}`, b: gameLbl(o.lbl)});
-const socBet = (g, c) => reg({sport: "SOC", kind: "soc", d: g.date, g: g.id, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${c.lbl}`, b: (s => s.length > 40 ? s.slice(0, 39) + "…" : s)(`${g.away.abbr}@${g.home.abbr}: ${c.lbl}`)});
+const propBet = (sp, c, d) => reg({sport: sp, kind: "prop", d, g: c.g, aid: c.aid, m: c.m, l: c.l, s: c.s, p: c.p, pr: c.pr, lbl: `${c.n} ${propLbl(sp, c)}`, b: `${c.n.split(" ").slice(-1)[0]} ${c.s === "over" ? "O" : "U"}${c.l} ${SHORT[c.m] || c.m}`});
+const gameBet = (sp, g, o) => reg({sport: sp, kind: "game", d: g.date, g: g.id, side: o.side, bet: o.kind, line: o.line, p: o.price, pr: o.p, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${gameLbl(o.lbl)}`, b: gameLbl(o.lbl)});
+const up1Bet = (g, side, pr) => reg({sport: "SOC", kind: "up1", nomark: 1, d: g.date, g: g.id, team: side, pr, lbl: `${g.away.abbr} @ ${g.home.abbr} · 1 Up ${side === "H" ? g.home.abbr : g.away.abbr}`, b: `1 Up ${side === "H" ? g.home.abbr : g.away.abbr}`});
+const socBet = (g, c) => reg({sport: "SOC", kind: "soc", d: g.date, g: g.id, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p, pr: c.pr, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${c.lbl}`, b: (s => s.length > 40 ? s.slice(0, 39) + "…" : s)(`${g.away.abbr}@${g.home.abbr}: ${c.lbl}`)});
 
 function parlay(top) {
   const pool = top.filter(c => !c.sm && !c.q && c.p); let best = null;
@@ -132,8 +133,19 @@ function players(sp, D, now, hours) {
       bets: [...(m && m.play ? [gameBet(sp, g, m.best)] : []), ...props.map(c => propBet(sp, c, g.date))],
       chk: {sp: sp.toLowerCase(), h: g.home.abbr, a: g.away.abbr, outs: (g.inj || []).filter(i => i[2] === "Out").map(i => i[1]), props: props.map(c => ({aid: c.aid, n: c.n, lbl: propLbl(sp, c)}))}});
   }
+  // Search: every player with props in these games (solid or not, with the reason) and every team
+  const byP = {}; for (const c of cands) (byP[c.aid] = byP[c.aid] || []).push(c);
+  const find = Object.values(byP).map(list => {
+    const c0 = list[0], g = G[c0.g], sorted = list.slice().sort((a, b) => M.score(b, sp) - M.score(a, sp)), L = [`<b>${esc(c0.n)}</b> (${esc(c0.t)}) · ${esc(g.away.abbr)} @ ${esc(g.home.abbr)} · ${hora(g.date)}`, ""];
+    for (const c of sorted) { const why = M.fails(c, sp);
+      L.push(`${why ? "▫️" : "✅"} ${propLbl(sp, c)} · <b>${fx(c.p)}</b> · ${pct(c.pr)}${why ? ` <i>(no entra: ${esc(why)})</i>` : ""}`);
+      if (!why) L.push(...whyProp(sp, c, D, g, 3)); }
+    if (!sorted.some(c => !M.fails(c, sp))) L.push("", "<i>Hoy ninguno de sus props pasa los filtros.</i>");
+    return {n: c0.n, t: c0.t, sp: sp.toLowerCase(), aid: c0.aid, txt: L.join("\n"), refs: sorted.filter(c => c.p).map(c => propBet(sp, c, g.date))};
+  });
+  const teams = games.map(g => ({names: [g.home.abbr, g.home.name, g.away.abbr, g.away.name], key: `${sp.toLowerCase()}:g:${g.id}`, b: `${g.away.abbr} @ ${g.home.abbr}`}));
   const mlTxt = [`<b>${icon} · Picks de partido (ML / spread)</b>`, "", ...(mlRows.length ? mlRows : ["Hoy ningún partido tiene un pick sólido de ML o spread."])];
-  return {top: topTxt.join("\n"), ml: mlTxt.join("\n"), all: [topTxt.join("\n"), mlTxt.join("\n")].join("\n\n"), games: gameList, bets: {top: topBets, ml: mlBets, all: [...topBets, ...mlBets]}};
+  return {top: topTxt.join("\n"), ml: mlTxt.join("\n"), all: [topTxt.join("\n"), mlTxt.join("\n")].join("\n\n"), games: gameList, bets: {top: topBets, ml: mlBets, all: [...topBets, ...mlBets]}, find, teams};
 }
 
 function soccer(S, now, hours) {
@@ -155,17 +167,19 @@ function soccer(S, now, hours) {
       const best = ok.find(c => c.p);
       L.push(best ? `🎯 <b>Pick</b>: ${esc(best.lbl)} · <b>${(best.est ? "≈" : "") + fx(best.p)}</b> · ${pct(best.pr)}` : "🎯 Sin pick sólido con momio: el modelo y la casa no coinciden lo suficiente.");
       if (best) L.push(...whySoc(S, g, best, m));
-      const others = ok.filter(c => c !== best); if (others.length) L.push("", "<b>Otras opciones</b>", ...others.map(c => `• ${esc(c.lbl)} · ${c.p ? (c.est ? "≈" : "") + fx(c.p) : "sin momio"} · ${pct(c.pr)}`));
+      const others = ok.filter(c => c !== best); if (others.length) L.push("", "<b>Otras opciones</b>", ...others.flatMap(c => [`• ${esc(c.lbl)} · ${c.p ? (c.est ? "≈" : "") + fx(c.p) : "sin momio"} · ${pct(c.pr)}`, ...whySoc(S, g, c, m).slice(0, 2)]));
       if (m) L.push("", "<b>1 Up</b> (compáralo en tu casa)", `• ${esc(g.home.abbr)}: ${pct(m.up1H)} · conviene si paga ${fx(1 / m.up1H)} o más`, `• ${esc(g.away.abbr)}: ${pct(m.up1A)} · conviene si paga ${fx(1 / m.up1A)} o más`);
       const L0 = g.lines || {}; if (L0.mlHome) L.push("", `1X2: ${g.home.abbr} ${fx(L0.mlHome)} · empate ${fx(L0.draw)} · ${g.away.abbr} ${fx(L0.mlAway)}${L0.total ? ` · goles ${L0.total}` : ""}`);
       if (g.xi) L.push(`📋 Alineaciones confirmadas: ${["h", "a"].filter(k => g.xi[k]).map(k => { const t = g[k === "h" ? "home" : "away"].abbr, m = g.xi[k].miss; return m.length ? `${t} sin ${m.length} titular${m.length > 1 ? "es" : ""} habitual${m.length > 1 ? "es" : ""} (${esc(m.join(", "))})` : `${t} con su once habitual`; }).join("; ")}. Ya entra en el modelo.`);
       else if (g.rot) L.push(`⚠️ ${["h", "a"].filter(k => g.rot[k]).map(k => `${g[k === "h" ? "home" : "away"].abbr} ${g.rot[k].next != null ? `juega Champions en ${g.rot[k].next} días (posible rotación)` : "viene de jugar Champions"}`).join("; ")}. Revisa alineaciones con ↻ Actualizar en la app antes de apostar.`);
       const meta = S.meta || {}, reg = ab => ((meta[ab] || {}).reg || []).map(x => [x[0], x[1]]);
-      return {id: g.id, d: g.date, solid: !!best, bets: ok.filter(c => c.p).map(c => socBet(g, c)), b: `${g.away.abbr} @ ${g.home.abbr} · ${new Date(g.date).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ})}`, t: L.join("\n"),
+      const sb = ok.filter(c => c.p).map(c => socBet(g, c));
+      return {id: g.id, d: g.date, solid: !!best, bets: sb, cmp: [...sb, ...(m ? [up1Bet(g, "H", m.up1H), up1Bet(g, "A", m.up1A)] : [])], b: `${g.away.abbr} @ ${g.home.abbr} · ${new Date(g.date).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ})}`, t: L.join("\n"),
         chk: {sp: "soc", slug: g.slug, h: g.home.abbr, a: g.away.abbr, pick: best ? {lbl: best.lbl, team: best.team || (best.side === "H" || best.side === "1X" ? "H" : best.side === "A" || best.side === "X2" ? "A" : null)} : null, xi: {h: reg(g.home.abbr), a: reg(g.away.abbr)}, lineups: !!g.xi}};
     });
     out.leagues.push({code, lg, topBets: lt.map(c => socBet(G[c.g], c)), top: [`<b>⚽ ${lg} · mejores picks</b>`, "", ...(lt.length ? lt.map(row) : ["Ningún partido de esta liga tiene un pick sólido con momio."])].join("\n"), games: gameList});
   }
+  out.teams = games.map(g => ({names: [g.home.abbr, g.home.name, g.away.abbr, g.away.name], key: `soc:g:${g.id}`, b: `${g.away.abbr} @ ${g.home.abbr}`}));
   return out;
 }
 

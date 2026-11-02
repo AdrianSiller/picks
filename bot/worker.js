@@ -1,11 +1,11 @@
 // Telegram bot for Picks del Día (Cloudflare Worker, free plan).
-// v6 · Menus step by step: sport -> (soccer: league) -> top / game picks / everything / one game. You can also write "nba", "premier", "como nos fue".
+// v7 · Menus step by step: sport -> (soccer: league) -> top / game picks / everything / one game. You can also write "nba", "premier", "como nos fue".
 // Setup: paste this file in a Worker, add the secret TELEGRAM_TOKEN, deploy, then open https://<your-worker>/setup once.
 const DATA = "https://adriansiller.github.io/picks/data/";
 const APP = "https://adriansiller.github.io/picks/";
 const btn = (text, data) => ({text, callback_data: data});
 const rows = (list, n) => { const out = []; for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n)); return out; };
-const HOME = {inline_keyboard: [[btn("🏀 NBA", "nba"), btn("🏈 NFL", "nfl"), btn("⚽ Soccer", "soc")], [btn("📊 Cómo nos fue", "res"), btn("🧾 Mis apuestas", "mine")]]};
+const HOME = {inline_keyboard: [[btn("🏀 NBA", "nba"), btn("🏈 NFL", "nfl"), btn("⚽ Soccer", "soc")], [btn("📊 Cómo nos fue", "res"), btn("🧾 Mis apuestas", "mine")], [btn("🔎 Buscar", "find"), btn("🔔 Avisos", "av")]]};
 const LGN = {mx: "🇲🇽 Liga MX", esp: "🇪🇸 La Liga", eng: "🏴 Premier", ger: "🇩🇪 Bundesliga", ita: "🇮🇹 Serie A", fra: "🇫🇷 Ligue 1", ucl: "⭐ Champions"};
 
 // Free text -> menu key; null = main menu
@@ -52,6 +52,8 @@ function picked(B, list, mask, tag) {
 function view(B, key) {
   const [a, b, c] = key.split(":"), back = (to, lbl = "⬅️ Atrás") => [btn(lbl, to), btn("🏠 Inicio", "home")];
   if (key === "home") return {text: "¿De qué quieres los picks?", kb: HOME};
+  if (key === "find") return {text: "🔎 Escríbeme el nombre de un jugador o equipo (ej. Doncic, Lakers, Real Madrid, América).", kb: {inline_keyboard: [[btn("🏠 Inicio", "home")]]}};
+  if (a === "pl") { const p = ((B[b] || {}).find || []).find(x => x.aid === c); return p ? {send: p.txt, after: "home", bets: p.refs, cmp: p.refs} : {text: "Ese jugador ya no tiene props en la lista.", kb: HOME}; }
   if (key === "res:menu") return {text: "¿Quieres ver más detalle?", kb: {inline_keyboard: [[btn("📋 Ver los picks del último día", "res:d")], ...(B.resSoc ? [[btn("⚽ Soccer por liga", "res:s")]] : []), ...HOME.inline_keyboard]}};
   if (a === "res" && b === "d") return {send: B.resd, after: "res:menu"};
   if (a === "res" && b === "s") return {send: B.resSoc, after: "res:menu"};
@@ -61,25 +63,25 @@ function view(B, key) {
     const D = B[a], name = a === "nba" ? "🏀 NBA" : "🏈 NFL";
     if (!D) return {text: `${name}: no hay partidos próximos con picks.`, kb: HOME};
     if (!b) return {text: `${name} · ${D.games.length} partido${D.games.length > 1 ? "s" : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Top 10", `${a}:top`), btn("🎯 ML / spread", `${a}:ml`)], [btn("📋 Todo", `${a}:all`), btn("🔎 Un partido", `${a}:g`)], [btn("☑️ Varios partidos", `${a}:m:0:${ver(B)}`)], [btn("🏠 Inicio", "home")]]}};
-    if (b === "top" || b === "ml" || b === "all") return {send: D[b], after: a, bets: (D.bets || {})[b]};
+    if (b === "top" || b === "ml" || b === "all") return {send: D[b], after: a, bets: (D.bets || {})[b], cmp: (D.bets || {})[b]};
     if (b === "m") return multi(B, D.games, a, a, c, name);
     if (b === "mv") { const sel = picked(B, D.games, c, key.split(":")[3]); if (!sel) return {text: "La lista de partidos se actualizó; elige otra vez.", kb: {inline_keyboard: [[btn("☑️ Varios partidos", `${a}:m:0:${ver(B)}`)], [btn("🏠 Inicio", "home")]]}};
-      return {sendMany: sel.map(g => g.t), after: a, liveMany: sel.map(g => g.id), bets: sel.flatMap(g => g.bets || [])}; }
+      return {sendMany: sel.map(g => g.t), after: a, liveMany: sel.map(g => g.id), bets: sel.flatMap(g => g.bets || []), cmp: sel.flatMap(g => g.bets || [])}; }
     if (b === "g" && !c) return {text: `${name}: elige el partido`, kb: {inline_keyboard: [...rows(D.games.map(g => btn(g.b, `${a}:g:${g.id}`)), 2), back(a)]}};
-    const g = D.games.find(x => x.id === c); return g ? {send: g.t, after: `${a}:g`, live: g.id, bets: g.bets} : {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME};
+    const g = D.games.find(x => x.id === c); return g ? {send: g.t, after: `${a}:g`, live: g.id, bets: g.bets, cmp: g.bets} : {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME};
   }
   if (a === "soc") {
     const S = B.soc; if (!S) return {text: "⚽ No hay partidos de soccer en los próximos 3 días.", kb: HOME};
     if (!b) return {text: "⚽ ¿Qué liga?", kb: {inline_keyboard: [[btn("🔥 Top de todas", "soc:top")], ...rows(S.leagues.map(l => btn(`${LGN[l.code] || l.lg} (${l.games.length})`, `soc:${l.code}`)), 2), [btn("🏠 Inicio", "home")]]}};
-    if (b === "top") return {send: S.top, after: "soc", bets: S.topBets};
-    if (b === "g") { for (const l of S.leagues) { const g = l.games.find(x => x.id === c); if (g) return {send: g.t, after: `soc:${l.code}:g`, live: g.id, bets: g.bets}; } return {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME}; }
+    if (b === "top") return {send: S.top, after: "soc", bets: S.topBets, cmp: S.topBets};
+    if (b === "g") { for (const l of S.leagues) { const g = l.games.find(x => x.id === c); if (g) return {send: g.t, after: `soc:${l.code}:g`, live: g.id, bets: g.bets, cmp: g.cmp || g.bets}; } return {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME}; }
     const L = S.leagues.find(l => l.code === b); if (!L) return {text: `${LGN[b] || "Esa liga"}: no tiene partidos en los próximos 3 días.`, kb: {inline_keyboard: [back("soc")]}};
     if (!c) return {text: `${LGN[b]} · ${L.games.length} partido${L.games.length > 1 ? "s" : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Mejores picks", `soc:${b}:top`), btn("🔎 Un partido", `soc:${b}:g`)], ...(L.games.length > 1 ? [[btn("☑️ Varios partidos", `soc:${b}:m:0:${ver(B)}`)]] : []), back("soc")]}};
-    if (c === "top") return {send: L.top, after: `soc:${b}`, bets: L.topBets};
+    if (c === "top") return {send: L.top, after: `soc:${b}`, bets: L.topBets, cmp: L.topBets};
     const [, , , d, e] = key.split(":");
     if (c === "m") return multi(B, L.games, `soc:${b}`, `soc:${b}`, d, LGN[b] || L.lg);
     if (c === "mv") { const sel = picked(B, L.games, d, e); if (!sel) return {text: "La lista de partidos se actualizó; elige otra vez.", kb: {inline_keyboard: [[btn("☑️ Varios partidos", `soc:${b}:m:0:${ver(B)}`)], back("soc")]}};
-      return {sendMany: sel.map(g => g.t), after: `soc:${b}`, liveMany: sel.map(g => g.id), bets: sel.flatMap(g => g.bets || [])}; }
+      return {sendMany: sel.map(g => g.t), after: `soc:${b}`, liveMany: sel.map(g => g.id), bets: sel.flatMap(g => g.bets || []), cmp: sel.flatMap(g => g.cmp || g.bets || [])}; }
     if (c === "g") return {text: `${LGN[b]}: elige el partido`, kb: {inline_keyboard: [...rows(L.games.map(g => btn(g.b, `soc:g:${g.id}`)), 2), back(`soc:${b}`)]}};
   }
   return {text: "¿De qué quieres los picks?", kb: HOME};
@@ -146,7 +148,7 @@ function parseOdds(t) {
   if (/^[+-]/.test(s) || Math.abs(v) >= 100) { if (Math.abs(v) < 100) return null; return +(v > 0 ? 1 + v / 100 : 1 + 100 / -v).toFixed(3); }
   return v > 1 && v < 100 ? v : null;
 }
-const betRows = (B, refs) => (refs || []).filter(r => B.bets && B.bets[r]).map(r => [btn(`📝 ${B.bets[r].b}`, `b:${r}`)]);
+const betRows = (B, refs) => (refs || []).filter(r => B.bets && B.bets[r] && !B.bets[r].nomark).map(r => [btn(`📝 ${B.bets[r].b}`, `b:${r}`)]);
 async function myBets(env, chat) {
   const out = []; let cursor;
   do { const r = await env.BETS.list({prefix: `bet:${chat}:`, cursor}); out.push(...r.keys); cursor = r.list_complete ? null : r.cursor; } while (cursor);
@@ -174,7 +176,7 @@ async function betAction(env, chat, key, editId, B) {
   if (op === "b") { const x = B.bets && B.bets[arg]; if (!x) return tg(env, "sendMessage", {chat_id: chat, text: "Ese pick ya no está en la lista (puede que cambió con la última actualización).", reply_markup: HOME});
     const id = Date.now().toString(36), k = `bet:${chat}:${id}`;
     await env.BETS.put(k, JSON.stringify({...x, ref: arg, at: new Date().toISOString(), pb: x.p}), {metadata: {lbl: x.lbl, p: x.p, d: x.d}});
-    await env.BETS.put(`await:${chat}`, id, {expirationTtl: 900});
+    await setAwait(env, chat, {t: "bet", id});
     const started = new Date(x.d) < new Date() ? "\n⚠️ Ese partido ya empezó; la anoto igual." : "";
     return tg(env, "sendMessage", {chat_id: chat, text: `📝 Anotada: ${x.lbl}${started}\n\n¿A qué momio te la dieron? Escríbelo (ej. 1.51 o -150).`, reply_markup: {inline_keyboard: [[btn(`Mismo momio (${fx(x.p)})`, `bk:${id}`), btn("❌ Cancelar", `bx:${id}`)]]}}); }
   if (op === "bk") { await env.BETS.delete(`await:${chat}`); return tg(env, "sendMessage", {chat_id: chat, text: "Listo ✅ quedó anotada.", reply_markup: HOME}); }
@@ -186,21 +188,100 @@ async function betAction(env, chat, key, editId, B) {
   if (op === "bdl") { const list = (await myBets(env, chat)).sort((a, b) => a.id < b.id ? 1 : -1).slice(0, 12);
     return tg(env, "sendMessage", {chat_id: chat, text: "¿Cuál borro?", reply_markup: {inline_keyboard: [...list.map(x => [btn(`🗑️ ${x.lbl.slice(0, 40)}`, `bd:${x.id}`)]), [btn("🏠 Inicio", "home")]]}}); }
 }
-// A number typed right after marking a bet = the price your book gave
+/* ---------- search ---------- */
+const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+const ICON = {nba: "🏀", nfl: "🏈", soc: "⚽"};
+function search(B, q) {
+  const qt = norm(q).split(" ").filter(w => w.length >= 2); if (!qt.length) return [];
+  const fits = name => { const nt = norm(name).split(" "); return qt.every(w => nt.some(t => t.startsWith(w))); };
+  const out = [];
+  for (const sp of ["nba", "nfl"]) for (const p of ((B[sp] || {}).find || [])) if (fits(p.n)) out.push({key: `pl:${sp}:${p.aid}`, b: `${ICON[sp]} ${p.n} (${p.t})`});
+  for (const sp of ["nba", "nfl", "soc"]) for (const t of ((B[sp] || {}).teams || [])) if (t.names.some(fits) && !out.some(o => o.key === t.key)) out.push({key: t.key, b: `${ICON[sp]} ${t.b}`});
+  return out.slice(0, 10);
+}
+
+/* ---------- compare a price / check a parlay ---------- */
+async function getAwait(env, chat) { const v = await env.BETS.get(`await:${chat}`); if (!v) return null; try { const j = JSON.parse(v); return typeof j === "object" ? j : {t: "bet", id: v}; } catch (e) { return {t: "bet", id: v}; } }
+const setAwait = (env, chat, o) => env.BETS.put(`await:${chat}`, JSON.stringify(o), {expirationTtl: 900});
+function verdict(pr, p) {
+  const ev = pr * p, fair = 1 / pr;
+  const v = ev >= 1.03 ? "✅ <b>Conviene</b>: paga más de lo que vale" : ev >= 0.98 ? "➖ <b>Precio justo</b>: paga más o menos lo que vale" : "⚠️ <b>Está caro</b>: paga menos de lo que vale";
+  return `${v}\nEstimamos ${Math.round(pr * 100)}%, así que conviene desde <b>${fx(fair)}</b>. A ${fx(p)}, por cada 100 que metes recuperas ~${Math.round(ev * 100)} a la larga.`;
+}
+const picksOf = (B, key) => { const v = view(B, key); return (v.cmp || v.bets || []).filter(r => B.bets && B.bets[r] && B.bets[r].pr); };
+async function toolAction(env, chat, key, editId, B) {
+  const op = key.split(":")[0], rest = key.slice(op.length + 1);
+  const edit = async (text, kb) => { if (editId) { const r = await tg(env, "editMessageText", {chat_id: chat, message_id: editId, text, reply_markup: kb, parse_mode: "HTML"}); if (r.ok) return; } return tg(env, "sendMessage", {chat_id: chat, text, reply_markup: kb, parse_mode: "HTML"}); };
+  if (op === "cm") { const refs = picksOf(B, rest);
+    return edit(refs.length ? "💲 ¿Qué pick quieres comparar con el momio de tu casa?" : "No hay picks para comparar aquí.", {inline_keyboard: [...refs.map(r => [btn(`💲 ${B.bets[r].b}`, `c:${r}`)]), [btn("🏠 Inicio", "home")]]}); }
+  if (op === "c") { const x = B.bets[rest]; if (!x) return tg(env, "sendMessage", {chat_id: chat, text: "Ese pick ya no está en la lista.", reply_markup: HOME});
+    await setAwait(env, chat, {t: "cmp", pr: x.pr, lbl: x.lbl});
+    return tg(env, "sendMessage", {chat_id: chat, parse_mode: "HTML", text: `💲 <b>${x.lbl}</b>\nEstimamos ${Math.round(x.pr * 100)}%: conviene si tu casa paga <b>${fx(1 / x.pr)}</b> o más${x.p ? ` (DraftKings: ${fx(x.p)})` : ""}.\n\n¿Cuánto te paga tu casa? Escríbelo (ej. 1.59 o -150).`}); }
+  if (op === "pa" || op === "pc") { const i = rest.lastIndexOf(":"), vkey = rest.slice(0, i), mask = parseInt(rest.slice(i + 1) || "0", 36) || 0, refs = picksOf(B, vkey).slice(0, 20);
+    const sel = refs.filter((r, k) => mask & (1 << k));
+    if (op === "pa") { const kb = [...refs.map((r, k) => [btn(`${mask & (1 << k) ? "✅ " : ""}${B.bets[r].b}`, `pa:${vkey}:${(mask ^ (1 << k)).toString(36)}`)])];
+      if (sel.length >= 2) kb.push([btn(`🧮 Calcular parlay de ${sel.length}`, `pc:${vkey}:${mask.toString(36)}`)]); kb.push([btn("🏠 Inicio", "home")]);
+      return edit("🧮 Toca los picks de tu parlay (se marcan con ✅) y luego Calcular.", {inline_keyboard: kb}); }
+    const xs = sel.map(r => B.bets[r]), pr = xs.reduce((s, x) => s * x.pr, 1), dk = xs.every(x => x.p) ? xs.reduce((s, x) => s * x.p, 1) : null;
+    const same = new Set(xs.map(x => x.g)).size < xs.length;
+    await setAwait(env, chat, {t: "par", pr, lbl: `Parlay de ${xs.length}`});
+    return tg(env, "sendMessage", {chat_id: chat, parse_mode: "HTML", text: [`🧮 <b>Parlay de ${xs.length}</b>`, ...xs.map(x => `• ${x.lbl} · ${Math.round(x.pr * 100)}%`), "",
+      `Probabilidad de que peguen todos: <b>${Math.round(pr * 100)}%</b> (más o menos 1 de cada ${Math.max(1, Math.round(1 / pr))}).`, `Conviene si el momio combinado es <b>${fx(1 / pr)}</b> o más${dk ? ` (con los momios de DraftKings daría ${fx(dk)})` : ""}.`,
+      ...(same ? ["⚠️ Hay dos picks del mismo partido: pueden estar ligados y la probabilidad real cambia."] : []), "", "¿Qué momio combinado te da tu casa? Escríbelo."].join("\n")}); }
+}
+
+/* ---------- alerts settings (read by the before-the-game check in GitHub) ---------- */
+async function getCfg(env, chat) { try { return JSON.parse(await env.BETS.get(`cfg:${chat}`) || "{}"); } catch (e) { return {}; } }
+function avMenu(cfg) {
+  const sp = cfg.sp || {nba: 1, nfl: 1, soc: 1}, paused = cfg.pause && new Date(cfg.pause) > new Date();
+  const until = paused ? new Date(cfg.pause).toLocaleString("es-MX", {weekday: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Mexico_City"}) : "";
+  return {text: `🔔 Avisos antes del partido: ${paused ? `en pausa hasta ${until}` : "activos"}\nDeportes: ${["nba", "nfl", "soc"].filter(k => sp[k] !== 0).map(k => ({nba: "NBA", nfl: "NFL", soc: "Soccer"})[k]).join(", ") || "ninguno"}\nResumen de mis apuestas en la mañana: ${cfg.daily ? "sí" : "no"}`,
+    kb: {inline_keyboard: [paused ? [btn("▶️ Reanudar avisos", "av:on")] : [btn("⏸️ Pausar hoy", "av:p1"), btn("⏸️ Pausar 3 días", "av:p3")],
+      ["nba", "nfl", "soc"].map(k => btn(`${sp[k] !== 0 ? "✅" : "⬜"} ${({nba: "NBA", nfl: "NFL", soc: "Soccer"})[k]}`, `av:t:${k}`)),
+      [btn(`🌅 Resumen diario: ${cfg.daily ? "quitar" : "activar"}`, "av:d")], [btn("🏠 Inicio", "home")]]}};
+}
+async function avAction(env, chat, key, editId) {
+  const cfg = await getCfg(env, chat), [, op, k] = key.split(":");
+  if (op === "p1" || op === "p3") { const d = new Date(Date.now() - 6 * 36e5); d.setUTCHours(0, 0, 0, 0); cfg.pause = new Date(d.getTime() + (op === "p1" ? 1 : 3) * 864e5 + 6 * 36e5 + 5 * 36e5).toISOString(); }
+  if (op === "on") cfg.pause = null;
+  if (op === "t") { cfg.sp = cfg.sp || {nba: 1, nfl: 1, soc: 1}; cfg.sp[k] = cfg.sp[k] === 0 ? 1 : 0; }
+  if (op === "d") cfg.daily = cfg.daily ? 0 : 1;
+  if (op) await env.BETS.put(`cfg:${chat}`, JSON.stringify(cfg));
+  const m = avMenu(cfg);
+  if (editId) { const r = await tg(env, "editMessageText", {chat_id: chat, message_id: editId, text: m.text, reply_markup: m.kb}); if (r.ok) return; }
+  return tg(env, "sendMessage", {chat_id: chat, text: m.text, reply_markup: m.kb});
+}
+
+// A number typed right after marking a bet, comparing a pick or checking a parlay = the price your book gave
 async function oddsReply(env, chat, text) {
-  if (!env.BETS) return false; const id = await env.BETS.get(`await:${chat}`); if (!id) return false;
+  if (!env.BETS) return false; const w = await getAwait(env, chat); if (!w) return false;
   const p = parseOdds(text); if (!p) return false;
-  const k = `bet:${chat}:${id}`, r = await env.BETS.getWithMetadata(k); if (!r || !r.value) return false;
+  if (w.t === "cmp" || w.t === "par") { await tg(env, "sendMessage", {chat_id: chat, parse_mode: "HTML", text: `<b>${w.lbl}</b> a ${fx(p)}\n${verdict(w.pr, p)}\n\n<i>Si otra casa te da otro momio, escríbelo y lo comparo.</i>`, reply_markup: HOME}); return true; }
+  const id = w.id, k = `bet:${chat}:${id}`, r = await env.BETS.getWithMetadata(k); if (!r || !r.value) return false;
   const v = JSON.parse(r.value); v.p = p; await env.BETS.put(k, JSON.stringify(v), {metadata: {...(r.metadata || {}), p}});
   await env.BETS.delete(`await:${chat}`);
   await tg(env, "sendMessage", {chat_id: chat, text: `Listo ✅ ${v.lbl} a ${fx(p)}.${v.pb && p < v.pb - 0.02 ? ` Ojo: DraftKings la pagaba a ${fx(v.pb)}.` : ""}`, reply_markup: HOME});
   return true;
 }
 
+// Buttons under every list of picks: mark a bet, compare a price, check a parlay
+function tools(env, B, v, key) {
+  if (!env.BETS || !key || key.length > 50) return [];
+  const marks = (v.bets || []).filter(r => B.bets && B.bets[r] && !B.bets[r].nomark), cmp = (v.cmp || v.bets || []).filter(r => B.bets && B.bets[r] && B.bets[r].pr);
+  const row1 = [...(marks.length ? [btn("📝 Marcar lo que aposté", `bm:${key}`)] : []), ...(cmp.length ? [btn("💲 Comparar momio", `cm:${key}`)] : [])];
+  return [...(row1.length ? [row1] : []), ...(cmp.length >= 2 ? [[btn("🧮 Revisar un parlay", `pa:${key}:0`)]] : [])];
+}
+
 async function handle(env, chat, key, editId) {
   const B = await getJSON(DATA + "bot.json");
   if (!B || !(B.v >= 2)) return tg(env, "sendMessage", {chat_id: chat, text: `No pude leer los picks ahorita. Ábrelos en la app: ${APP}`});
   if (key && /^(bm|b|bk|bx|bd|bdl):|^mine$/.test(key)) return betAction(env, chat, key === "mine" ? "mine:" : key, editId, B);
+  if (key && /^(cm|c|pa|pc):/.test(key)) return env.BETS ? toolAction(env, chat, key, editId, B) : tg(env, "sendMessage", {chat_id: chat, text: "No disponible todavía.", reply_markup: HOME});
+  if (key && /^av(:|$)/.test(key)) return env.BETS ? avAction(env, chat, key, editId) : tg(env, "sendMessage", {chat_id: chat, text: "No disponible todavía.", reply_markup: HOME});
+  if (key && key.startsWith("q:")) { const res = search(B, key.slice(2));
+    if (res.length === 1) return handle(env, chat, res[0].key);
+    if (res.length) return tg(env, "sendMessage", {chat_id: chat, text: "Encontré varios, ¿cuál?", reply_markup: {inline_keyboard: [...res.map(r => [btn(r.b, r.key)]), [btn("🏠 Inicio", "home")]]}});
+    return tg(env, "sendMessage", {chat_id: chat, text: `No encontré "${key.slice(2)}" en los picks de hoy. Prueba con el apellido o el nombre del equipo.`, reply_markup: HOME}); }
   if (key && key.startsWith("chk:")) {
     for (const id of key.slice(4).split(",")) await sendLong(env, chat, await live(B, id));
     return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: "¿Algo más?", reply_markup: {inline_keyboard: [[btn("🔄 Volver a revisar", key)], ...HOME.inline_keyboard]}}), "el menú");
@@ -212,7 +293,7 @@ async function handle(env, chat, key, editId) {
     await sendLong(env, chat, B.foot);
     const next = view(B, v.after), kb = next.kb || HOME, ids = v.liveMany.join(",");
     const keyb = {inline_keyboard: [...(ids.length + 4 <= 64 ? [[btn(`🔄 Revisar en vivo ${v.liveMany.length > 1 ? "los " + v.liveMany.length : ""}`.trim(), `chk:${ids}`)]] : []),
-      ...(env.BETS && v.bets && v.bets.length ? [[btn("📝 Marcar lo que aposté", `bm:${key}`)]] : []), ...kb.inline_keyboard]};
+      ...tools(env, B, v, key), ...kb.inline_keyboard]};
     return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: keyb}), "el menú");
   }
   if (v.send) {
@@ -221,7 +302,7 @@ async function handle(env, chat, key, editId) {
     await sendLong(env, chat, v.send + "\n\n" + B.foot);
     const next = view(B, v.after), kb = next.kb || HOME;
     const keyb = {inline_keyboard: [...(v.live && B.v >= 3 ? [[btn("🔄 Revisar en vivo (bajas y alineaciones)", `chk:${v.live}`)]] : []),
-      ...(env.BETS && v.bets && v.bets.length ? [[btn("📝 Marcar lo que aposté", `bm:${key}`)]] : []), ...kb.inline_keyboard]};
+      ...tools(env, B, v, key), ...kb.inline_keyboard]};
     return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: keyb}), "el menú");
   }
   // Menus replace the previous menu message so the chat doesn't fill up
@@ -250,7 +331,9 @@ export default {
     const work = (async () => {
       try {
         if (cb) { await tg(env, "answerCallbackQuery", {callback_query_id: cb.id, text: cb.data.startsWith("chk:") ? "Revisando en ESPN…" : undefined}); await handle(env, chat, cb.data, cb.message && cb.message.message_id); }
-        else if (!(await oddsReply(env, chat, msg.text))) await handle(env, chat, intent(msg.text));
+        else if (!(await oddsReply(env, chat, msg.text))) { const it = intent(msg.text), t = norm(msg.text);
+          // Not a menu word and not a greeting: try it as a player or team name
+          await handle(env, chat, it || (t.length >= 3 && !/\b(pick|picks|hola|menu|inicio|dame|gracias|buen|buenas|ayuda|que onda|hey)\b/.test(t) ? "q:" + msg.text.slice(0, 40) : null)); }
       } catch (e) { try { await tg(env, "sendMessage", {chat_id: chat, text: "⚠️ Error del bot: " + (e && e.message || e)}); } catch (e2) {} }
     })();
     if (ctx && ctx.waitUntil) ctx.waitUntil(work); else await work;

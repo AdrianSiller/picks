@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import {execFileSync} from "node:child_process";
+import {kv} from "./kv.mjs";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const DATA = path.join(ROOT, "data");
@@ -11,13 +12,18 @@ const read = (f, d) => { try { return JSON.parse(fs.readFileSync(path.join(DATA,
 const now = new Date(), token = process.env.TELEGRAM_TOKEN;
 const MIN = +(process.env.PRE_MIN || 12), MAX = +(process.env.PRE_MAX || 60);
 
-const gamesOf = B => [...((B.nba && B.nba.games) || []).map(g => ({...g, sp: "🏀 NBA"})), ...((B.nfl && B.nfl.games) || []).map(g => ({...g, sp: "🏈 NFL"})),
-  ...((B.soc && B.soc.leagues) || []).flatMap(l => l.games.map(g => ({...g, sp: `⚽ ${l.lg}`})))];
+const gamesOf = B => [...((B.nba && B.nba.games) || []).map(g => ({...g, sp: "🏀 NBA", k: "nba"})), ...((B.nfl && B.nfl.games) || []).map(g => ({...g, sp: "🏈 NFL", k: "nfl"})),
+  ...((B.soc && B.soc.leagues) || []).flatMap(l => l.games.map(g => ({...g, sp: `⚽ ${l.lg}`, k: "soc"})))];
 const mins = g => (new Date(g.d) - now) / 6e4;
 
 const alerted = read("alerted.json", {ids: {}});
 const before = read("bot.json", {});
-const due = gamesOf(before).filter(g => g.d && mins(g) >= MIN && mins(g) <= MAX && !alerted.ids[g.id]);
+// Your settings from 🔔 Avisos in the bot: paused, or sports turned off
+const chat0 = (read("telegram.json", {}) || {}).chat;
+let cfg = {}; try { const K = await kv(); if (K && chat0) cfg = JSON.parse(await K.get(`cfg:${chat0}`) || "{}"); } catch (e) { console.log("pregame: sin ajustes", e.message); }
+if (cfg.pause && new Date(cfg.pause) > now) { console.log("pregame: avisos en pausa hasta", cfg.pause); process.exit(0); }
+const spOn = k => !cfg.sp || cfg.sp[k] !== 0;
+const due = gamesOf(before).filter(g => g.d && spOn(g.k) && mins(g) >= MIN && mins(g) <= MAX && !alerted.ids[g.id]);
 if (!due.length) { console.log("pregame: nada por avisar"); process.exit(0); }
 console.log("pregame: revisando", due.map(g => g.b).join(", "));
 

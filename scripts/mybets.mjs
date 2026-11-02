@@ -1,29 +1,35 @@
-// Grades the bets marked in the Telegram bot (stored privately in Cloudflare KV, never in the public repo).
-// Runs after each build and every 10 minutes; only touches bets whose game should be over.
+// Grades the bets marked in the Telegram bot (stored privately in Cloudflare KV, never in the public repo)
+// and, if you turned it on in 🔔 Avisos, sends a morning summary of yesterday's bets.
+import fs from "node:fs";
+import path from "node:path";
 import {grade} from "./results.mjs";
+import {kv} from "./kv.mjs";
+import {dloc} from "./lib.mjs";
 
-const token = process.env.CLOUDFLARE_API_TOKEN;
-if (!token) { console.log("mybets: sin CLOUDFLARE_API_TOKEN"); process.exit(0); }
-const API = "https://api.cloudflare.com/client/v4";
-const cf = async (path, opt = {}) => { const r = await fetch(API + path, {...opt, headers: {authorization: `Bearer ${token}`, ...(opt.headers || {})}}); return r; };
-const js = async (path, opt) => { const r = await cf(path, opt); const j = await r.json().catch(() => null); if (!j || !j.success) throw new Error(path + " " + JSON.stringify(j && j.errors)); return j; };
-
-const acc = process.env.CF_ACCOUNT_ID || (await js("/accounts")).result[0].id;
-const ns = (await js(`/accounts/${acc}/storage/kv/namespaces?per_page=100`)).result.find(n => /picks-bets/.test(n.title));
-if (!ns) { console.log("mybets: todavía no existe el espacio de apuestas"); process.exit(0); }
-const base = `/accounts/${acc}/storage/kv/namespaces/${ns.id}`;
-const keys = []; let cursor = "";
-do { const j = await js(`${base}/keys?prefix=bet:&limit=1000${cursor ? "&cursor=" + cursor : ""}`); keys.push(...j.result); cursor = j.result_info && j.result_info.cursor; } while (cursor);
-const now = Date.now(), due = keys.filter(k => k.metadata && !k.metadata.res && k.metadata.d && now - new Date(k.metadata.d) > 2 * 36e5);
+const K = await kv().catch(e => { console.log("mybets:", e.message); return null; });
+if (!K) { console.log("mybets: sin acceso al espacio de apuestas"); process.exit(0); }
+const keys = await K.list("bet:"), now = Date.now();
+const due = keys.filter(k => k.metadata && !k.metadata.res && k.metadata.d && now - new Date(k.metadata.d) > 2 * 36e5);
 console.log(`mybets: ${keys.length} apuestas, ${due.length} por calificar`);
-if (!due.length) process.exit(0);
-const items = [];
-for (const k of due) { const r = await cf(`${base}/values/${encodeURIComponent(k.name)}`); if (r.ok) items.push({k, x: await r.json()}); }
-await grade(items.map(i => i.x));
-let n = 0;
-for (const {k, x} of items) {
-  if (!x.res) continue;
-  const fd = new FormData(); fd.append("value", JSON.stringify(x)); fd.append("metadata", JSON.stringify({...k.metadata, res: x.res}));
-  const r = await cf(`${base}/values/${encodeURIComponent(k.name)}`, {method: "PUT", body: fd}); if (r.ok) n++;
+if (due.length) {
+  const items = []; for (const k of due) { const v = await K.get(k.name); if (v) items.push({k, x: JSON.parse(v)}); }
+  await grade(items.map(i => i.x));
+  let n = 0; for (const {k, x} of items) if (x.res && await K.put(k.name, x, {...k.metadata, res: x.res})) { k.metadata.res = x.res; n++; }
+  console.log(`mybets: ${n} calificadas`);
 }
-console.log(`mybets: ${n} calificadas`);
+
+// Morning summary (8 am or later, once a day), only for chats that turned it on
+const token = process.env.TELEGRAM_TOKEN, TZ = "America/Mexico_City", today = dloc(new Date().toISOString(), TZ);
+const hour = +new Date().toLocaleString("en-US", {hour: "numeric", hour12: false, timeZone: TZ});
+if (token && hour >= 8) for (const c of await K.list("cfg:")) {
+  const chat = c.name.slice(4), cfg = JSON.parse(await K.get(c.name) || "{}"); if (!cfg.daily || cfg.lastDaily === today) continue;
+  const yest = dloc(new Date(now - 864e5).toISOString(), TZ);
+  const mine = keys.filter(k => k.name.startsWith(`bet:${chat}:`) && k.metadata && k.metadata.d && dloc(k.metadata.d, TZ) === yest).map(k => k.metadata);
+  cfg.lastDaily = today; await K.put(c.name, cfg);
+  if (!mine.length) continue;
+  const done = mine.filter(x => x.res && (x.res.hit === 0 || x.res.hit === 1)), w = done.filter(x => x.res.hit).length, u = done.reduce((s, x) => s + (x.res.hit ? x.p - 1 : -1), 0);
+  const L = [`🌅 <b>Tus apuestas de ayer</b>: ${w} de ${done.length} · ${u >= 0 ? "+" : ""}${u.toFixed(2)} u`, "",
+    ...mine.map(x => `${!x.res ? "⏳" : x.res.hit === null ? "➖" : x.res.hit ? "✅" : "❌"} ${x.lbl}${x.res && x.res.act ? ` (${x.res.act})` : ""} · ${(+x.p).toFixed(2)}`)];
+  const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({chat_id: chat, text: L.join("\n"), parse_mode: "HTML"})});
+  console.log("resumen diario", chat, r.status);
+}

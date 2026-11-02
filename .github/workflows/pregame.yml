@@ -21,10 +21,12 @@ jobs:
       - name: Revisar y avisar
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node scripts/pregame.mjs
       - name: Calificar mis apuestas
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         run: node scripts/mybets.mjs || true
       - name: Guardar
         run: |
