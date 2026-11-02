@@ -101,13 +101,16 @@ export async function buildNBA(now = new Date()) {
     const o = h ? g.away.abbr : g.home.abbr, cur = L.c, prev = L.p, both = cur.concat(prev); if (cur.length < 2) continue;
     const i = IDX[p.m], vc = cur.map(r => r[i]), vp = prev.map(r => r[i]), oppRows = both.filter(r => r[1] === o), vo = oppRows.map(r => r[i]);
     const min = avg(cur.map(r => r[3])), d = def[o], f = M.defFactor(d && d.f[R.pos + p.m], d ? d.n : 0, 15);
+    // Role: main = 26+ minutes this season with steady minutes lately (std dev of the last 8 games up to 7)
+    const m8 = both.slice(0, 8).map(r => r[3]), mAvg = m8.reduce((s, v) => s + v, 0) / (m8.length || 1);
+    const msd = Math.sqrt(m8.reduce((s, v) => s + (v - mAvg) ** 2, 0) / (m8.length || 1)), role = min >= 26 && msd <= 7 ? 1 : 0;
     let best = null;
     for (const s of ["over", "under"]) {
       const price = s === "over" ? p.po : p.pu; if (!price || price < 1.25) continue; if (s === "over" && min < 20) continue;
       const hs = M.hitStats(vc, vp, vo, p.l, s), pr = M.withDef(hs.pr0, s, f);
       const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, s, p: price, bk: "DraftKings", pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: 1,
         imp: +(1 / price).toFixed(3), e: +(pr - 1 / price).toFixed(3), hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh,
-        aC: avg(vc), a10: avg(both.slice(0, 10).map(r => r[i])), aP: avg(vp), aH: avg(vo), min, sm: hs.hc[1] + hs.hp[1] < 15, vc, vp, vo};
+        aC: avg(vc), a10: avg(both.slice(0, 10).map(r => r[i])), aP: avg(vp), aH: avg(vo), min, msd: Math.round(msd * 10) / 10, role, sm: hs.hc[1] + hs.hp[1] < 15, vc, vp, vo};
       if (st && st !== "Active") c.q = 1;
       if ((h ? g.rest.h : g.rest.a) === 1) c.b2b = 1;
       if (!best || c.pr > best.pr) best = c;

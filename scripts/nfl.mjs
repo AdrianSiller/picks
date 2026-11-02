@@ -139,6 +139,9 @@ export async function buildNFL(now = new Date()) {
       const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, el: p.l, s, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: mk ? 1 : 0,
         hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh, aC: avg(vc), a10: avg(both.slice(0, 10).map(V)), aP: avg(vp), aH: avg(vo),
         sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, wind: wadj ? wind : 0, wadj, q: st === "Questionable" ? 1 : 0, tg: avg(cur.map(r => r[10])) || 0, cr: avg(cur.map(r => r[5])) || 0, vc, vp, vo};
+      // Role: main = starting QB, WR/TE with 5+ targets a game, RB with 12+ carries (or 8+ carries and 3.5+ targets for catching props)
+      const tgA = c.tg, crA = c.cr; c.role = R.pos === "QB" ? (avg(cur.map(r => r[7])) >= 12 ? 1 : 0) : ["WR", "TE"].includes(R.pos) ? (tgA >= 5 ? 1 : 0)
+        : (crA >= 12 || (["REC", "RECYDS"].includes(p.m) && crA >= 8 && tgA >= 3.5) ? 1 : 0);
       if (!best || c.pr > best.pr) best = c;
     }
     if (best && best.pr >= 0.55) all.push(best);

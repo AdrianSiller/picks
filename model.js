@@ -4,6 +4,7 @@
   const M = {};
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   M.clamp = clamp;
+  M.CAL = 0.8;
   M.phi = z => { const t = 1 / (1 + 0.2316419 * Math.abs(z)), d = 0.3989423 * Math.exp(-z * z / 2); const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - p : p; };
 
   /* ---------- player props ---------- */
@@ -14,7 +15,9 @@
   M.hitStats = (vc, vp, vo, line, side) => {
     const cnt = a => [a.filter(v => hitOf(side, line, v)).length, a.length];
     const hc = cnt(vc), h10 = cnt(vc.concat(vp).slice(0, 10)), hp = cnt(vp), hh = cnt(vo || []);
-    const pr = hp[1] ? 0.4 * sh(hc) + 0.3 * sh(h10) + 0.3 * sh(hp) : 0.55 * sh(hc) + 0.45 * sh(h10);
+    const raw = hp[1] ? 0.4 * sh(hc) + 0.3 * sh(h10) + 0.3 * sh(hp) : 0.55 * sh(hc) + 0.45 * sh(h10);
+    // Calibration: the first graded days showed hit rates about 20% too optimistic (picks at ~68% hit ~60%)
+    const pr = 0.5 + (raw - 0.5) * M.CAL;
     return {hc, h10, hp, hh, pr0: pr};
   };
   // Opponent-by-position factor f (1 = average) moves the probability up to 6 points
@@ -33,7 +36,8 @@
     const cfg = M.CFG[sport], out = [], per = {};
     for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
       // Same rule as game picks: support first, but never a price below what the probability is worth
-      if (c.out || !c.p || c.pr < cfg.minPr || c.e < -0.02) continue; if ((per[c.aid] || 0) >= cfg.perPlayer) continue;
+      // Main-role players only (c.role 0 = bench / small or unstable role): their props swing with minutes and injuries
+      if (c.out || !c.p || c.role === 0 || c.pr < cfg.minPr || c.e < -0.02) continue; if ((per[c.aid] || 0) >= cfg.perPlayer) continue;
       per[c.aid] = (per[c.aid] || 0) + 1; out.push(c); if (out.length === n) break;
     }
     return out;
