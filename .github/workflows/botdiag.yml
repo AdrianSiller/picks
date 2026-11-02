@@ -14,6 +14,9 @@ jobs:
           curl -s "https://api.telegram.org/bot$TELEGRAM_TOKEN/getWebhookInfo" | sed "s/$TELEGRAM_TOKEN/TOKEN/g" > data/botdiag.json
           echo; curl -s -o /dev/null -w "worker GET: %{http_code}\n" https://picks-bot.adrian-rmzsiller.workers.dev/ >> data/botdiag.json
           curl -s https://picks-bot.adrian-rmzsiller.workers.dev/ >> data/botdiag.json
+          SEC=$(printf "picks:%s" "$TELEGRAM_TOKEN" | sha256sum | cut -c1-32)
+          echo; echo "hook (chat ajeno, debe decir 200 ok):" >> data/botdiag.json
+          curl -s -w " %{http_code}" -X POST -H "X-Telegram-Bot-Api-Secret-Token: $SEC" -H "content-type: application/json" -d '{"message":{"chat":{"id":1},"text":"premier"}}' https://picks-bot.adrian-rmzsiller.workers.dev/hook >> data/botdiag.json
           cat data/botdiag.json
           git config user.name github-actions; git config user.email github-actions@users.noreply.github.com
           git add data/botdiag.json; git commit -m "Diagnóstico bot" || true; git pull --rebase; git push
