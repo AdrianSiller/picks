@@ -133,7 +133,10 @@
   // Soccer: model weight vs the book (the book is sharper), and max disagreement allowed for a solid pick
   // The book is much sharper than a goals model: it weighs 70% (80% in Champions) and the model only confirms.
   // If model and book disagree by more than 12 points, the model is probably missing something (lineups, rotation): no pick.
-  M.SOC = {w: 0.3, wCL: 0.2, gap: 0.12, minPr: 0.62, eMin: -0.03, minP: 1.2};
+  M.SOC = {w: 0.3, wCL: 0.2, gap: 0.12, minPr: 0.62, eMin: -0.03, minP: 1.2, alpha: 1};
+  // Level of each domestic league (Champions: goals against a weak league count less). 1 = Premier League.
+  M.SOC_LVL = {PL: 1, LL: 0.95, SA: 0.93, BUN: 0.92, L1: 0.88, POR: 0.82, ERE: 0.8, BEL: 0.78, TUR: 0.76, AUT: 0.74, SUI: 0.73, GRE: 0.72, SCO: 0.72, CZE: 0.72, DEN: 0.72, UKR: 0.72, NOR: 0.7, SRB: 0.7, CRO: 0.7, CYP: 0.68, LMX: 0.75};
+  M.SOC_INTL = new Set(["UCL", "UEL", "UECL", "UEFA "]);
   M.buildSoccer = D => {
     const K = 4, HFA = 1.12, AFA = 0.90;
     const pois = (k, l) => { let p = Math.exp(-l); for (let i = 1; i <= k; i++) p *= l / i; return p; };
@@ -148,9 +151,15 @@
       return {n, att: (rows.reduce((s, r) => s + r[4], 0) + K * mu) / (n + K), def: (rows.reduce((s, r) => s + r[5], 0) + K * mu) / (n + K),
         cf: (cr.reduce((s, r) => s + r[6], 0) + K * cm) / (nc + K), ca: (cr.reduce((s, r) => s + r[7], 0) + K * cm) / (nc + K), nc};
     };
+    // Domestic league of a team = its most frequent non-continental competition in the last matches
+    const homeLg = abbr => { const c = {}; for (const r of (D.teams[abbr] || [])) if (!M.SOC_INTL.has(r[1]) && !r[8]) c[r[1]] = (c[r[1]] || 0) + 1;
+      const top = Object.entries(c).sort((a, b) => b[1] - a[1])[0]; return top ? top[0] : null; };
+    const lvl = abbr => M.SOC_LVL[homeLg(abbr)] || 0.74;
     const games = [], cands = [];
     for (const g of D.games) {
       const mu = lgMu[g.lg], H = strength(g.home.abbr, g.lg), A = strength(g.away.abbr, g.lg), L = g.lines || {};
+      // Champions: scale attack up and defense down by the level of each team's league (goals in a weak league are worth less)
+      if (g.lg === "Champions" && M.SOC.alpha) for (const [T, ab] of [[H, g.home.abbr], [A, g.away.abbr]]) { const f = Math.pow(lvl(ab) / 0.88, M.SOC.alpha); T.att *= f; T.def /= f; T.lvl = lvl(ab); }
       // Rotation only when the lineup is confirmed (g.xi, from ↻ Actualizar): each usual starter missing weakens the team a little.
       // A Champions match nearby is only a warning, never assumed (the book already prices what it knows)
       const xi = g.xi || {}, tweak = (T, x) => { if (!x || !x.miss) return; const k = x.miss.length; T.att *= Math.max(0.85, 1 - 0.03 * k); T.def *= Math.min(1.12, 1 + 0.02 * k); };
