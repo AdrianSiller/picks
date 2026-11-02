@@ -1,7 +1,12 @@
-[3s] NBA ok
-[9s] NFL ok
-[20s] Soccer ok
-[20s] latest.json 87 KB NBA 2 games/25 props · NFL 2/32 · soccer 26
+[6s] NBA ok
+[10s] NFL ok
+[18s] Soccer ok
+[19s] SGO NFL ok
+[19s] SGO NFL priced 14
+[21s] SGO UCL ok
+[21s] SGO UCL matched 14
+[21s] latest.json 224 KB NBA 15 games/154 props · NFL 1/16 · soccer 43
+[21s] grade 2026-11-02 ok
 [21s] grade 2026-11-01 ok
 [21s] bot.json ok
 [21s] done
