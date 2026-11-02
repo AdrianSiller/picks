@@ -119,6 +119,10 @@ export async function buildNFL(now = new Date()) {
     g.wx = {temp: Math.round(f.hourly.temperature_2m[k]), wind: Math.round(f.hourly.wind_speed_10m[k]), gust: Math.round(f.hourly.wind_gusts_10m[k]), rain: f.hourly.precipitation_probability[k]};
   });
 
+  // Scoring environment: each team's implied points (total and spread) vs the league's points per game
+  const allRows = Object.values(teams).flatMap(T => T.cur), lgPts = allRows.length ? allRows.reduce((s, r) => s + r[3], 0) / allRows.length : 22;
+  games.forEach(g => { const t = Number(g.lines.total), sh = Number(g.lines.spreadHome); if (!t || isNaN(sh)) return;
+    const hT = t / 2 - sh / 2, aT = t / 2 + sh / 2; g.env = {total: t, avg: Math.round(lgPts * 20) / 10, h: +hT.toFixed(1), a: +aT.toFixed(1), eh: +((hT - lgPts) / lgPts).toFixed(3), ea: +((aT - lgPts) / lgPts).toFixed(3), env: +((t - 2 * lgPts) / (2 * lgPts)).toFixed(3)}; });
   const ids = [...new Set(props.map(p => p.aid))], logs = {};
   await pool(ids, 8, async id => { const [c, p] = await Promise.all([J(`${LOG}/${id}/gamelog`), J(`${LOG}/${id}/gamelog?season=${PREV}`)]); logs[id] = {c: parseLog(c), p: parseLog(p)}; });
 
@@ -135,10 +139,14 @@ export async function buildNFL(now = new Date()) {
       const hs = M.hitStats(vc, vp, vo, p.l, s), wind = (g.wx && g.wx.wind) || 0;
       // Strong wind: passing and receiving overs lose, unders gain a little
       const wadj = PASSM.has(p.m) && wind >= 15 ? (s === "over" ? (wind >= 20 ? -0.07 : -0.04) : (wind >= 20 ? 0.04 : 0.02)) : 0;
-      const pr = M.clamp(M.withDef(hs.pr0, s, f) + wadj, 0.05, 0.95);
+      // Team expected to score a lot -> overs; game script: big favorites run more, big underdogs throw more
+      const te = g.env ? (h ? g.env.eh : g.env.ea) : 0, tsp = h ? Number(g.lines.spreadHome) : Number(g.lines.spreadAway);
+      const script = R.pos === "RB" && ["CAR", "RUSHYDS"].includes(p.m) && !isNaN(tsp) ? (tsp <= -6 ? 0.02 : tsp >= 6 ? -0.02 : 0) * (s === "under" ? -1 : 1) : 0;
+      const envAdj = +((["CMP", "PASSYDS", "REC", "RECYDS", "RRY", "RUSHYDS"].includes(p.m) ? M.envAdj(te, s, 0.5) : 0) + script).toFixed(3);
+      const pr = M.clamp(M.withDef(hs.pr0, s, f) + wadj + envAdj, 0.05, 0.95);
       const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, el: p.l, s, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: mk ? 1 : 0,
         hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh, aC: avg(vc), a10: avg(both.slice(0, 10).map(V)), aP: avg(vp), aH: avg(vo),
-        sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, wind: wadj ? wind : 0, wadj, q: st === "Questionable" ? 1 : 0, tg: avg(cur.map(r => r[10])) || 0, cr: avg(cur.map(r => r[5])) || 0, vc, vp, vo};
+        sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, wind: wadj ? wind : 0, wadj, envAdj, q: st === "Questionable" ? 1 : 0, tg: avg(cur.map(r => r[10])) || 0, cr: avg(cur.map(r => r[5])) || 0, vc, vp, vo};
       // Role: main = starting QB, WR/TE with 5+ targets a game, RB with 12+ carries (or 8+ carries and 3.5+ targets for catching props)
       const tgA = c.tg, crA = c.cr; c.role = R.pos === "QB" ? (avg(cur.map(r => r[7])) >= 12 ? 1 : 0) : ["WR", "TE"].includes(R.pos) ? (tgA >= 5 ? 1 : 0)
         : (crA >= 12 || (["REC", "RECYDS"].includes(p.m) && crA >= 8 && tgA >= 3.5) ? 1 : 0);

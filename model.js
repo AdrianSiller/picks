@@ -24,7 +24,11 @@
   M.withDef = (pr0, side, f) => clamp(pr0 + (side === "under" ? -1 : 1) * ((f || 1) - 1) * 0.3, 0.05, 0.95);
   M.defFactor = (raw, n, k) => raw == null ? 1 : clamp(1 + (raw - 1) * n / (n + k), 0.8, 1.2);
   // Recompute a prop at a new line (used by the Refresh button)
-  M.repricePr = (c, line) => { const s = M.hitStats(c.vc || [], c.vp || [], c.vo || [], line, c.s); return {...s, pr: M.withDef(s.pr0, c.s, c.f)}; };
+  M.repricePr = (c, line) => { const s = M.hitStats(c.vc || [], c.vp || [], c.vo || [], line, c.s); return {...s, pr: clamp(M.withDef(s.pr0, c.s, c.f) + (c.envAdj || 0) + (c.wadj || 0), 0.05, 0.95)}; };
+  // Game environment: a high total (explosive game) helps overs, a low one (defensive game) helps unders.
+  // env = how far the game's total is from the league average, as a fraction; moves the pick up to 4 points.
+  M.envTag = env => env >= 0.03 ? "ofensivo" : env <= -0.03 ? "defensivo" : "normal";
+  M.envAdj = (env, side, k) => clamp(env * k, -0.04, 0.04) * (side === "under" ? -1 : 1);
 
   // Overs from players with a small or unstable role depend on getting volume
   M.lowRole = (c, sport) => c.s === "over" && (sport === "NBA" ? c.min < 24 :
@@ -139,11 +143,18 @@
       const dc1 = sh === 0.5 ? L.spreadHomeOdds : (L.dc1 || null), dc2 = sa === 0.5 ? L.spreadAwayOdds : (L.dc2 || null);
       add({k: "dc", side: "1X", lbl: `${hN} o empate`, pm: pH + pD, mk: mk1, p: dc1 || dcEst(L.mlHome, L.draw), est: !dc1 && !!dcEst(L.mlHome, L.draw)});
       add({k: "dc", side: "X2", lbl: `${aN} o empate`, pm: pA + pD, mk: mk2, p: dc2 || dcEst(L.mlAway, L.draw), est: !dc2 && !!dcEst(L.mlAway, L.draw)});
-      if (!isNaN(sh) && Math.abs(sh) >= 1.5 && sh % 1 !== 0) {
-        const pHc = P((i, j) => i - j + sh > 0), mk = nv2(L.spreadHomeOdds, L.spreadAwayOdds);
-        add({k: "hc", side: "H", lbl: `${hN} ${L.spreadHome}`, line: sh, pm: pHc, mk, p: L.spreadHomeOdds});
-        add({k: "hc", side: "A", lbl: `${aN} ${L.spreadAway}`, line: sa, pm: 1 - pHc, mk: mk != null ? 1 - mk : null, p: L.spreadAwayOdds});
+      // Handicap (asian): half lines win/lose; whole lines refund on a push, so the probability counts only decided games
+      if (!isNaN(sh) && Math.abs(sh) >= 1 && Math.abs(sh * 4) % 2 === 0) {
+        const pW = P((i, j) => i - j + sh > 0), pL = P((i, j) => i - j + sh < 0), dec = pW + pL, mk = nv2(L.spreadHomeOdds, L.spreadAwayOdds);
+        add({k: "hc", side: "H", lbl: `${hN} ${L.spreadHome}`, line: sh, pm: pW / dec, mk, p: L.spreadHomeOdds});
+        add({k: "hc", side: "A", lbl: `${aN} ${L.spreadAway}`, line: sa, pm: pL / dec, mk: mk != null ? 1 - mk : null, p: L.spreadAwayOdds});
       }
+      // Double chance at half time: about 44% of the goals come before the break
+      if (g.h1) { const l1 = lh * 0.44, l2 = la * 0.44; let a1 = 0, a2 = 0, s1 = 0;
+        for (let i = 0; i <= 8; i++) for (let j = 0; j <= 8; j++) { const q = pois(i, l1) * pois(j, l2); s1 += q; if (i >= j) a1 += q; if (j >= i) a2 += q; }
+        const inv = 1 / g.h1.h + 1 / g.h1.d + 1 / g.h1.a, m1 = (1 / g.h1.h + 1 / g.h1.d) / inv, m2 = (1 / g.h1.a + 1 / g.h1.d) / inv;
+        add({k: "dc1h", side: "1X", lbl: `${hN} o empate al medio tiempo`, pm: a1 / s1, mk: m1, p: dcEst(g.h1.h, g.h1.d), est: true});
+        add({k: "dc1h", side: "X2", lbl: `${aN} o empate al medio tiempo`, pm: a2 / s1, mk: m2, p: dcEst(g.h1.a, g.h1.d), est: true}); }
       if (L.total) { const t = Number(L.total), po = P((i, j) => i + j > t), mk = nv2(L.overOdds, L.underOdds);
         add({k: "tot", side: "O", lbl: `Más de ${t} goles`, line: t, pm: po, mk, p: L.overOdds});
         add({k: "tot", side: "U", lbl: `Menos de ${t} goles`, line: t, pm: 1 - po, mk: mk != null ? 1 - mk : null, p: L.underOdds}); }

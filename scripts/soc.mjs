@@ -25,8 +25,22 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     teamIds[H.team.abbreviation] = H.team.id; teamIds[A.team.abbreviation] = A.team.id;
     const base = `${CORE}/${slug}/events/${e.id}/competitions/${e.id}/odds`;
     const [o, pb] = await Promise.all([J(base + "?lang=en&region=us"), J(base + "/100/propBets?lang=en&region=us&limit=1000")]);
-    const cl = [...new Set(((pb && pb.items) || []).filter(i => i.type && i.type.name === "Total Corners").map(i => i.current && i.current.target && i.current.target.value).filter(v => v != null))].sort((a, b) => a - b);
-    games.push({id: e.id, lg, slug, date: e.date, venue: c.venue && c.venue.fullName, home: tm(H), away: tm(A), lines: dkLines(o) || {}, cl, btts: null});
+    // DraftKings side markets (price in current.over.decimal): both teams score, double chance, 1st half result, corners
+    const items = (pb && pb.items) || [], of = n => items.filter(i => i.type && i.type.name === n), pr = i => i && i.current && i.current.over ? +i.current.over.decimal : null;
+    const tid = i => ((i.team && i.team.$ref) || "").match(/teams\/(\d+)/)?.[1];
+    const lines = dkLines(o) || {}, g = {id: e.id, lg, slug, date: e.date, venue: c.venue && c.venue.fullName, home: tm(H), away: tm(A), lines, cl: [], btts: null};
+    const bt = of("Both Teams To Score"); if (bt.length >= 2 && pr(bt[0]) && pr(bt[1])) g.btts = [pr(bt[0]), pr(bt[1])];
+    for (const i of of("Double Chance")) { const t = tid(i); if (t === H.team.id) lines.dc1 = pr(i); else if (t === A.team.id) lines.dc2 = pr(i); }
+    const h1 = {}; for (const i of of("1st Half Moneyline")) { const t = tid(i); h1[t === H.team.id ? "h" : t === A.team.id ? "a" : "d"] = pr(i); }
+    if (h1.h && h1.d && h1.a) g.h1 = h1;
+    // Corners: over ladder then under ladder; main line = the one with the most even prices
+    const co = of("Total Corners").map(i => ({l: i.current && i.current.target ? +i.current.target.value : null, p: pr(i)})).filter(x => x.l != null);
+    const half = Math.floor(co.length / 2), lad = {};
+    co.forEach((x, k) => { (lad[x.l] = lad[x.l] || {})[k < half ? "over" : "under"] = x.p; });
+    g.cl = Object.keys(lad).map(Number).sort((a, b) => a - b);
+    const main = g.cl.filter(l => lad[l].over && lad[l].under).sort((a, b) => Math.abs(lad[a].over - lad[a].under) - Math.abs(lad[b].over - lad[b].under))[0];
+    if (main != null) g.corn = {line: main, over: lad[main].over, under: lad[main].under};
+    games.push(g);
   });
   games.sort((a, b) => a.date < b.date ? -1 : 1);
 

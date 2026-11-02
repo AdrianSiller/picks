@@ -69,6 +69,8 @@ export async function grade(items) {
       switch (x.k) {
         case "1x2": hit = x.side === "H" ? h > a : x.side === "A" ? a > h : h === a; break;
         case "dc": hit = x.side === "1X" ? h >= a : a >= h; break;
+        case "dc1h": { const cc = s.header.competitions[0].competitors, ht = side => { const c = cc.find(z => z.homeAway === side); return c && c.linescores && c.linescores[0] ? +c.linescores[0].displayValue : null; };
+          const hh = ht("home"), ha = ht("away"); hit = hh == null || ha == null ? null : x.side === "1X" ? hh >= ha : ha >= hh; break; }
         case "hc": { const m = x.side === "H" ? h - a + x.line : a - h + x.line; hit = m === 0 ? null : m > 0; break; }
         case "tot": hit = x.side === "O" ? h + a > x.line : h + a < x.line; break;
         case "btts": hit = (h > 0 && a > 0) === (x.side === "Y"); break;

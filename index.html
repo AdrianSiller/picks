@@ -174,6 +174,12 @@ table.form tbody th small{display:block;font:400 10.5px var(--f-body);color:var(
 .gl-p{font:600 13.5px var(--f-body);color:var(--accent);text-align:right}.gl-none{color:var(--muted);font-weight:500}
 .gl-p small{display:block;font:500 11.5px var(--f-body);margin-top:2px}.v-fair{color:var(--good)}.v-meh{color:var(--warn)}.v-bad{color:var(--bad)}
 .gl-o{font-family:var(--f-mono);text-align:right;min-width:46px}.gl-o b{display:block;color:var(--accent)}.gl-o small{display:block;font-size:11px;color:var(--muted)}
+.perf-top{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.perf-top small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.perf-top b{display:block;font:700 26px var(--f-display)}.perf-top span{font-size:13px}
+table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
+.pb{display:inline-block;width:54px;height:6px;border-radius:3px;background:var(--line);vertical-align:middle;overflow:hidden}
+.pb i{display:block;height:100%}.pb i.g{background:var(--good)}.pb i.m{background:var(--warn)}.pb i.b{background:var(--bad)}
 .refresh{display:flex;align-items:center;gap:10px;margin-top:8px}
 .rbtn{border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:6px 14px;font:600 13px var(--f-body);cursor:pointer}
 .rbtn[disabled]{opacity:.6;cursor:wait}
@@ -202,16 +208,17 @@ table.form tbody th small{display:block;font:400 10.5px var(--f-body);color:var(
       <button class="tab" role="tab" id="t-picks" aria-selected="true">Top 10</button>
       <button class="tab" role="tab" id="t-games" aria-selected="false">Partidos</button>
       <button class="tab" role="tab" id="t-parlays" aria-selected="false">Parlays</button>
+      <button class="tab" role="tab" id="t-perf" aria-selected="false">Rendimiento</button>
     </div>
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 8:05 a.m.</footer>
-<script src="model.js?v=20261102-0805"></script>
+<footer class="ver">Versión de la app: 2 nov 9:00 a.m.</footer>
+<script src="model.js?v=20261102-0900"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-0805";
+const APP_VERSION = "20261102-0900";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -260,6 +267,7 @@ function socHit(c, r, side) {
   switch (c.k) {
     case "1x2": return c.side === "D" ? gf === ga : (c.side === "H") === isH ? gf > ga : gf < ga;
     case "dc": return (c.side === "1X") === isH ? gf >= ga : gf <= ga;
+    case "dc1h": return (c.side === "1X") === isH ? gf >= ga : gf <= ga;
     case "hc": { const hcap = Number(g.lines.spreadHome); const m = gf - ga; return c.side === "H" ? (isH ? m + hcap > 0 : -m + hcap > 0) : (isH ? m + hcap < 0 : -m + hcap < 0); }
     case "tot": return c.side === "O" ? gf + ga > c.line : gf + ga < c.line;
     case "btts": return c.side === "Y" ? gf > 0 && ga > 0 : !(gf > 0 && ga > 0);
@@ -275,7 +283,7 @@ function socTeamBlock(c, side) {
   return `<div class="tb"><div class="tb-h"><b>${esc(t.abbr)}</b><span>${n ? `${h} de ${n}` : "—"}</span></div>
     <div class="l5">${last.map(r => { const x = socHit(c, r, side); return `<i class="${x === null ? "nj" : x ? "y" : "n"}" title="${dateLbl(r[0])} ${r[3] === "h" ? "vs" : "@"} ${r[2]} (${r[1]})">${socChipVal(c, r)}</i>`; }).join("")}<span class="l5-note">→</span></div></div>`;
 }
-const socWhat = c => ({"1x2": "resultado", "dc": "resultado", "hc": "resultado con handicap", "tot": "goles totales", "btts": "si anotaron ambos", "cor": "corners totales"}[c.k]);
+const socWhat = c => ({"1x2": "resultado", "dc": "resultado", "dc1h": "resultado final (no hay medio tiempo en el historial)", "hc": "resultado con handicap", "tot": "goles totales", "btts": "si anotaron ambos", "cor": "corners totales"}[c.k]);
 function socDetail(c) {
   const g = socGames[c.g], m = socModel[c.g], L = g.lines;
   const row = (lbl, pm, price) => `<tr><td>${lbl}</td><td>${pct(pm)}</td><td>${price ? pct(1 / price) : "—"}</td><td>${fx(price)}</td></tr>`;
@@ -292,7 +300,7 @@ function socDetail(c) {
     </tbody></table></div>
     <h3 style="margin-top:14px">Cómo leer este pick</h3>
     <dl class="gloss">
-      <dt>${esc(c.lbl)}</dt><dd>${{"1x2": "Apuestas al resultado final del partido (90 minutos).", "dc": "Doble oportunidad: ganas si ese equipo gana o si empatan.", "hc": `Handicap: al marcador de ${esc(c.lbl.split(" ")[0])} se le suma ${c.line > 0 ? "+" : ""}${c.line} goles antes de comparar.`, "tot": `Ganas si entre los dos equipos meten ${c.side === "O" ? "más" : "menos"} de ${c.line} goles.`, "btts": c.side === "Y" ? "Ganas si los dos equipos meten al menos un gol." : "Ganas si al menos uno de los dos equipos no anota.", "cor": `Ganas si entre los dos equipos suman ${c.side === "O" ? "más" : "menos"} de ${c.line} tiros de esquina.`}[c.k]}</dd>
+      <dt>${esc(c.lbl)}</dt><dd>${{"1x2": "Apuestas al resultado final del partido (90 minutos).", "dc": "Doble oportunidad: ganas si ese equipo gana o si empatan.", "dc1h": "Doble oportunidad al medio tiempo: ganas si al terminar el primer tiempo ese equipo va ganando o empatado.", "hc": `Handicap asiático: al marcador de ${esc(c.lbl.split(" ")[0])} se le suma ${c.line > 0 ? "+" : ""}${c.line} goles antes de comparar.${c.line % 1 === 0 ? " Si queda empate con el handicap, te devuelven la apuesta." : ""}`, "tot": `Ganas si entre los dos equipos meten ${c.side === "O" ? "más" : "menos"} de ${c.line} goles.`, "btts": c.side === "Y" ? "Ganas si los dos equipos meten al menos un gol." : "Ganas si al menos uno de los dos equipos no anota.", "cor": `Ganas si entre los dos equipos suman ${c.side === "O" ? "más" : "menos"} de ${c.line} tiros de esquina.`}[c.k]}</dd>
       <dt>Los cuadritos de cada equipo</dt><dd>Sus últimos 5 partidos (${socWhat(c)}), el más reciente a la derecha. Verde: ese partido habría cumplido el pick. El "X de Y" cuenta sus últimos 10 partidos de liga y torneos continentales; copas contra equipos de divisiones menores no cuentan.</dd>
       ${c.p ? `<dt>Momio ${fx(c.p)}</dt><dd>Momio decimal de DraftKings: por cada $100 recibes $${Math.round(c.p * 100)} si se cumple (incluye tu apuesta).</dd>` : `<dt>Momio</dt><dd>La fuente no trae el momio de este mercado. Revísalo en tu casa: si paga ${fx(1 / c.pr)} o más, nuestra estimación dice que conviene.</dd>`}
       <dt>Probabilidad estimada ${pct(c.pr)}</dt><dd>${c.mk != null ? `Promedio entre el modelo (${pct(c.pm)}) y la probabilidad de la casa sin su comisión (${pct(c.mk)})${g.lg === "Champions" ? "; en Champions pesa más la casa, porque los equipos vienen de ligas de nivel muy distinto" : ""}.` : `Viene del modelo (${pct(c.pm)}), ajustado hacia 50% porque no hay momio de la casa para compararlo.`}</dd>
@@ -417,7 +425,7 @@ function socMethod() {
   <p>1 Up: la apuesta se paga como ganada si el equipo llega a ir arriba por 1 gol en cualquier momento, aunque luego le empaten o le volteen. Se calcula siguiendo el marcador minuto a minuto con los goles esperados del modelo. La fuente no trae su momio: compáralo en tu casa con el "conviene si paga".</p>
   <p>Corners: se promedian los corners que saca cada equipo y los que permite su rival, y se calcula la probabilidad de pasar la línea de la casa.</p>
   <p>Cuando hay momio, la estimación final es el promedio del modelo y la probabilidad de la casa sin su comisión (en Champions pesa 75% la casa, porque comparar equipos de ligas tan distintas con solo sus resultados es poco confiable). Sin momio, la estimación se ajusta hacia 50%.</p>
-  <p>Momios: DraftKings vía ESPN para resultado, handicap y goles totales en las tres ligas; ambos anotan solo en Champions (vía SportsGameOdds). Doble oportunidad tiene momio cuando la casa ofrece el handicap +0.5. Corners todavía sin momio.</p></details>`;
+  <p>Momios: DraftKings vía ESPN para resultado, doble oportunidad, handicap asiático, goles totales, ambos anotan y corners (en Champions también SportsGameOdds). Doble oportunidad al medio tiempo se estima con el resultado al medio tiempo de DraftKings; el modelo supone que el 44% de los goles caen en el primer tiempo.</p></details>`;
 }
 
 const SPORTS = {
@@ -551,9 +559,11 @@ function chips(c) {
   if (c.e != null && c.e >= 0.04) out.push(`<span class="chip c-acc">Valor +${Math.round(c.e * 100)}%</span>`);
   if (c.q) out.push(`<span class="chip c-warn">En duda por lesión</span>`);
   if (c.sm) out.push(`<span class="chip c-warn">Muestra chica</span>`);
-  if (c.role === 0) out.push(`<span class="chip c-warn">Rol secundario: no entra al top</span>`);
+  if (c.role === 0) out.push(`<span class="chip c-warn">Fuera de su rol: no entra al top</span>`);
   else if (lowRole(c)) out.push(`<span class="chip c-warn">Rol chico: depende de que le den volumen</span>`);
   if (c.b2b) out.push(`<span class="chip c-warn">Segunda noche seguida: suele jugar menos minutos</span>`);
+  if (c.envAdj >= 0.015) out.push(`<span class="chip c-good">${c.s === "over" ? "Partido ofensivo: a favor" : "Partido defensivo: a favor"}</span>`);
+  else if (c.envAdj <= -0.015) out.push(`<span class="chip c-warn">${c.s === "over" ? (c.blow ? "Riesgo de paliza: menos minutos" : "Partido defensivo: en contra") : "Partido ofensivo: en contra"}</span>`);
   if (c.wind) out.push(`<span class="chip ${c.s === "over" ? "c-warn" : "c-good"}">Viento de ${c.wind} mph: le pega al pase</span>`);
   if (c.hh[1] >= 2) out.push(`<span class="chip c-acc">Ante ${c.o}: cumplió ${c.hh[0]} de ${c.hh[1]}</span>`);
   const fp = Math.round((c.f - 1) * 100), rf = rivalFav(c);
@@ -664,6 +674,43 @@ function resultsHtml() {
     <div class="meta" style="margin:6px 0 4px">Últimos ${Math.min(7, days.length)} días: ${W.w} de ${W.n} · ${u(W.u)}. Unidades: 1 a cada pick (sin momio se toma 1.91).</div>
     ${last.rows.map(x => `<div class="mini"><span><b>${esc(x.n || "")}</b> · ${esc(x.lbl)}${act(x)}</span><span class="r"><b>${x.p ? fx(x.p) : "—"}</b><br>${st(x)}</span></div>`).join("")}
   </details>`;
+}
+
+/* ---------- Performance: how the graded picks are doing, cut by sport, market, confidence, price and role ---------- */
+function viewPerf() {
+  const sp = S.name === "Soccer" ? "SOC" : S.name, days = RESULTS.days || [];
+  const done = x => x.hit === 0 || x.hit === 1;
+  const all = days.flatMap(d => d.items.map(x => ({...x, date: d.date}))).filter(done), rows = all.filter(x => x.sport === sp);
+  const T = r => { const w = r.filter(x => x.hit).length, u = r.reduce((s, x) => s + (x.hit ? (x.p || 1.91) - 1 : -1), 0); return {n: r.length, w, u, pct: r.length ? w / r.length : 0}; };
+  const uTxt = u => `${u >= 0 ? "+" : ""}${u.toFixed(1)} u`;
+  const bar = t => `<span class="pb"><i style="width:${Math.round(t.pct * 100)}%" class="${t.pct >= 0.6 ? "g" : t.pct >= 0.5 ? "m" : "b"}"></i></span>`;
+  const table = (title, groups, note) => { const ent = Object.entries(groups).filter(([, r]) => r.length).sort((a, b) => b[1].length - a[1].length); if (!ent.length) return "";
+    return `<h3 class="sub">${title}</h3><div class="tablewrap"><table class="opts perf"><tbody>${ent.map(([k, r]) => { const t = T(r);
+      return `<tr><td>${esc(k)}</td><td>${t.w}/${t.n}</td><td>${bar(t)} ${Math.round(t.pct * 100)}%</td><td class="${t.u >= 0 ? "pos" : "neg"}">${uTxt(t.u)}</td></tr>`; }).join("")}</tbody></table></div>${note ? `<div class="note">${note}</div>` : ""}`; };
+  const by = (r, f) => { const g = {}; r.forEach(x => { const k = f(x); if (k != null) (g[k] = g[k] || []).push(x); }); return g; };
+  const ALL = T(all), ME = T(rows), mk = sp === "NBA" ? SPORTS.nba.MK : SPORTS.nfl.MK;
+  const SK = {"1x2": "Resultado", dc: "Doble oportunidad", dc1h: "Doble oport. medio tiempo", hc: "Handicap asiático", tot: "Goles over/under", btts: "Ambos anotan", cor: "Corners"};
+  const kind = x => x.kind === "prop" ? "Props de jugador" : x.kind === "game" ? "Moneyline / spread" : SK[x.k] || "Soccer";
+  const market = x => x.kind === "prop" && x.m ? `${(mk[x.m] || {lbl: x.m}).lbl} · ${x.s}` : x.kind === "soc" && x.k ? `${SK[x.k] || x.k}${x.k === "tot" ? (x.side === "O" ? " · over" : " · under") : x.k === "dc" || x.k === "dc1h" ? (x.side === "1X" ? " · local" : " · visita") : ""}` : null;
+  const conf = x => x.pr == null ? null : x.pr >= 0.72 ? "72%+ (muy sólido)" : x.pr >= 0.66 ? "66–71%" : x.pr >= 0.6 ? "60–65%" : "menos de 60%";
+  const price = x => !x.p ? "sin momio" : x.p < 1.5 ? "menos de 1.50" : x.p < 1.8 ? "1.50–1.79" : x.p < 2.1 ? "1.80–2.09" : "2.10 o más";
+  const calib = (() => { const r = rows.filter(x => x.pr != null); if (r.length < 5) return ""; const exp = r.reduce((s, x) => s + x.pr, 0) / r.length, t = T(r);
+    return `<div class="note">Calibración: estos picks prometían en promedio <b>${pct(exp)}</b> y pegaron <b>${pct(t.pct)}</b>.${t.pct < exp - 0.05 ? " El modelo sigue optimista; si se mantiene, se ajusta." : t.pct > exp + 0.05 ? " El modelo está siendo conservador." : " Bien calibrado."}</div>`; })();
+  const dname = d => new Date(d + "T12:00:00").toLocaleDateString("es-MX", {weekday: "short", day: "numeric", month: "short"});
+  if (!all.length) return `<div class="card meta" style="cursor:default">Todavía no hay picks calificados.</div>`;
+  return `<div class="card" style="cursor:default">
+      <div class="perf-top"><div><small>${esc(S.name)}</small><b>${ME.w} de ${ME.n}</b><span>${Math.round(ME.pct * 100)}% · <span class="${ME.u >= 0 ? "pos" : "neg"}">${uTxt(ME.u)}</span></span></div>
+      <div><small>Todos los deportes</small><b>${ALL.w} de ${ALL.n}</b><span>${Math.round(ALL.pct * 100)}% · <span class="${ALL.u >= 0 ? "pos" : "neg"}">${uTxt(ALL.u)}</span></span></div></div>
+      <div class="note">Unidades: 1 a cada pick (sin momio se toma 1.91). Con momios de 1.50–1.80 hay que pegar 55–67% para ganar. Desde el ${dname(days[days.length - 1].date)}; con pocos días, toma las tendencias con calma.</div>
+    </div>
+    ${rows.length ? `<div class="card" style="cursor:default">
+      ${table("Por día", by(rows, x => dname(x.date)))}
+      ${table("Por tipo", by(rows, kind))}
+      ${table(sp === "SOC" ? "Por mercado" : "Por estadística y lado", by(rows, market))}
+      ${table("Por confianza del modelo", by(rows, conf))}${calib}
+      ${table("Por momio", by(rows, price))}
+      ${sp !== "SOC" ? table("Por rol del jugador", by(rows.filter(x => x.kind === "prop"), x => x.role == null ? null : x.role ? "Va con su rol" : "Fuera de su rol"), "El rol se empezó a registrar el 2 de noviembre.") : ""}
+    </div>` : `<div class="card meta" style="cursor:default">Todavía no hay picks de ${esc(S.name)} calificados.</div>`}`;
 }
 
 /* ---------- Refresh: injuries, lineups, lines and prices straight from ESPN ---------- */
@@ -853,6 +900,8 @@ function contextHtml(g, M) {
   const out = [];
   if (g.rest) { const d = (t, x) => x == null ? "" : x === 1 ? `<b>${t}</b> juega la segunda noche seguida (−1.5 pts en la proyección)` : `${t} con ${x - 1} día${x - 1 === 1 ? "" : "s"} de descanso`;
     const parts = [d(g.away.abbr, g.rest.a), d(g.home.abbr, g.rest.h)].filter(Boolean); if (parts.length) out.push(parts.join(" · ")); }
+  if (g.env && S.name === "NBA") out.push(`Total de la casa ${g.env.total} contra ${g.env.avg} de promedio: <b>partido ${M.envTag(g.env.env)}</b>.${g.env.env >= 0.03 ? " Favorece los overs de anotación." : g.env.env <= -0.03 ? " Favorece los unders." : ""}${Math.abs(Number((g.lines || {}).spreadHome) || 0) >= 11 ? " Spread de 11+: riesgo de paliza, los titulares pueden jugar menos al final." : ""}`);
+  if (g.env && S.name === "NFL") out.push(`Puntos esperados según la casa: ${esc(g.away.abbr)} ${g.env.a} · ${esc(g.home.abbr)} ${g.env.h} (promedio de la liga ${(g.env.avg / 2).toFixed(1)} por equipo): <b>partido ${M.envTag(g.env.env)}</b>.`);
   if (g.wx) out.push(g.wx.indoor ? "Estadio techado: el clima no influye." : `Clima al inicio: ${g.wx.temp}°F, viento ${g.wx.wind} mph (ráfagas ${g.wx.gust}), lluvia ${g.wx.rain}%.${g.wx.wind >= 15 ? " <b>Viento fuerte: baja el juego aéreo; los overs de pase y recepción se castigan.</b>" : ""}`);
   return out.length ? `<div class="inj">${out.join("<br>")}</div>` : "";
 }
@@ -924,10 +973,10 @@ function methodHtml() {
   <p>Para cada prop de DraftKings se cuenta cuántas veces el jugador habría cumplido la línea: esta temporada (peso 40%), sus últimos 10 juegos (30%) y la temporada pasada (30%). Cada porcentaje se ajusta hacia 50% cuando hay pocos juegos, para que 3 de 3 no parezca infalible.</p>
   <p>Rival por posición: para cada defensa se suma lo que hicieron los jugadores rivales de cada posición en ${S.defGames}, y se compara con el promedio de todos los equipos. Como la muestra es chica, el efecto se reduce y se limita a ±20%; luego mueve la probabilidad del pick hasta 6 puntos.</p>
   ${S.name === "NBA"
-    ? `<p>Se descartan jugadores fuera por lesión, overs de jugadores con menos de 20 minutos y momios menores a 1.40. El top 10 se ordena por probabilidad y solo toma jugadores de rol principal (NBA: 26+ minutos con minutos estables; NFL: QB titular, WR/TE con 5+ targets por juego, RB con 12+ acarreos). Las probabilidades ya vienen calibradas con los resultados reales (el historial crudo exageraba ~20%). Solo entran props con 62% o más, y no entran los de momio caro (que la casa les dé más de 2 puntos por encima de nuestra estimación). "Muy sólido" marca los de 72% o más. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>
+    ? `<p>Se descartan jugadores fuera por lesión, overs de jugadores con menos de 20 minutos y momios menores a 1.40. El top 10 se ordena por probabilidad y solo toma props que van con el rol del jugador. NBA: minutos estables (20+) y que la estadística sea parte de su juego: tiradores (4+ intentos de triple) para triples, anotadores (12+) para puntos, centros o 6+ rebotes para rebotes, 4+ asistencias para asistencias; un tirador de la banca sí entra en triples. NFL: QB titular, WR/TE con 5+ targets por juego, RB con 12+ acarreos. Tipo de partido: si el total de la casa está arriba del promedio (partido ofensivo) los overs suben hasta 4 puntos y los unders bajan; al revés en partidos defensivos. En NBA, con spread de 11+ los overs de titulares bajan por riesgo de paliza; en NFL, el favorito por 6+ corre más y el que va abajo lanza más. Las probabilidades ya vienen calibradas con los resultados reales (el historial crudo exageraba ~20%). Solo entran props con 62% o más, y no entran los de momio caro (que la casa les dé más de 2 puntos por encima de nuestra estimación). "Muy sólido" marca los de 72% o más. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>
        <p>Bajas en moneyline y spread: se descuentan solo jugadores fuera hoy que sí venían jugando esta temporada (1 punto si juegan 15 a 19 minutos, 1.5 si juegan 20 a 27, 3 si juegan 28 o más).</p>`
     : `<p>Se descartan jugadores fuera o dudosos (doubtful). Solo entran jugadores con rol real: 3.5 targets o más por juego en props de recepción y 8 acarreos o más en props de carrera. Los jugadores "questionable" aparecen marcados y pierden puntos en el orden.</p>
-       <p>Los momios de props vienen de SportsGameOdds (DraftKings primero; si no la tiene, FanDuel, BetMGM, Caesars o ESPN Bet), solo cuando la casa tiene exactamente la misma línea. El top 10 se ordena por probabilidad y solo toma jugadores de rol principal (NBA: 26+ minutos con minutos estables; NFL: QB titular, WR/TE con 5+ targets por juego, RB con 12+ acarreos). Las probabilidades ya vienen calibradas con los resultados reales (el historial crudo exageraba ~20%). Solo entran props con 62% o más, y no entran los de momio caro (que la casa les dé más de 2 puntos por encima de nuestra estimación). "Muy sólido" marca los de 72% o más. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>`}
+       <p>Los momios de props vienen de SportsGameOdds (DraftKings primero; si no la tiene, FanDuel, BetMGM, Caesars o ESPN Bet), solo cuando la casa tiene exactamente la misma línea. El top 10 se ordena por probabilidad y solo toma props que van con el rol del jugador. NBA: minutos estables (20+) y que la estadística sea parte de su juego: tiradores (4+ intentos de triple) para triples, anotadores (12+) para puntos, centros o 6+ rebotes para rebotes, 4+ asistencias para asistencias; un tirador de la banca sí entra en triples. NFL: QB titular, WR/TE con 5+ targets por juego, RB con 12+ acarreos. Tipo de partido: si el total de la casa está arriba del promedio (partido ofensivo) los overs suben hasta 4 puntos y los unders bajan; al revés en partidos defensivos. En NBA, con spread de 11+ los overs de titulares bajan por riesgo de paliza; en NFL, el favorito por 6+ corre más y el que va abajo lanza más. Las probabilidades ya vienen calibradas con los resultados reales (el historial crudo exageraba ~20%). Solo entran props con 62% o más, y no entran los de momio caro (que la casa les dé más de 2 puntos por encima de nuestra estimación). "Muy sólido" marca los de 72% o más. El chip de valor aparece cuando el estimado supera por 4 puntos o más la probabilidad que implica el momio.</p>`}
   <p>${S.name === "NBA" ? "Descanso: el equipo que juega la segunda noche seguida pierde 1.5 puntos en la proyección, y los overs de sus jugadores bajan un poco en el ranking." : "Clima: en estadios abiertos se toma el pronóstico de viento a la hora del partido. Con 15 mph o más, los overs de yardas por pase, pases completos y recepciones pierden 4 puntos de probabilidad (7 con 20 mph o más) y los unders ganan un poco."}</p>
   <p>Pick sólido de moneyline o spread: la opción con más probabilidad de pegar (60% o más) cuyo momio sea justo (que la casa no le dé más de 2 puntos por encima de nuestra estimación). Si solo hay valor en el que pierde más seguido (menos de 60%), se muestra aparte como "opción de valor (arriesgada)" y no entra al top, a los parlays ni a los resultados.</p>
   <p>Moneyline y spread: a cada equipo se le calcula un diferencial de puntos combinando esta temporada con la pasada (la pasada pesa menos). La diferencia entre ambos equipos, más ${S.hca} puntos por jugar en casa, da el margen proyectado. Esa probabilidad se promedia 50/50 con la de la casa (sin su comisión), porque un modelo sencillo exagera con equipos que cambiaron mucho desde la temporada pasada. Solo se marca pick cuando el resultado supera la probabilidad de la casa por 3 puntos o más.</p></details>`;
@@ -962,18 +1011,19 @@ function wireFilters(v) {
 let curTab = "picks", curSport = "nba";
 function show(name) {
   curTab = name;
-  ["picks", "games", "parlays"].forEach(n => document.getElementById("t-" + n).setAttribute("aria-selected", String(n === name)));
+  ["picks", "games", "parlays", "perf"].forEach(n => document.getElementById("t-" + n).setAttribute("aria-selected", String(n === name)));
   const v = document.getElementById("view");
+  if (name === "perf") { v.innerHTML = viewPerf(); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (S.custom) { v.innerHTML = changesHtml() + filterBar() + S.views[name]() + socMethod(); socWire(v); }
   else { v.innerHTML = changesHtml() + filterBar() + views[name]() + methodHtml(); wire(v); }
   wireFilters(v);
   try { localStorage.setItem("tab", name); localStorage.setItem("sport", curSport); } catch (e) {}
 }
 function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""}; setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Revisado en vivo a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
-["picks", "games", "parlays"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
+["picks", "games", "parlays", "perf"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
 ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).addEventListener("click", () => sport(k)));
 try { curTab = localStorage.getItem("tab") || "picks"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
-if (!views[curTab]) curTab = "picks"; if (!SPORTS[curSport]) curSport = "nba";
+if (!views[curTab] && curTab !== "perf") curTab = "picks"; if (!SPORTS[curSport]) curSport = "nba";
 sport(curSport);
 })();</script>
 </body>
