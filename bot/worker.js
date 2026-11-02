@@ -1,5 +1,5 @@
 // Telegram bot for Picks del Día (Cloudflare Worker, free plan).
-// Menus step by step: sport -> (soccer: league) -> top / game picks / everything / one game. You can also write "nba", "premier", "como nos fue".
+// v3 · Menus step by step: sport -> (soccer: league) -> top / game picks / everything / one game. You can also write "nba", "premier", "como nos fue".
 // Setup: paste this file in a Worker, add the secret TELEGRAM_TOKEN, deploy, then open https://<your-worker>/setup once.
 const DATA = "https://adriansiller.github.io/picks/data/";
 const APP = "https://adriansiller.github.io/picks/";
@@ -58,8 +58,19 @@ function view(B, key) {
   return {text: "¿De qué quieres los picks?", kb: HOME};
 }
 
+// If Telegram rejects a message, say why in the chat instead of failing silently
+async function check(env, chat, r, what) {
+  if (r.ok) return true;
+  let d = ""; try { d = (await r.json()).description || ""; } catch (e) {}
+  await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/sendMessage`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({chat_id: chat, text: `⚠️ Falló ${what}: ${d || r.status}`})});
+  return false;
+}
 async function sendLong(env, chat, text) {
-  for (let i = 0; i < text.length; i += 3800) await tg(env, "sendMessage", {chat_id: chat, text: text.slice(i, i + 3800), parse_mode: "HTML", disable_web_page_preview: true});
+  for (let i = 0; i < text.length; i += 3800) {
+    const part = text.slice(i, i + 3800), r = await tg(env, "sendMessage", {chat_id: chat, text: part, parse_mode: "HTML", disable_web_page_preview: true});
+    // Formatting problem: send it as plain text
+    if (!r.ok) await check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: part.replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")}), "el envío de picks");
+  }
 }
 
 async function handle(env, chat, key, editId) {
@@ -69,11 +80,11 @@ async function handle(env, chat, key, editId) {
   if (v.send) {
     await sendLong(env, chat, v.send + "\n\n" + B.foot);
     const next = view(B, v.after);
-    return tg(env, "sendMessage", {chat_id: chat, text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: next.kb || HOME});
+    return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: next.kb || HOME}), "el menú");
   }
   // Menus replace the previous menu message so the chat doesn't fill up
   if (editId) { const r = await tg(env, "editMessageText", {chat_id: chat, message_id: editId, text: v.text, reply_markup: v.kb}); if (r.ok) return r; }
-  return tg(env, "sendMessage", {chat_id: chat, text: v.text, reply_markup: v.kb});
+  return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: v.text, reply_markup: v.kb}), "el menú");
 }
 
 export default {
@@ -93,8 +104,11 @@ export default {
     // Only the owner's chat (saved by the daily build) gets answers
     const owner = await getJSON(DATA + "telegram.json");
     if (owner && owner.chat && String(owner.chat) !== String(chat)) return new Response("ok");
-    if (cb) { await tg(env, "answerCallbackQuery", {callback_query_id: cb.id}); await handle(env, chat, cb.data, cb.message.message_id); }
-    else await handle(env, chat, intent(msg.text));
+    // Always answer 200: if Telegram gets an error it retries the same tap and holds back the next ones
+    try {
+      if (cb) { await tg(env, "answerCallbackQuery", {callback_query_id: cb.id}); await handle(env, chat, cb.data, cb.message && cb.message.message_id); }
+      else await handle(env, chat, intent(msg.text));
+    } catch (e) { try { await tg(env, "sendMessage", {chat_id: chat, text: "⚠️ Error del bot: " + (e && e.message || e)}); } catch (e2) {} }
     return new Response("ok");
   },
 };
