@@ -146,17 +146,19 @@ function soccer(S, now, hours) {
 function record(R) {
   const days = (R.days || []).filter(d => d.items.some(x => x.hit === 0 || x.hit === 1)); if (!days.length) return "Todavía no hay resultados calificados.";
   const NAME = {NBA: "🏀 NBA", NFL: "🏈 NFL", SOC: "⚽ Soccer"}, SK = {"1x2": "resultado", dc: "doble oport.", dc1h: "doble oport. 1T", hc: "handicap", tot: "goles", btts: "ambos anotan", cor: "corners", tt: "goles por equipo"};
-  const kind = x => x.kind === "prop" ? "props" : x.kind === "game" ? "ML/spread" : SK[x.k] || "otros";
+  const kind = x => x.kind === "prop" ? "Props de jugadores" : x.kind === "game" ? (x.bet === "sp" ? "Spread" : "ML") : (s => s[0].toUpperCase() + s.slice(1))(SK[x.k] || "otros");
   const fmt = arr => { const d = arr.filter(x => x.hit === 0 || x.hit === 1), w = d.filter(x => x.hit).length, u = d.reduce((s, x) => s + (x.hit ? (x.p || 1.91) - 1 : -1), 0); return {d, w, u, txt: `${w}/${d.length}`}; };
   const block = (title, items) => {
     const L = [`<b>${title}</b>`]; let any = false;
     for (const sp of ["NBA", "NFL", "SOC"]) {
       const it = items.filter(x => x.sport === sp), t = fmt(it); if (!t.d.length) continue; any = true;
       const by = {}; t.d.forEach(x => (by[kind(x)] = by[kind(x)] || []).push(x));
-      const parts = Object.entries(by).sort((a, b) => b[1].length - a[1].length).map(([k, a]) => `${k} ${fmt(a).txt}`);
-      L.push(`${NAME[sp]} <b>${t.txt}</b> (${Math.round(t.w / t.d.length * 100)}%) · ${parts.join(" · ")} · ${t.u >= 0 ? "+" : ""}${t.u.toFixed(1)} u`);
+      const ORDER = ["Props de jugadores", "Spread", "ML"], rank = k => ORDER.includes(k) ? ORDER.indexOf(k) : 3;
+      L.push(`${NAME[sp]} <b>${t.txt}</b> · ${t.u >= 0 ? "+" : ""}${t.u.toFixed(1)} u`);
+      Object.entries(by).sort((a, b) => rank(a[0]) - rank(b[0]) || b[1].length - a[1].length).forEach(([k, a]) => L.push(`   ${k} ${fmt(a).txt}`));
+      L.push("");
     }
-    const all = fmt(items); if (any) L.push(`<i>Todo: ${all.txt} · ${all.u >= 0 ? "+" : ""}${all.u.toFixed(1)} u</i>`);
+    const all = fmt(items); if (any) L.push(`<i>Todo junto: ${all.txt} · ${all.u >= 0 ? "+" : ""}${all.u.toFixed(1)} u</i>`);
     return any ? L.join("\n") : null;
   };
   const day = days[0], when = d => new Date(d + "T12:00:00").toLocaleDateString("es-MX", {day: "numeric", month: "short"});
