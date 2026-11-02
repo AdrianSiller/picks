@@ -84,6 +84,17 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     for (const m of last5) for (const [id, nm] of m.xi) (cnt[id] = cnt[id] || {nm, n: 0}).n++;
     if (last5.length >= 3) meta[ab] = {reg: Object.entries(cnt).filter(([, v]) => v.n >= 3).sort((a, b) => b[1].n - a[1].n).map(([id, v]) => [id, v.nm, v.n]), of: last5.length};
   }
+  // Confirmed lineups (out ~1 h before): games starting within 90 minutes get their eleven compared with the usual one
+  await pool(games.filter(g => new Date(g.date) - now < 90 * 6e4 && new Date(g.date) > now), 4, async g => {
+    const s = await J(`${SITE}/${g.slug}/summary?event=${g.id}`), ros = (s && s.rosters) || [];
+    if (ros.length !== 2 || !ros.every(r => (r.roster || []).some(p => p.starter))) return;
+    g.xi = {};
+    for (const [k, T] of [["h", g.home], ["a", g.away]]) {
+      const r = ros.find(x => x.homeAway === (k === "h" ? "home" : "away")), m = meta[T.abbr]; if (!r || !m) continue;
+      const ids = new Set((r.roster || []).filter(p => p.starter && p.athlete).map(p => String(p.athlete.id)));
+      g.xi[k] = {miss: m.reg.filter(([id]) => !ids.has(String(id))).map(x => x[1])};
+    }
+  });
   // Champions within a few days of a league match: rotation before it, fatigue after it
   const yr = now.getUTCFullYear(), full = md => { const d = new Date(`${yr}-${md}T12:00:00Z`); return d - now > 60 * 864e5 ? new Date(`${yr - 1}-${md}T12:00:00Z`) : d; };
   for (const g of games.filter(g => g.lg !== "Champions")) {

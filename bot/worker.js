@@ -1,5 +1,5 @@
 // Telegram bot for Picks del Día (Cloudflare Worker, free plan).
-// v3 · Menus step by step: sport -> (soccer: league) -> top / game picks / everything / one game. You can also write "nba", "premier", "como nos fue".
+// v4 · Menus step by step: sport -> (soccer: league) -> top / game picks / everything / one game. You can also write "nba", "premier", "como nos fue".
 // Setup: paste this file in a Worker, add the secret TELEGRAM_TOKEN, deploy, then open https://<your-worker>/setup once.
 const DATA = "https://adriansiller.github.io/picks/data/";
 const APP = "https://adriansiller.github.io/picks/";
@@ -43,13 +43,13 @@ function view(B, key) {
     if (!b) return {text: `${name} · ${D.games.length} partido${D.games.length > 1 ? "s" : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Top 10", `${a}:top`), btn("🎯 ML / spread", `${a}:ml`)], [btn("📋 Todo", `${a}:all`), btn("🔎 Un partido", `${a}:g`)], [btn("🏠 Inicio", "home")]]}};
     if (b === "top" || b === "ml" || b === "all") return {send: D[b], after: a};
     if (b === "g" && !c) return {text: `${name}: elige el partido`, kb: {inline_keyboard: [...rows(D.games.map(g => btn(g.b, `${a}:g:${g.id}`)), 2), back(a)]}};
-    const g = D.games.find(x => x.id === c); return g ? {send: g.t, after: `${a}:g`} : {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME};
+    const g = D.games.find(x => x.id === c); return g ? {send: g.t, after: `${a}:g`, live: g.id} : {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME};
   }
   if (a === "soc") {
     const S = B.soc; if (!S) return {text: "⚽ No hay partidos de soccer en los próximos 3 días.", kb: HOME};
     if (!b) return {text: "⚽ ¿Qué liga?", kb: {inline_keyboard: [[btn("🔥 Top de todas", "soc:top")], ...rows(S.leagues.map(l => btn(`${LGN[l.code] || l.lg} (${l.games.length})`, `soc:${l.code}`)), 2), [btn("🏠 Inicio", "home")]]}};
     if (b === "top") return {send: S.top, after: "soc"};
-    if (b === "g") { for (const l of S.leagues) { const g = l.games.find(x => x.id === c); if (g) return {send: g.t, after: `soc:${l.code}:g`}; } return {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME}; }
+    if (b === "g") { for (const l of S.leagues) { const g = l.games.find(x => x.id === c); if (g) return {send: g.t, after: `soc:${l.code}:g`, live: g.id}; } return {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME}; }
     const L = S.leagues.find(l => l.code === b); if (!L) return {text: `${LGN[b] || "Esa liga"}: no tiene partidos en los próximos 3 días.`, kb: {inline_keyboard: [back("soc")]}};
     if (!c) return {text: `${LGN[b]} · ${L.games.length} partido${L.games.length > 1 ? "s" : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Mejores picks", `soc:${b}:top`), btn("🔎 Un partido", `soc:${b}:g`)], back("soc")]}};
     if (c === "top") return {send: L.top, after: `soc:${b}`};
@@ -73,14 +73,55 @@ async function sendLong(env, chat, text) {
   }
 }
 
+// Live check of one game straight from ESPN: injuries of the pick players, new absences, soccer lineups vs the usual eleven
+const ESPN = {nba: "basketball/nba", nfl: "football/nfl"};
+const BAD = new Set(["Out", "Doubtful", "Injured Reserve", "Inactive", "Suspended"]);
+const allGames = B => [...((B.nba && B.nba.games) || []), ...((B.nfl && B.nfl.games) || []), ...((B.soc && B.soc.leagues) || []).flatMap(l => l.games)];
+async function live(B, id) {
+  const g = allGames(B).find(x => x.id === id); if (!g || !g.chk) return "Ese partido ya no está en los picks (puede que ya empezó).";
+  const k = g.chk, sport = k.sp === "soc" ? `soccer/${k.slug}` : ESPN[k.sp];
+  const s = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/summary?event=${id}`).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!s) return "No pude consultar ESPN ahorita. Intenta en un minuto o usa ↻ Actualizar en la app.";
+  const st = s.header && s.header.competitions && s.header.competitions[0].status.type;
+  const mins = Math.round((new Date(g.d) - Date.now()) / 6e4);
+  const L = [`🔄 <b>Revisión en vivo</b> · ${k.a} @ ${k.h}`, st && st.state !== "pre" ? `⚠️ El partido ya empezó (${st.shortDetail || ""}).` : `Empieza en ${mins >= 60 ? Math.floor(mins / 60) + " h " + (mins % 60) + " min" : mins + " min"}.`, ""];
+  if (k.sp !== "soc") {
+    const inj = {}; for (const t of s.injuries || []) for (const x of t.injuries || []) inj[x.athlete.id] = {st: x.status, n: x.athlete.displayName, t: t.team && t.team.abbreviation};
+    const bad = k.props.filter(p => inj[p.aid]);
+    L.push(k.props.length ? (bad.length ? bad.map(p => `${BAD.has(inj[p.aid].st) ? "🚨" : "⚠️"} <b>${p.n}</b> aparece como <b>${inj[p.aid].st}</b>. Tu pick: ${p.lbl}.`).join("\n") : `✅ Tus ${k.props.length} props: ningún jugador aparece en el reporte de lesiones.`) : "Este partido no tiene props sólidos.");
+    const known = new Set(k.outs), fresh = Object.values(inj).filter(x => BAD.has(x.st) && !known.has(x.n));
+    L.push(fresh.length ? `🆕 Bajas nuevas desde la última actualización: ${fresh.map(x => `${x.n} (${x.t || "?"}, ${x.st})`).join(", ")}. Pueden cambiar minutos y volumen de sus compañeros.` : "✅ Sin bajas nuevas desde la última actualización.");
+  } else {
+    const ros = s.rosters || [];
+    if (ros.length === 2 && ros.every(r => (r.roster || []).some(p => p.starter))) {
+      const res = {};
+      for (const side of ["h", "a"]) {
+        const r = ros.find(x => x.homeAway === (side === "h" ? "home" : "away")); if (!r) continue;
+        const ids = new Set((r.roster || []).filter(p => p.starter && p.athlete).map(p => String(p.athlete.id)));
+        res[side] = (k.xi[side] || []).filter(([pid]) => !ids.has(String(pid))).map(x => x[1]);
+        L.push(res[side].length ? `📋 ${k[side]} sin ${res[side].length} titular${res[side].length > 1 ? "es" : ""} habitual${res[side].length > 1 ? "es" : ""}: ${res[side].join(", ")}` : `📋 ${k[side]} con su once habitual ✅`);
+      }
+      if (k.pick && k.pick.team) { const side = k.pick.team === "H" ? "h" : "a", m = (res[side] || []).length;
+        L.push("", m >= 3 ? `🚨 Tu pick (${k.pick.lbl}) depende de ${k[side]}, que sale sin ${m} titulares. Yo lo pensaría dos veces.` : m ? `⚠️ Tu pick (${k.pick.lbl}): a ${k[side]} le falta${m > 1 ? "n" : ""} ${m} titular${m > 1 ? "es" : ""}; revisa si son importantes.` : `✅ Tu pick (${k.pick.lbl}) sigue en pie.`); }
+      if (!k.lineups) L.push("", "<i>Los picks se calcularon antes de las alineaciones; el aviso automático antes del partido ya los trae recalculados.</i>");
+    } else L.push("⏳ Todavía no salen las alineaciones (suelen salir entre 1 hora y 30 min antes). Vuelve a revisar más cerca del partido.");
+  }
+  return L.join("\n");
+}
+
 async function handle(env, chat, key, editId) {
   const B = await getJSON(DATA + "bot.json");
-  if (!B || B.v !== 2) return tg(env, "sendMessage", {chat_id: chat, text: `No pude leer los picks ahorita. Ábrelos en la app: ${APP}`});
+  if (!B || !(B.v >= 2)) return tg(env, "sendMessage", {chat_id: chat, text: `No pude leer los picks ahorita. Ábrelos en la app: ${APP}`});
+  if (key && key.startsWith("chk:")) {
+    await sendLong(env, chat, await live(B, key.slice(4)));
+    return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: "¿Algo más?", reply_markup: {inline_keyboard: [[btn("🔄 Volver a revisar", key)], ...HOME.inline_keyboard]}}), "el menú");
+  }
   const v = view(B, key || "home");
   if (v.send) {
     await sendLong(env, chat, v.send + "\n\n" + B.foot);
-    const next = view(B, v.after);
-    return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: next.kb || HOME}), "el menú");
+    const next = view(B, v.after), kb = next.kb || HOME;
+    const keyb = v.live && B.v >= 3 ? {inline_keyboard: [[btn("🔄 Revisar en vivo (bajas y alineaciones)", `chk:${v.live}`)], ...kb.inline_keyboard]} : kb;
+    return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: keyb}), "el menú");
   }
   // Menus replace the previous menu message so the chat doesn't fill up
   if (editId) { const r = await tg(env, "editMessageText", {chat_id: chat, message_id: editId, text: v.text, reply_markup: v.kb}); if (r.ok) return r; }
@@ -88,7 +129,7 @@ async function handle(env, chat, key, editId) {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (!env.TELEGRAM_TOKEN) return new Response("Falta el secreto TELEGRAM_TOKEN en el Worker.", {status: 500});
     const secret = await secretOf(env.TELEGRAM_TOKEN);
@@ -104,11 +145,14 @@ export default {
     // Only the owner's chat (saved by the daily build) gets answers
     const owner = await getJSON(DATA + "telegram.json");
     if (owner && owner.chat && String(owner.chat) !== String(chat)) return new Response("ok");
-    // Always answer 200: if Telegram gets an error it retries the same tap and holds back the next ones
-    try {
-      if (cb) { await tg(env, "answerCallbackQuery", {callback_query_id: cb.id}); await handle(env, chat, cb.data, cb.message && cb.message.message_id); }
-      else await handle(env, chat, intent(msg.text));
-    } catch (e) { try { await tg(env, "sendMessage", {chat_id: chat, text: "⚠️ Error del bot: " + (e && e.message || e)}); } catch (e2) {} }
+    // Answer Telegram right away (if it gets an error it retries the same tap and holds back the next ones); the work runs after
+    const work = (async () => {
+      try {
+        if (cb) { await tg(env, "answerCallbackQuery", {callback_query_id: cb.id, text: cb.data.startsWith("chk:") ? "Revisando en ESPN…" : undefined}); await handle(env, chat, cb.data, cb.message && cb.message.message_id); }
+        else await handle(env, chat, intent(msg.text));
+      } catch (e) { try { await tg(env, "sendMessage", {chat_id: chat, text: "⚠️ Error del bot: " + (e && e.message || e)}); } catch (e2) {} }
+    })();
+    if (ctx && ctx.waitUntil) ctx.waitUntil(work); else await work;
     return new Response("ok");
   },
 };
