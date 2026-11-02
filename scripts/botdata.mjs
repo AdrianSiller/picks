@@ -225,7 +225,7 @@ export function botData(latest, R, now) {
   const at = new Date(latest.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
   BETS = {};
   const out = {v: 3, generatedAt: latest.generatedAt, foot: `<i>Datos de las ${at} · antes de apostar dale ↻ Actualizar en la app</i>`,
-    nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: record(R), resd: results(R), resSoc: recordSoc(R), resImg: charts(R)};
+    nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: record(R), resd: results(R), resSoc: recordSoc(R)};
   out.bets = BETS;
   return out;
 }
