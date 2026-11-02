@@ -125,9 +125,10 @@
     const games = [], cands = [];
     for (const g of D.games) {
       const mu = lgMu[g.lg], H = strength(g.home.abbr, g.lg), A = strength(g.away.abbr, g.lg), L = g.lines || {};
-      // Champions a few days later (likely rotation) or just played (fatigue)
-      const rot = g.rot || {}, tweak = (T, r) => { if (!r) return; if (r.next != null) { T.att *= 0.95; T.def *= 1.03; } else { T.att *= 0.97; T.def *= 1.02; } };
-      tweak(H, rot.h); tweak(A, rot.a);
+      // Rotation only when the lineup is confirmed (g.xi, from ↻ Actualizar): each usual starter missing weakens the team a little.
+      // A Champions match nearby is only a warning, never assumed (the book already prices what it knows)
+      const xi = g.xi || {}, tweak = (T, x) => { if (!x || !x.miss) return; const k = x.miss.length; T.att *= Math.max(0.85, 1 - 0.03 * k); T.def *= Math.min(1.12, 1 + 0.02 * k); };
+      tweak(H, xi.h); tweak(A, xi.a);
       const lh = H.att * A.def / mu * HFA, la = A.att * H.def / mu * AFA;
       const Mx = []; for (let i = 0; i <= 10; i++) { Mx.push([]); for (let j = 0; j <= 10; j++) Mx[i].push(pois(i, lh) * pois(j, la)); }
       const P = f => { let s = 0; for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++) if (f(i, j)) s += Mx[i][j]; return s; };

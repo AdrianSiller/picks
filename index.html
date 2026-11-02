@@ -218,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 10:00 a.m.</footer>
-<script src="model.js?v=20261102-1000"></script>
+<footer class="ver">Versión de la app: 2 nov 10:35 a.m.</footer>
+<script src="model.js?v=20261102-1035"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-1000";
+const APP_VERSION = "20261102-1035";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -381,7 +381,8 @@ function socViewGames() {
         </div>
         ${others.length ? `<div class="others"><h4>Opciones sin momio</h4>${others.map(c => `<div class="mini"><span><b>${esc(c.lbl)}</b><br><span class="meta">Conviene si tu casa paga ${fx(1 / c.pr)} o más</span></span><span class="r"><b>—</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</div>` : ""}`}
         <details class="gmore"${filt.game ? " open" : ""}><summary>Ver detalle del partido</summary>
-        ${g.rot ? `<div class="inj">${[["a", g.away.abbr], ["h", g.home.abbr]].filter(([k]) => g.rot[k]).map(([k, t]) => g.rot[k].next != null ? `<b>${t}</b> juega Champions en ${g.rot[k].next} día${g.rot[k].next === 1 ? "" : "s"}: posible rotación` : `<b>${t}</b> viene de jugar Champions hace ${g.rot[k].prev} día${g.rot[k].prev === 1 ? "" : "s"}: posible cansancio`).join("<br>")}. El modelo le baja un poco el ataque.</div>` : ""}
+        ${g.rot ? `<div class="inj">${[["a", g.away.abbr], ["h", g.home.abbr]].filter(([k]) => g.rot[k]).map(([k, t]) => g.rot[k].next != null ? `<b>${t}</b> juega Champions en ${g.rot[k].next} día${g.rot[k].next === 1 ? "" : "s"}: posible rotación` : `<b>${t}</b> viene de jugar Champions hace ${g.rot[k].prev} día${g.rot[k].prev === 1 ? "" : "s"}: posible cansancio`).join("<br>")}. No lo damos por hecho: el modelo solo lo toma en cuenta cuando salen las alineaciones (como 1 hora antes, dale ↻ Actualizar).</div>` : ""}
+        ${g.xi ? `<div class="inj"><b>Alineaciones confirmadas:</b> ${[["a", g.away.abbr], ["h", g.home.abbr]].filter(([k]) => g.xi[k]).map(([k, t]) => g.xi[k].miss.length ? `${t} sin ${g.xi[k].miss.map(esc).join(", ")}` : `${t} con su once habitual`).join(" · ")}.</div>` : ""}
         <h3 class="sub">Proyección</h3>
         <div class="tablewrap"><table class="opts"><thead><tr><th></th><th>${esc(g.home.abbr)}</th><th>Empate</th><th>${esc(g.away.abbr)}</th></tr></thead><tbody>
           <tr><td>Modelo</td><td>${pct(m.pH)}</td><td>${pct(m.pD)}</td><td>${pct(m.pA)}</td></tr>
@@ -427,7 +428,7 @@ function socViewParlays() {
 function socMethod() {
   return `<details class="method card" style="cursor:default"><summary>Cómo se calcula</summary>
   <p>Para cada equipo se toman sus últimos 10 partidos de liga y torneos continentales (las copas contra divisiones menores no cuentan). Con los goles a favor y en contra se calcula su ataque y defensa, ajustados hacia el promedio de su liga cuando hay pocos partidos, y con eso los goles esperados de cada lado, con ventaja para el local. De ahí salen las probabilidades de cada resultado, ambos anotan, goles totales y handicap.</p>
-  <p>Champions entre semana: si un equipo juega Champions en los 4 días siguientes (posible rotación) o la jugó en los 3 días anteriores (cansancio), el modelo le baja un poco el ataque y le sube los goles en contra.</p>
+  <p>Rotaciones: que un equipo juegue Champions en pocos días es solo un aviso; no se supone nada. Cuando salen las alineaciones (como 1 hora antes) y le das ↻ Actualizar, se compara el once contra sus titulares habituales (los que arrancaron 3 de sus últimos 5 partidos). Por cada titular que no arranca, el modelo le baja un poco el ataque y le sube los goles en contra.</p>
   <p>1 Up: la apuesta se paga como ganada si el equipo llega a ir arriba por 1 gol en cualquier momento, aunque luego le empaten o le volteen. Se calcula siguiendo el marcador minuto a minuto con los goles esperados del modelo. La fuente no trae su momio: compáralo en tu casa con el "conviene si paga".</p>
   <p>Corners: se promedian los corners que saca cada equipo y los que permite su rival, y se calcula la probabilidad de pasar la línea de la casa.</p>
   <p>Cuando hay momio, la estimación final pesa 70% la probabilidad de la casa sin su comisión y 30% el modelo (en Champions 80/20). La casa sabe más que un modelo de goles (alineaciones, lesiones, rotaciones), así que el modelo sirve para confirmar, no para pelearse con ella: si el modelo y la casa difieren por más de 12 puntos, no hay pick, porque lo más probable es que al modelo le falte información. Sin momio, la estimación se ajusta hacia 50%.</p><p>Goles por equipo: DraftKings publica una escalera de líneas por equipo (más/menos de 0.5, 1.5, 2.5…); se evalúa cada una con los goles esperados de ese equipo.</p>
@@ -835,7 +836,16 @@ async function refreshSoccer(D) {
     const state = s && s.header && s.header.competitions[0].status.type.state;
     if (state && state !== "pre") { g.started = true; return; }
     const ros = (s && s.rosters) || [];
-    if (ros.length === 2 && ros.every(r => (r.roster || []).some(p => p.starter)) && !g.lineups) { g.lineups = true; changes.push(`${tag}: alineaciones confirmadas.`); }
+    if (ros.length === 2 && ros.every(r => (r.roster || []).some(p => p.starter)) && !g.lineups) {
+      g.lineups = true; g.xi = {}; const parts = [];
+      for (const [k, T] of [["h", g.home], ["a", g.away]]) {
+        const r = ros.find(x => x.homeAway === (k === "h" ? "home" : "away")) || ros.find(x => x.team && x.team.abbreviation === T.abbr), meta = (D.meta || {})[T.abbr];
+        if (!r || !meta) continue; const ids = new Set((r.roster || []).filter(p => p.starter && p.athlete).map(p => String(p.athlete.id)));
+        const miss = meta.reg.filter(([id]) => !ids.has(String(id))).map(x => x[1]); g.xi[k] = {miss};
+        parts.push(miss.length ? `${T.abbr} sin ${miss.length} titular${miss.length > 1 ? "es" : ""} habitual${miss.length > 1 ? "es" : ""} (${miss.join(", ")})` : `${T.abbr} con su once habitual`);
+      }
+      changes.push(`${tag}: alineaciones confirmadas${parts.length ? ". " + parts.join("; ") + ". Ya entra en el modelo." : "."}`);
+    }
     const L = dkLines(o); if (L && L.mlHome) { const was = `${fx((g.lines || {}).mlHome)}/${fx((g.lines || {}).draw)}/${fx((g.lines || {}).mlAway)}`, now = `${fx(L.mlHome)}/${fx(L.draw)}/${fx(L.mlAway)}`;
       if (was !== now) changes.push(`${tag}: momios ${was} → ${now}.`); g.lines = L; }
   }));

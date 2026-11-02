@@ -18,7 +18,7 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     for (const e of (sb && sb.events) || []) if (e.status.type.state === "pre" && !evs.some(x => x.e.id === e.id)) evs.push({e, slug, lg});
   });
   if (!okBoards) throw new Error("ESPN soccer scoreboards unavailable");
-  const games = [], teamIds = {}, PBT = {}, TTRAW = [];
+  const games = [], teamIds = {}, PBT = {}, TTRAW = [], XI = {};
   await pool(evs, 5, async ({e, slug, lg}) => {
     const c = e.competitions[0], H = c.competitors.find(x => x.homeAway === "home"), A = c.competitors.find(x => x.homeAway === "away");
     const tm = x => ({abbr: x.team.abbreviation, name: x.team.displayName, record: (x.records && x.records[0] && x.records[0].summary) || ""});
@@ -70,9 +70,20 @@ export async function buildSOC(now = new Date(), nDays = 6) {
       const sm = await J(`${SITE}/all/summary?event=${e.id}`);
       const corn = t => { const T = ((sm && sm.boxscore && sm.boxscore.teams) || []).find(x => x.team.id === t.team.id); const st = T && (T.statistics || []).find(x => x.name === "wonCorners"); return st ? +st.displayValue : null; };
       const slug = (e.league && e.league.slug) || "";
+      // Who started (to know each team's usual eleven)
+      const ros = ((sm && sm.rosters) || []).find(r => r.team && r.team.id === me.team.id);
+      const xi = ros ? (ros.roster || []).filter(p => p.starter && p.athlete).map(p => [p.athlete.id, p.athlete.shortName || p.athlete.displayName]) : [];
+      if (xi.length >= 10) (XI[ab] = XI[ab] || []).push({d: e.date, cls: klass(slug), xi});
       return [dloc(e.date).slice(5), CODE[slug] || ((e.league && e.league.abbreviation) || "?").slice(0, 5), op.team.abbreviation, me.homeAway === "home" ? "h" : "a", sc(me), sc(op), corn(me), corn(op), klass(slug)];
     })).filter(Boolean);
   });
+  // Usual eleven: players who started at least 3 of the team's last 5 league / continental matches
+  const meta = {};
+  for (const [ab, list] of Object.entries(XI)) {
+    const last5 = list.filter(x => x.cls !== "CUP").sort((a, b) => a.d < b.d ? 1 : -1).slice(0, 5), cnt = {};
+    for (const m of last5) for (const [id, nm] of m.xi) (cnt[id] = cnt[id] || {nm, n: 0}).n++;
+    if (last5.length >= 3) meta[ab] = {reg: Object.entries(cnt).filter(([, v]) => v.n >= 3).sort((a, b) => b[1].n - a[1].n).map(([id, v]) => [id, v.nm, v.n]), of: last5.length};
+  }
   // Champions within a few days of a league match: rotation before it, fatigue after it
   const yr = now.getUTCFullYear(), full = md => { const d = new Date(`${yr}-${md}T12:00:00Z`); return d - now > 60 * 864e5 ? new Date(`${yr - 1}-${md}T12:00:00Z`) : d; };
   for (const g of games.filter(g => g.lg !== "Champions")) {
@@ -85,5 +96,5 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     }
     if (rot.h || rot.a) g.rot = rot;
   }
-  return {asOf: now.toISOString(), games, teams, pbTypes: PBT, ttRaw: TTRAW};
+  return {asOf: now.toISOString(), games, teams, meta};
 }
