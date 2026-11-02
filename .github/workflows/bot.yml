@@ -17,4 +17,9 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "Falta el secreto CLOUDFLARE_API_TOKEN"; exit 1; fi
+          # Private storage for the bets you mark in the bot (created once)
+          ID=$(npx -y wrangler@3 kv namespace list 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const n=JSON.parse(s).find(x=>/picks-bets/.test(x.title));console.log(n?n.id:"")}catch(e){console.log("")}})')
+          if [ -z "$ID" ]; then npx -y wrangler@3 kv namespace create picks-bets; ID=$(npx -y wrangler@3 kv namespace list | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const n=JSON.parse(s).find(x=>/picks-bets/.test(x.title));console.log(n?n.id:"")})'); fi
+          echo "KV: $ID"
+          if [ -n "$ID" ]; then printf '\n[[kv_namespaces]]\nbinding = "BETS"\nid = "%s"\n' "$ID" >> wrangler.toml; fi
           npx -y wrangler@3 deploy --keep-vars

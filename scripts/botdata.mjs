@@ -12,6 +12,15 @@ const propLbl = (sp, c) => `${c.s === "over" ? "Over" : "Under"} ${c.l} ${LBL[sp
 const gameLbl = l => l.replace(" (moneyline)", " ML").replace(" (spread)", "");
 export const LG = {"Liga MX": "mx", "La Liga": "esp", "Premier": "eng", "Bundesliga": "ger", "Serie A": "ita", "Ligue 1": "fra", "Champions": "ucl"};
 
+// Bets you can mark from the bot: each pick gets a short stable ref (same pick = same ref across builds) and the fields grading needs
+let BETS = {};
+const SHORT = {PTS: "pts", REB: "reb", AST: "ast", "3PM": "triples", REC: "rec", RECYDS: "yd rec", CAR: "acarreos", RUSHYDS: "yd tierra", CMP: "comp", PASSYDS: "yd pase", RRY: "yd t+r"};
+const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+const reg = x => { const r = hash([x.sport, x.kind, x.g, x.aid, x.m, x.l, x.s, x.side, x.bet, x.k, x.line, x.team].join("|")); BETS[r] = x; return r; };
+const propBet = (sp, c, d) => reg({sport: sp, kind: "prop", d, g: c.g, aid: c.aid, m: c.m, l: c.l, s: c.s, p: c.p, lbl: `${c.n} ${propLbl(sp, c)}`, b: `${c.n.split(" ").slice(-1)[0]} ${c.s === "over" ? "O" : "U"}${c.l} ${SHORT[c.m] || c.m}`});
+const gameBet = (sp, g, o) => reg({sport: sp, kind: "game", d: g.date, g: g.id, side: o.side, bet: o.kind, line: o.line, p: o.price, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${gameLbl(o.lbl)}`, b: gameLbl(o.lbl)});
+const socBet = (g, c) => reg({sport: "SOC", kind: "soc", d: g.date, g: g.id, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${c.lbl}`, b: (s => s.length > 40 ? s.slice(0, 39) + "…" : s)(`${g.away.abbr}@${g.home.abbr}: ${c.lbl}`)});
+
 function parlay(top) {
   const pool = top.filter(c => !c.sm && !c.q && c.p); let best = null;
   for (let a = 0; a < pool.length; a++) for (let b = a + 1; b < pool.length; b++) {
@@ -31,9 +40,10 @@ function players(sp, D, now, hours) {
   const topTxt = [`<b>${icon} · Top ${top.length}</b>`, "", ...top.map((c, i) => propLine(sp, c, i))];
   const pl = parlay(top);
   if (pl) topTxt.push("", `<b>Parlay más sólido</b>: ${pl.legs.map(c => `${esc(c.n)} ${propLbl(sp, c)}`).join(" + ")} · ${fx(pl.legs[0].p * pl.legs[1].p)} · ${pct(pl.p)}`);
-  const mlRows = [], gameList = [];
+  const mlRows = [], gameList = [], mlBets = [], topBets = top.map(c => propBet(sp, c, G[c.g].date));
   for (const g of games) {
     const m = model(g), tag = `${g.away.abbr} @ ${g.home.abbr}`;
+    if (m && m.play) mlBets.push(gameBet(sp, g, m.best));
     if (m && m.play) mlRows.push(`🎯 ${esc(tag)} (${hora(g.date)}): <b>${esc(gameLbl(m.best.lbl))}</b> · ${fx(m.best.price)} · ${pct(m.best.p)}`);
     const props = []; const seen = new Set();
     for (const c of D.cands.filter(c => c.g === g.id && !M.fails(c, sp)).sort((a, b) => M.score(b, sp) - M.score(a, sp))) { if (seen.has(c.aid)) continue; seen.add(c.aid); props.push(c); if (props.length === 8) break; }
@@ -46,10 +56,11 @@ function players(sp, D, now, hours) {
     if (outs.length) L.push(`Fuera: ${esc(outs.join(", "))}`);
     L.push("", props.length ? `<b>Props sólidos (${props.length})</b>` : "Ningún prop de este partido pasa los filtros. Mejor no forzarlo.", ...props.map(c => propLine(sp, c)));
     gameList.push({id: g.id, d: g.date, solid: !!((m && m.play) || props.length), b: `${g.away.abbr} @ ${g.home.abbr} · ${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}`, t: L.join("\n"),
+      bets: [...(m && m.play ? [gameBet(sp, g, m.best)] : []), ...props.map(c => propBet(sp, c, g.date))],
       chk: {sp: sp.toLowerCase(), h: g.home.abbr, a: g.away.abbr, outs: (g.inj || []).filter(i => i[2] === "Out").map(i => i[1]), props: props.map(c => ({aid: c.aid, n: c.n, lbl: propLbl(sp, c)}))}});
   }
   const mlTxt = [`<b>${icon} · Picks de partido (ML / spread)</b>`, "", ...(mlRows.length ? mlRows : ["Hoy ningún partido tiene un pick sólido de ML o spread."])];
-  return {top: topTxt.join("\n"), ml: mlTxt.join("\n"), all: [topTxt.join("\n"), mlTxt.join("\n")].join("\n\n"), games: gameList};
+  return {top: topTxt.join("\n"), ml: mlTxt.join("\n"), all: [topTxt.join("\n"), mlTxt.join("\n")].join("\n\n"), games: gameList, bets: {top: topBets, ml: mlBets, all: [...topBets, ...mlBets]}};
 }
 
 function soccer(S, now, hours) {
@@ -59,6 +70,7 @@ function soccer(S, now, hours) {
   const row = c => { const g = G[c.g]; return `• ${esc(g.away.abbr)} @ ${esc(g.home.abbr)} (${hora(g.date)}) · <b>${esc(c.lbl)}</b> · ${c.p ? `<b>${(c.est ? "≈" : "") + fx(c.p)}</b>` : "sin momio"} · ${pct(c.pr)}`; };
   const out = {top: null, leagues: []};
   const top = M.socTop(B.cands.filter(c => soon(G[c.g])), G, null, 10);
+  out.topBets = top.map(c => socBet(G[c.g], c));
   out.top = [`<b>⚽ Soccer · Top ${top.length}</b> (próximas ${hours} h)`, "", ...(top.length ? top.map(row) : ["Ningún partido tiene un pick sólido con momio."])].join("\n");
   for (const [lg, code] of Object.entries(LG)) {
     const gs = games.filter(g => g.lg === lg); if (!gs.length) continue;
@@ -74,10 +86,10 @@ function soccer(S, now, hours) {
       if (g.xi) L.push(`📋 Alineaciones confirmadas: ${["h", "a"].filter(k => g.xi[k]).map(k => { const t = g[k === "h" ? "home" : "away"].abbr, m = g.xi[k].miss; return m.length ? `${t} sin ${m.length} titular${m.length > 1 ? "es" : ""} habitual${m.length > 1 ? "es" : ""} (${esc(m.join(", "))})` : `${t} con su once habitual`; }).join("; ")}. Ya entra en el modelo.`);
       else if (g.rot) L.push(`⚠️ ${["h", "a"].filter(k => g.rot[k]).map(k => `${g[k === "h" ? "home" : "away"].abbr} ${g.rot[k].next != null ? `juega Champions en ${g.rot[k].next} días (posible rotación)` : "viene de jugar Champions"}`).join("; ")}. Revisa alineaciones con ↻ Actualizar en la app antes de apostar.`);
       const meta = S.meta || {}, reg = ab => ((meta[ab] || {}).reg || []).map(x => [x[0], x[1]]);
-      return {id: g.id, d: g.date, solid: !!best, b: `${g.away.abbr} @ ${g.home.abbr} · ${new Date(g.date).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ})}`, t: L.join("\n"),
+      return {id: g.id, d: g.date, solid: !!best, bets: ok.filter(c => c.p).map(c => socBet(g, c)), b: `${g.away.abbr} @ ${g.home.abbr} · ${new Date(g.date).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ})}`, t: L.join("\n"),
         chk: {sp: "soc", slug: g.slug, h: g.home.abbr, a: g.away.abbr, pick: best ? {lbl: best.lbl, team: best.team || (best.side === "H" || best.side === "1X" ? "H" : best.side === "A" || best.side === "X2" ? "A" : null)} : null, xi: {h: reg(g.home.abbr), a: reg(g.away.abbr)}, lineups: !!g.xi}};
     });
-    out.leagues.push({code, lg, top: [`<b>⚽ ${lg} · mejores picks</b>`, "", ...(lt.length ? lt.map(row) : ["Ningún partido de esta liga tiene un pick sólido con momio."])].join("\n"), games: gameList});
+    out.leagues.push({code, lg, topBets: lt.map(c => socBet(G[c.g], c)), top: [`<b>⚽ ${lg} · mejores picks</b>`, "", ...(lt.length ? lt.map(row) : ["Ningún partido de esta liga tiene un pick sólido con momio."])].join("\n"), games: gameList});
   }
   return out;
 }
@@ -96,6 +108,9 @@ function results(R) {
 
 export function botData(latest, R, now) {
   const at = new Date(latest.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
-  return {v: 3, generatedAt: latest.generatedAt, foot: `<i>Datos de las ${at} · antes de apostar dale ↻ Actualizar en la app</i>`,
+  BETS = {};
+  const out = {v: 3, generatedAt: latest.generatedAt, foot: `<i>Datos de las ${at} · antes de apostar dale ↻ Actualizar en la app</i>`,
     nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: results(R)};
+  out.bets = BETS;
+  return out;
 }
