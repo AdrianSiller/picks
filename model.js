@@ -28,7 +28,10 @@
   M.withDef = (pr0, side, f) => clamp(pr0 + (side === "under" ? -1 : 1) * ((f || 1) - 1) * 0.3, 0.05, 0.95);
   M.defFactor = (raw, n, k) => raw == null ? 1 : clamp(1 + (raw - 1) * n / (n + k), 0.8, 1.2);
   // Recompute a prop at a new line (used by the Refresh button)
-  M.repricePr = (c, line) => { const s = M.hitStats(c.vc || [], c.vp || [], c.vo || [], line, c.s); return {...s, pr: clamp(M.withDef(s.pr0, c.s, c.f) + (c.envAdj || 0) + (c.wadj || 0), 0.05, 0.95)}; };
+  M.repricePr = (c, line) => { const s = M.hitStats(c.vc || [], c.vp || [], c.vo || [], line, c.s); return {...s, pr: clamp(M.withDef(s.pr0, c.s, c.f) + (c.envAdj || 0) + (c.wadj || 0) + (c.mvAdj || 0), 0.05, 0.95)}; };
+  // Line movement since we first saw the prop: harder line (or our price drifting 3+ points) = the book knows something
+  M.lineMove = (c, ol, op) => { const dl = (c.l - ol) * (c.s === "over" ? 1 : -1), dimp = op && c.p ? 1 / op - 1 / c.p : 0;
+    return dl > 0 || (dl === 0 && dimp >= 0.03) ? -1 : dl < 0 || (dl === 0 && dimp <= -0.03) ? 1 : 0; };
   // Game environment: a high total (explosive game) helps overs, a low one (defensive game) helps unders.
   // env = how far the game's total is from the league average, as a fraction; moves the pick up to 4 points.
   M.envTag = env => env >= 0.03 ? "ofensivo" : env <= -0.03 ? "defensivo" : "normal";

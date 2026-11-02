@@ -218,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 10:35 a.m.</footer>
-<script src="model.js?v=20261102-1035"></script>
+<footer class="ver">Versión de la app: 2 nov 11:30 a.m.</footer>
+<script src="model.js?v=20261102-1130"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-1035";
+const APP_VERSION = "20261102-1130";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -388,6 +388,7 @@ function socViewGames() {
           <tr><td>Modelo</td><td>${pct(m.pH)}</td><td>${pct(m.pD)}</td><td>${pct(m.pA)}</td></tr>
           <tr><td>Casa</td><td>${L.mlHome ? pct(1 / L.mlHome) : "—"}</td><td>${L.draw ? pct(1 / L.draw) : "—"}</td><td>${L.mlAway ? pct(1 / L.mlAway) : "—"}</td></tr>
           <tr><td>Momio</td><td>${fx(L.mlHome)}</td><td>${fx(L.draw)}</td><td>${fx(L.mlAway)}</td></tr>
+          ${g.open && (g.open.mlHome !== L.mlHome || g.open.mlAway !== L.mlAway) ? `<tr><td>Abrió</td><td>${fx(g.open.mlHome)}</td><td>${fx(g.open.draw)}</td><td>${fx(g.open.mlAway)}</td></tr>` : ""}
         </tbody></table></div>
         <div class="lines">
           <div><span>Goles esperados</span><b>${m.lh.toFixed(1)} - ${m.la.toFixed(1)}</b></div>
@@ -581,6 +582,7 @@ function reasons(c) {
   if (c.vm && c.vm !== 1) { const up = c.vm > 1, ok = up === over, pctV = Math.round(Math.abs(c.vm - 1) * 100);
     R.push({w: 3, ok, t: S.name === "NBA" ? `Minutos: se esperan ~${c.minExp} (normalmente ${c.min}) por ${un.length ? un.map(esc).join("; ") : "cambios en su equipo"}` : `Volumen: ${up ? "+" : "−"}${pctV}% de ${["CAR", "RUSHYDS"].includes(c.m) ? "acarreos" : "targets"} esperado por ${un.length ? un.map(esc).join("; ") : "cambios en su equipo"}`}); }
   else if (un.length) R.push({w: 1, ok: null, t: `Cambios en ${esc(c.t)}: ${un.map(esc).join("; ")}. A él casi no le mueve el volumen`});
+  if (c.mv) R.push({w: 3, ok: c.mv > 0, t: c.mv < 0 ? `Movimiento de línea: abrió en ${c.ol}${c.ol === c.l ? ` a ${fx(c.op)} y ahora paga ${fx(c.p)}` : ` y ahora está en ${c.l}`}. Cuando la casa mueve así, casi siempre sabe algo (lesión, rol, dinero fuerte): le bajamos 3 puntos` : `Movimiento de línea: abrió en ${c.ol}${c.ol === c.l ? ` a ${fx(c.op)}` : ""} y se movió a favor (ahora ${c.l} a ${fx(c.p)}): el mercado coincide con el pick`});
   if (c.wind) R.push({w: 1, ok: !over, t: `Viento de ${c.wind} mph en el partido`});
   if (c.b2b) R.push({w: 1, ok: !over, t: "Segunda noche seguida"});
   return R.sort((a, b) => b.w - a.w);
@@ -593,6 +595,8 @@ function chips(c) {
   if (c.e != null && c.e >= 0.04) out.push(`<span class="chip c-acc">Valor +${Math.round(c.e * 100)}%</span>`);
   if (c.q) out.push(`<span class="chip c-warn">En duda por lesión</span>`);
   if (c.sm) out.push(`<span class="chip c-warn">Muestra chica</span>`);
+  if (c.mv === -1) out.push(`<span class="chip c-warn">Línea en contra: abrió en ${c.ol}${c.op && c.ol === c.l ? ` a ${fx(c.op)}` : ""}</span>`);
+  else if (c.mv === 1) out.push(`<span class="chip c-good">Línea a favor: abrió en ${c.ol}${c.op && c.ol === c.l ? ` a ${fx(c.op)}` : ""}</span>`);
   if (c.role === 0) out.push(`<span class="chip c-warn">Fuera de su rol: no entra al top</span>`);
   else if (lowRole(c)) out.push(`<span class="chip c-warn">Rol chico: depende de que le den volumen</span>`);
   if (c.b2b) out.push(`<span class="chip c-warn">Segunda noche seguida: suele jugar menos minutos</span>`);
@@ -750,6 +754,7 @@ function viewPerf() {
       ${table("Por confianza del modelo", by(rows, conf))}${calib}
       ${table("Por momio", by(rows, price))}
       ${sp !== "SOC" ? table("Por rol del jugador", by(rows.filter(x => x.kind === "prop"), x => x.role == null ? null : x.role ? "Va con su rol" : "Fuera de su rol"), "El rol se empezó a registrar el 2 de noviembre.") : ""}
+      ${sp !== "SOC" ? table("Por movimiento de línea", by(rows.filter(x => x.kind === "prop"), x => x.mv == null ? null : x.mv < 0 ? "Se movió en contra" : x.mv > 0 ? "Se movió a favor" : "Sin moverse"), "Se empezó a registrar el 2 de noviembre.") : ""}
     </div>` : `<div class="card meta" style="cursor:default">Todavía no hay picks de ${esc(S.name)} calificados.</div>`}`;
 }
 
