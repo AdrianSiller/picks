@@ -5,14 +5,16 @@ import M from "../model.js";
 const SITE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba";
 const CORE = "https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba";
 const LOG = "https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes";
+const CUR_LBL = "2026-27 Regular Season", PREV_LBL = "2025-26 Regular Season";
 const PREV = 2026; // ESPN season id of last season (2025-26)
 const IDX = {PTS: 4, REB: 5, AST: 6, "3PM": 7};
 const PTYPES = {"Total Points": "PTS", "Total Assists": "AST", "Total Rebounds": "REB", "Total 3-Point Field Goals": "3PM"};
 const posOf = p => p === "C" ? "C" : (p === "F" || p === "SF" || p === "PF") ? "F" : "G";
 
-function parseLog(g) {
+// season: exact label, so a player who has not played this season does not get last season as "this season"
+function parseLog(g, season) {
   if (!g) return [];
-  const st = (g.seasonTypes || []).find(s => /Regular Season/.test(s.displayName)); if (!st) return [];
+  const st = (g.seasonTypes || []).find(s => s.displayName === season); if (!st) return [];
   const L = g.labels, iM = L.indexOf("MIN"), iP = L.indexOf("PTS"), iR = L.indexOf("REB"), iA = L.indexOf("AST"), i3 = L.indexOf("3PT");
   const rows = [];
   for (const c of st.categories || []) for (const e of c.events || []) {
@@ -86,7 +88,7 @@ export async function buildNBA(now = new Date()) {
   // Player logs: this season and last
   const outIds = Object.entries(inj).filter(([, s]) => s === "Out").map(([id]) => id);
   const ids = [...new Set(props.map(p => p.aid).concat(outIds))], logs = {};
-  await pool(ids, 8, async id => { const [c, p] = await Promise.all([J(`${LOG}/${id}/gamelog`), J(`${LOG}/${id}/gamelog?season=${PREV}`)]); logs[id] = {c: parseLog(c), p: parseLog(p)}; });
+  await pool(ids, 8, async id => { const [c, p] = await Promise.all([J(`${LOG}/${id}/gamelog`), J(`${LOG}/${id}/gamelog?season=${PREV}`)]); logs[id] = {c: parseLog(c, CUR_LBL), p: parseLog(p, PREV_LBL)}; });
 
   // Candidates: the better side of every prop with enough support
   // Rest: days since each team's last game (1 = second night of a back-to-back)

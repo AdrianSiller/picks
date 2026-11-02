@@ -5,6 +5,7 @@ import M from "../model.js";
 const SITE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
 const CORE = "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl";
 const LOG = "https://site.web.api.espn.com/apis/common/v3/sports/football/nfl/athletes";
+const CUR_LBL = "2026 Regular Season", PREV_LBL = "2025 Regular Season";
 const PREV = 2025;
 const PTYPES = {"Total Receptions": "REC", "Total Receiving Yards": "RECYDS", "Total Carries": "CAR", "Total Rushing Yards": "RUSHYDS",
   "Total Pass Completions": "CMP", "Total Passing Yards": "PASSYDS", "Total Rushing Plus Receiving Yards": "RRY"};
@@ -19,9 +20,10 @@ const DOMES = new Set(["ATL", "DAL", "DET", "HOU", "IND", "LV", "LAR", "LAC", "M
 const PASSM = new Set(["PASSYDS", "CMP", "REC", "RECYDS"]);
 const MUKEYS = ["RBRUSHYDS", "RBRECYDS", "WRRECYDS", "TERECYDS", "QBPASSYDS", "RBREC", "WRREC", "TEREC"];
 
-function parseLog(g) {
+// season: exact label, so a player who has not played this season does not get last season as "this season"
+function parseLog(g, season) {
   if (!g || !g.names) return [];
-  const st = (g.seasonTypes || []).find(s => /Regular Season/.test(s.displayName)); if (!st) return [];
+  const st = (g.seasonTypes || []).find(s => s.displayName === season); if (!st) return [];
   const ix = k => g.names.indexOf(k), I = {rec: ix("receptions"), recy: ix("receivingYards"), car: ix("rushingAttempts"), rushy: ix("rushingYards"), cmp: ix("completions"), passy: ix("passingYards"), rtd: ix("rushingTouchdowns"), rctd: ix("receivingTouchdowns"), tgt: ix("receivingTargets")};
   const v = (s, i) => i < 0 ? 0 : (parseFloat(String(s[i]).replace(/,/g, "")) || 0);
   const rows = [];
@@ -127,11 +129,11 @@ export async function buildNFL(now = new Date()) {
   games.forEach(g => { const t = Number(g.lines.total), sh = Number(g.lines.spreadHome); if (!t || isNaN(sh)) return;
     const hT = t / 2 - sh / 2, aT = t / 2 + sh / 2; g.env = {total: t, avg: Math.round(lgPts * 20) / 10, h: +hT.toFixed(1), a: +aT.toFixed(1), eh: +((hT - lgPts) / lgPts).toFixed(3), ea: +((aT - lgPts) / lgPts).toFixed(3), env: +((t - 2 * lgPts) / (2 * lgPts)).toFixed(3)}; });
   const ids = [...new Set(props.map(p => p.aid))], logs = {};
-  await pool(ids, 8, async id => { const [c, p] = await Promise.all([J(`${LOG}/${id}/gamelog`), J(`${LOG}/${id}/gamelog?season=${PREV}`)]); logs[id] = {c: parseLog(c), p: parseLog(p)}; });
+  await pool(ids, 8, async id => { const [c, p] = await Promise.all([J(`${LOG}/${id}/gamelog`), J(`${LOG}/${id}/gamelog?season=${PREV}`)]); logs[id] = {c: parseLog(c, CUR_LBL), p: parseLog(p, PREV_LBL)}; });
   // Also fetch active skill players with no snaps this season (back from a long injury): their last season tells their share
   const inPlay0 = new Set(games.flatMap(g => [g.home.abbr, g.away.abbr])), seen = new Set(Object.values(box).flatMap(b => Object.values((b && b.__use) || {}).flatMap(U => Object.keys(U))));
   const backIds = Object.entries(roster).filter(([aid, Rr]) => inPlay0.has(Rr.t) && Rr.grp === "offense" && ["RB", "WR", "TE"].includes(Rr.pos) && !seen.has(aid) && !logs[aid] && !SKIP.has(inj[aid] || Rr.inj)).map(([aid]) => aid);
-  await pool(backIds, 8, async id => { const p = await J(`${LOG}/${id}/gamelog?season=${PREV}`); logs[id] = {c: [], p: parseLog(p)}; });
+  await pool(backIds, 8, async id => { const p = await J(`${LOG}/${id}/gamelog?season=${PREV}`); logs[id] = {c: [], p: parseLog(p, PREV_LBL)}; });
 
   // Usage model: each player's share of his team's targets and carries in the games he played. When a starter is out,
   // his share goes to the active teammates (the WR2 becomes the WR1, the backup RB gets the carries); when a starter
@@ -205,7 +207,6 @@ export async function buildNFL(now = new Date()) {
   }
   cands.forEach(c => { const L = logs[c.aid]; out.logs[c.aid] = L.c.concat(L.p).slice(0, 8); });
   const inPlay = new Set(games.flatMap(g => [g.home.abbr, g.away.abbr]));
-  out.backDebug = backIds.map(id => [roster[id].n, roster[id].t, (logs[id] || {p: []}).p.length]);
   out.usageDebug = Object.fromEntries(Object.entries(TU).filter(([, v]) => v).map(([k, v]) => [k, {sumT: v.sumT, sumC: v.sumC, players: v.dbg}]));
   Object.assign(out, {games, cands, teams: Object.fromEntries(Object.entries(teams).filter(([k]) => inPlay.has(k))), mu: Object.fromEntries(Object.entries(mu).map(([k, v]) => [k, {a: v.a, r: v.r}]))});
   return out;
