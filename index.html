@@ -218,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 11:30 a.m.</footer>
-<script src="model.js?v=20261102-1130"></script>
+<footer class="ver">Versión de la app: 2 nov 12:00 p.m.</footer>
+<script src="model.js?v=20261102-1200"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-1130";
+const APP_VERSION = "20261102-1200";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -241,6 +241,7 @@ const dateLbl = d => (d.length > 5 ? d.slice(5) : d).replace("-", "/");
 /* ---------- data ---------- */
 const getJSON = u => fetch(u + (u.includes("?") ? "&" : "?") + "t=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
 const LATEST = await getJSON("data/latest.json");
+window.M.CALIB = LATEST.calib || {};
 const RESULTS = (await getJSON("data/results.json")) || {days: []};
 if (!LATEST) { document.getElementById("view").innerHTML = '<div class="loading">No se pudieron cargar los datos. Revisa tu conexión y recarga.</div>'; return; }
 const NBA_DATA = LATEST.nba, NBA_TEAMS = NBA_DATA.teams, NBA_OUTS = NBA_DATA.outs || {};
@@ -754,6 +755,9 @@ function viewPerf() {
       ${table("Por confianza del modelo", by(rows, conf))}${calib}
       ${table("Por momio", by(rows, price))}
       ${sp !== "SOC" ? table("Por rol del jugador", by(rows.filter(x => x.kind === "prop"), x => x.role == null ? null : x.role ? "Va con su rol" : "Fuera de su rol"), "El rol se empezó a registrar el 2 de noviembre.") : ""}
+      ${(() => { const C = LATEST.calib || {}, ks = Object.keys(C).filter(k => k.startsWith(sp + "|")); if (!ks.length) return "";
+        const NM = {"prop|over": "Props over", "prop|under": "Props under", "game": "ML / spread", "soc": "Todos los picks"};
+        return `<h3 class="sub">Calibración que se aplica hoy</h3><div class="tablewrap"><table class="opts perf"><tbody>${ks.map(k => `<tr><td>${NM[k.slice(sp.length + 1)] || k}</td><td colspan="3">${C[k] ? `${C[k] > 0 ? "+" : "−"}${Math.abs(Math.round(C[k] * 1000) / 10)} pts a la probabilidad` : "sin ajuste todavía"}</td></tr>`).join("")}</tbody></table></div><div class="note">Se calcula con los picks calificados de los últimos 30 días: si un grupo pega menos de lo que decía el modelo, se le baja la probabilidad (y al revés). Con pocos picks el ajuste es chico, máximo 5 puntos.${sp === "SOC" ? " En soccer solo cuentan los picks del modelo actual (desde el 2 de noviembre)." : ""}</div>`; })()}
       ${sp !== "SOC" ? table("Por movimiento de línea", by(rows.filter(x => x.kind === "prop"), x => x.mv == null ? null : x.mv < 0 ? "Se movió en contra" : x.mv > 0 ? "Se movió a favor" : "Sin moverse"), "Se empezó a registrar el 2 de noviembre.") : ""}
     </div>` : `<div class="card meta" style="cursor:default">Todavía no hay picks de ${esc(S.name)} calificados.</div>`}`;
 }

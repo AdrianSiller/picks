@@ -28,7 +28,7 @@
   M.withDef = (pr0, side, f) => clamp(pr0 + (side === "under" ? -1 : 1) * ((f || 1) - 1) * 0.3, 0.05, 0.95);
   M.defFactor = (raw, n, k) => raw == null ? 1 : clamp(1 + (raw - 1) * n / (n + k), 0.8, 1.2);
   // Recompute a prop at a new line (used by the Refresh button)
-  M.repricePr = (c, line) => { const s = M.hitStats(c.vc || [], c.vp || [], c.vo || [], line, c.s); return {...s, pr: clamp(M.withDef(s.pr0, c.s, c.f) + (c.envAdj || 0) + (c.wadj || 0) + (c.mvAdj || 0), 0.05, 0.95)}; };
+  M.repricePr = (c, line) => { const s = M.hitStats(c.vc || [], c.vp || [], c.vo || [], line, c.s); return {...s, pr: clamp(M.withDef(s.pr0, c.s, c.f) + (c.envAdj || 0) + (c.wadj || 0) + (c.mvAdj || 0) + (c.calAdj || 0), 0.05, 0.95)}; };
   // Line movement since we first saw the prop: harder line (or our price drifting 3+ points) = the book knows something
   M.lineMove = (c, ol, op) => { const dl = (c.l - ol) * (c.s === "over" ? 1 : -1), dimp = op && c.p ? 1 / op - 1 / c.p : 0;
     return dl > 0 || (dl === 0 && dimp >= 0.03) ? -1 : dl < 0 || (dl === 0 && dimp <= -0.03) ? 1 : 0; };
@@ -42,7 +42,7 @@
     (c.pos === "RB" && (c.cr || 0) < 10 && ["CAR", "RUSHYDS", "RRY"].includes(c.m)) || (["WR", "TE"].includes(c.pos) && (c.tg || 0) < 4 && ["REC", "RECYDS"].includes(c.m)));
   M.score = (c, sport) => { const marg = c.m === "ATD" || c.a10 == null ? 0 : (c.s === "over" ? 1 : -1) * (c.a10 - c.l) / Math.max(c.l, 1);
     return c.pr * 0.8 + clamp(marg, -0.2, 0.4) * 0.5 - (c.sm ? 0.06 : 0) - (c.q ? 0.04 : 0) - (M.lowRole(c, sport) ? 0.05 : 0) - (c.b2b && c.s === "over" ? 0.02 : 0); };
-  M.CFG = {NBA: {perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6}};
+  M.CFG = {NBA: {sp: "NBA", perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {sp: "NFL", perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6}};
   // Why a prop doesn't qualify (same filters for the top 10 and for each game's list); "" = it qualifies
   M.fails = (c, sport) => { const cfg = M.CFG[sport];
     return c.out ? "no juega" : !c.p ? "sin momio en la casa" : c.role === 0 ? "fuera de su rol" : c.pr < cfg.minPr ? `probabilidad baja (${Math.round(c.pr * 100)}%)` : c.e < -0.02 ? "momio caro para lo que estimamos" : ""; };
@@ -53,6 +53,28 @@
       // Main-role players only (c.role 0 = bench / small or unstable role): their props swing with minutes and injuries
       if (M.fails(c, sport)) continue; if ((per[c.aid] || 0) >= cfg.perPlayer) continue;
       per[c.aid] = (per[c.aid] || 0) + 1; out.push(c); if (out.length === n) break;
+    }
+    return out;
+  };
+
+  /* ---------- calibration with real results ---------- */
+  // Each group (sport × kind of pick) is corrected by how much it missed: hit rate minus the raw probability we gave.
+  // Small groups lean on their sport and on the overall gap (k = 50 picks for half weight). Max ±5 points.
+  M.CALIB = {};
+  M.calAdj = k => M.CALIB[k] || 0;
+  M.calGroup = x => `${x.sport}|${x.kind === "prop" ? "prop|" + x.s : x.kind === "game" ? "game" : "soc"}`;
+  M.calibrate = items => {
+    // Soccer only counts picks from the current model (book-weighted since Nov 2); the old ones came from a different model
+    const done = items.filter(x => (x.hit === 0 || x.hit === 1) && x.pr != null && (x.sport !== "SOC" || x.date >= "2026-11-02")), st = {}, K = 50;
+    const add = (k, x) => { const s = st[k] = st[k] || {n: 0, w: 0, p: 0}; s.n++; s.w += x.hit; s.p += x.pr - (x.cal || 0); };
+    for (const x of done) { add("ALL", x); add(x.sport, x); add(M.calGroup(x), x); }
+    const gap = k => st[k] ? {d: (st[k].w - st[k].p) / st[k].n, w: st[k].n / (st[k].n + K)} : {d: 0, w: 0};
+    // Overall gap only shared between NBA and NFL (soccer markets work differently)
+    for (const x of done) if (x.sport !== "SOC") add("US", x);
+    const all = gap("US"), out = {_n: done.length};
+    for (const k of ["NBA|prop|over", "NBA|prop|under", "NBA|game", "NFL|prop|over", "NFL|prop|under", "NFL|game", "SOC|soc"]) {
+      const sp = gap(k.split("|")[0]), g = gap(k), base = k.startsWith("SOC") ? 0 : all.w * all.d, spv = sp.w * sp.d + (1 - sp.w) * base;
+      out[k] = +clamp(g.w * g.d + (1 - g.w) * spv, -0.05, 0.05).toFixed(3);
     }
     return out;
   };
@@ -82,7 +104,8 @@
     // 50/50 with the market's no-vig probability: simple models overrate teams on last season's results
     const nv = (a, b) => a && b ? (1 / a) / (1 / a + 1 / b) : null;
     const mk = [nv(L.mlHome, L.mlAway), nv(L.mlAway, L.mlHome), nv(L.spreadHomeOdds, L.spreadAwayOdds), nv(L.spreadAwayOdds, L.spreadHomeOdds)];
-    opts.forEach((o, i) => { o.pm = o.p; if (mk[i] != null) o.p = 0.5 * o.p + 0.5 * mk[i]; });
+    const cal = M.calAdj(`${ctx.sp || ctx.name}|game`);
+    opts.forEach((o, i) => { o.pm = o.p; if (mk[i] != null) o.p = 0.5 * o.p + 0.5 * mk[i]; o.p = clamp(o.p + cal, 0.02, 0.98); o.cal = cal; });
     const opts2 = opts.filter(o => o.price && (o.kind === "ml" || !isNaN(o.line))).map(o => ({...o, imp: 1 / o.price, e: o.p - 1 / o.price}));
     // Solid pick first: the most likely option (55%+) that also pays at least a little more than it should.
     // An underdog that only has value (wins less than 55%) is shown apart as a risky option, never as the pick.
@@ -145,7 +168,8 @@
       games.push(gi);
       // Model weight vs the market: lower in Champions, where teams come from leagues of very different level
       const wM = g.lg === "Champions" ? M.SOC.wCL : M.SOC.w;
-      const add = o => { const blend = o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7; cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
+      const cal = M.calAdj("SOC|soc");
+      const add = o => { const blend = clamp((o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7) + cal, 0.02, 0.98); cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, cal, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
       const hN = g.home.abbr, aN = g.away.abbr;
       if (L.mlHome) add({k: "1x2", side: "H", lbl: `Gana ${hN}`, pm: pH, mk: nv3(L.mlHome), p: L.mlHome});
       if (L.draw) add({k: "1x2", side: "D", lbl: "Empate", pm: pD, mk: nv3(L.draw), p: L.draw});

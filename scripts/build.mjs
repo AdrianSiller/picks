@@ -43,6 +43,16 @@ if (runSgo && key) {
   for (const g of soc.games) { const o = og.get(g.id); if (o) { if (o.btts) g.btts = o.btts; if (o.corn) g.corn = o.corn; } }
 }
 
+// Calibration from graded picks of the last 30 days (raw probability vs what really hit)
+const calItems = [];
+for (let i = 1; i <= 30; i++) { const d = dloc(new Date(now.getTime() - i * 864e5).toISOString(), "America/Mexico_City"), s = read(`snap/${d}.json`, null);
+  if (s) for (const x of s.items) if (x.res) calItems.push({date: d, sport: x.sport, kind: x.kind, s: x.s, pr: x.pr, cal: x.cal, hit: x.res.hit}); }
+M.CALIB = M.calibrate(calItems);
+log("calibración", JSON.stringify(M.CALIB));
+for (const [sp, D] of [["NBA", nba], ["NFL", nfl]]) for (const c of D.cands) {
+  const a = M.calAdj(`${sp}|prop|${c.s}`); c.calAdj = a; c.pr = +Math.min(0.95, Math.max(0.05, c.pr + a)).toFixed(3); if (c.p) c.e = +(c.pr - 1 / c.p).toFixed(3);
+}
+
 // Opening lines: first line and price seen for each prop (and each soccer match); later builds compare against them
 const open = read("open.json", {}), seenK = new Set();
 for (const [sp, D] of [["NBA", nba], ["NFL", nfl]]) for (const c of D.cands) {
@@ -57,7 +67,7 @@ for (const g of soc.games) { const L = g.lines || {}; if (!L.mlHome) continue; c
 for (const k of Object.keys(open)) if (!seenK.has(k) && now - new Date(open[k].at) > 2 * 864e5) delete open[k];
 write("open.json", open);
 
-const latest = {generatedAt: now.toISOString(), sgoAt: runSgo && key ? now.toISOString() : prev.sgoAt, nba, nfl, soc};
+const latest = {generatedAt: now.toISOString(), calib: M.CALIB, sgoAt: runSgo && key ? now.toISOString() : prev.sgoAt, nba, nfl, soc};
 write("latest.json", latest);
 log("latest.json", (JSON.stringify(latest).length / 1024).toFixed(0) + " KB", `NBA ${nba.games.length} games/${nba.cands.length} props · NFL ${nfl.games.length}/${nfl.cands.length} · soccer ${soc.games.length}`);
 
@@ -77,7 +87,7 @@ for (let i = 0; i < 10; i++) {
   const d = dloc(new Date(now.getTime() - i * 864e5).toISOString(), "America/Mexico_City"), s = read(`snap/${d}.json`, null);
   if (!s) continue;
   if (s.items.some(x => x.res == null)) { await step(`grade ${d}`, () => grade(s.items)); write(`snap/${d}.json`, s); }
-  days.push({date: d, items: s.items.map(x => ({sport: x.sport, kind: x.kind, n: x.n, t: x.t, lbl: x.lbl, p: x.p, g: x.g, m: x.m, s: x.s, k: x.k, side: x.side, bet: x.bet, pr: x.pr, role: x.role, mv: x.mv, hit: x.res ? x.res.hit : undefined, act: x.res ? x.res.act : undefined}))});
+  days.push({date: d, items: s.items.map(x => ({sport: x.sport, kind: x.kind, n: x.n, t: x.t, lbl: x.lbl, p: x.p, g: x.g, m: x.m, s: x.s, k: x.k, side: x.side, bet: x.bet, pr: x.pr, cal: x.cal, role: x.role, mv: x.mv, hit: x.res ? x.res.hit : undefined, act: x.res ? x.res.act : undefined}))});
 }
 // Days graded before this pipeline existed (or whose snapshot is gone) stay in the file
 const oldDays = read("results.json", {days: []}).days.filter(d => !days.some(x => x.date === d.date));
