@@ -1,0 +1,2 @@
+{"ok":true,"result":{"url":"https://picks-bot.adrian-rmzsiller.workers.dev/hook","has_custom_certificate":false,"pending_update_count":0,"max_connections":40,"ip_address":"188.114.96.0","allowed_updates":["message","callback_query"]}}worker GET: 200
+Picks bot
