@@ -24,6 +24,7 @@ export async function pool(arr, n, f) {
 export const A2D = a => { a = Number(a); return a ? +(a > 0 ? 1 + a / 100 : 1 + 100 / -a).toFixed(2) : null; };
 export const dec = x => x == null || x === "" ? null : +Number(x).toFixed(2);
 export const r1 = x => Math.round(x * 10) / 10;
+export const med = a => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return r1(s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2); };
 export const avg = a => a.length ? r1(a.reduce((s, v) => s + v, 0) / a.length) : null;
 export const dloc = (iso, tz = "America/New_York") => new Date(iso).toLocaleDateString("en-CA", {timeZone: tz});
 export const ymd = d => d.replace(/-/g, "");

@@ -40,7 +40,8 @@
   // Overs from players with a small or unstable role depend on getting volume
   M.lowRole = (c, sport) => c.s === "over" && (sport === "NBA" ? c.min < 24 :
     (c.pos === "RB" && (c.cr || 0) < 10 && ["CAR", "RUSHYDS", "RRY"].includes(c.m)) || (["WR", "TE"].includes(c.pos) && (c.tg || 0) < 4 && ["REC", "RECYDS"].includes(c.m)));
-  M.score = (c, sport) => { const marg = c.m === "ATD" || c.a10 == null ? 0 : (c.s === "over" ? 1 : -1) * (c.a10 - c.l) / Math.max(c.l, 1);
+  // Margin over the line with the median of the last 10 (one huge night does not inflate it)
+  M.score = (c, sport) => { const typ = c.md10 != null ? c.md10 : c.a10, marg = c.m === "ATD" || typ == null ? 0 : (c.s === "over" ? 1 : -1) * (typ - c.l) / Math.max(c.l, 1);
     return c.pr * 0.8 + clamp(marg, -0.2, 0.4) * 0.5 - (c.sm ? 0.06 : 0) - (c.q ? 0.04 : 0) - (M.lowRole(c, sport) ? 0.05 : 0) - (c.b2b && c.s === "over" ? 0.02 : 0); };
   M.CFG = {NBA: {sp: "NBA", perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {sp: "NFL", perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6}};
   // Why a prop doesn't qualify (same filters for the top 10 and for each game's list); "" = it qualifies

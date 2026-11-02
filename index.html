@@ -218,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 3:00 p.m.</footer>
-<script src="model.js?v=20261102-1500"></script>
+<footer class="ver">Versión de la app: 2 nov 3:15 p.m.</footer>
+<script src="model.js?v=20261102-1515"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-1500";
+const APP_VERSION = "20261102-1515";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -565,14 +565,16 @@ function why(c) { return `Cumplió ${c.h10[0]} de sus últimos ${c.h10[1]}` + (c
 // Why this prop: the reasons behind it, each marked as helping (+) or hurting (−) the pick
 function reasons(c) {
   const R = [], st = MK[c.m] ? MK[c.m].lbl : "", over = c.s === "over", g = games[c.g] || {};
-  if (c.h10 && c.h10[1]) { const marg = c.a10 == null ? 0 : (over ? 1 : -1) * (c.a10 - c.l);
+  if (c.h10 && c.h10[1]) { const typ = c.md10 != null ? c.md10 : c.a10, marg = typ == null ? 0 : (over ? 1 : -1) * (typ - c.l);
     const mix = c.nC != null && c.nC < c.h10[1] ? ` (${c.h10[1] - c.nC} de la temporada pasada)` : "";
-    R.push({w: 3, ok: c.h10[0] / c.h10[1] >= 0.6, t: `Tendencia: cumplió ${c.h10[0]} de sus últimos ${c.h10[1]}${mix}${c.a10 != null ? `; promedia ${c.a10} ${st} contra la línea de ${c.l}` : ""}${marg > 0 ? "" : " (el promedio no le da margen)"}`});
+    R.push({w: 3, ok: c.h10[0] / c.h10[1] >= 0.6, t: `Tendencia: cumplió ${c.h10[0]} de sus últimos ${c.h10[1]}${mix}${c.md10 != null ? `; lo normal en él es ${c.md10} ${st} (mediana) contra la línea de ${c.l}${c.a10 != null && Math.abs(c.a10 - c.md10) >= Math.max(1, c.l * 0.1) ? `; el promedio (${c.a10}) está ${c.a10 > c.md10 ? "inflado por una noche grande" : "jalado por una noche mala"}` : ""}` : c.a10 != null ? `; promedia ${c.a10} ${st} contra la línea de ${c.l}` : ""}${marg > 0 ? "" : " (no le da margen)"}`});
     if (c.hc && c.hc[1]) R.push({w: 2, ok: c.hc[0] / c.hc[1] >= 0.6, t: `Esta temporada: ${c.hc[0]} de ${c.hc[1]}${c.aC != null ? `, promedia ${c.aC}` : ""}`}); }
   if (c.chg) R.push({w: 3, ok: (c.chg > 0) === over, t: `Cambio de rol: este año promedia ${Math.abs(Math.round(c.chg * 100))}% ${c.chg > 0 ? "más" : "menos"} ${st} que la temporada pasada; pesa más lo de este año`});
   if (c.hp && c.hp[1] >= 10) R.push({w: 1, ok: c.hp[0] / c.hp[1] >= 0.55, t: `Temporada pasada: ${c.hp[0]} de ${c.hp[1]}`});
   const mk = MUKEY(c), mx = mk && muOf(c.o, mk);
   if (mx) { const top = mx.r <= 10, low = mx.r > mx.n - 10; if (top || low) { const ok = over === top; R.push({w: 2, ok, t: `Rival: ${esc(c.o)} es de las que ${top ? "más" : "menos"} permiten (${mx.r}.º de ${mx.n}), ${ok ? "ayuda" : "pesa en contra"}`}); } }
+  else if (c.sty && c.m === "PTS") { const z = ["triples", "dentro del arco (pintura y media distancia)", "tiros libres"], main = c.sty.sh.indexOf(Math.max(...c.sty.sh)), dz = Math.round((c.sty.def[main] - 1) * 100), p = Math.round((c.f - 1) * 100);
+    R.push({w: 2, ok: Math.abs(p) < 2 ? null : (p > 0) === over, t: `Rival por estilo: ${Math.round(c.sty.sh[main] * 100)}% de sus puntos salen de ${z[main]}, y ${esc(c.o)} permite ${Math.abs(dz)}% ${dz >= 0 ? "más" : "menos"} de lo normal ahí (triples ${Math.round((c.sty.def[0] - 1) * 100)}%, dentro del arco ${Math.round((c.sty.def[1] - 1) * 100)}%, tiros libres ${Math.round((c.sty.def[2] - 1) * 100)}% vs el promedio)`}); }
   else if (c.hd && c.f && Math.abs(c.f - 1) >= 0.03) { const p = Math.round((c.f - 1) * 100), ok = rivalFav(c) > 0;
     R.push({w: 2, ok, t: `Rival: ${esc(c.o)} permite ${Math.abs(p)}% ${p > 0 ? "más" : "menos"} ${st} de lo normal a ${POSPL[c.pos] || c.pos}`}); }
   if (c.envAdj >= 0.015 || c.envAdj <= -0.015) { const ok = c.envAdj > 0, env = g.env;

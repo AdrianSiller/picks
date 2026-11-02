@@ -35,11 +35,13 @@ const MUK = c => c.pos === "RB" && ["CAR", "RUSHYDS"].includes(c.m) ? "RBRUSHYDS
 function whyProp(sp, c, D, g, max) {
   const st = LBL[sp][c.m], over = c.s === "over", R = [], ok = b => b ? "✅" : "⚠️";
   if (c.h10 && c.h10[1]) { const mix = c.nC != null && c.nC < c.h10[1] ? ` (${c.h10[1] - c.nC} de la temporada pasada)` : "";
-    R.push({w: 3, t: `${ok(c.h10[0] / c.h10[1] >= 0.6)} Racha: cumplió ${c.h10[0]} de sus últimos ${c.h10[1]}${mix}${c.a10 != null ? `, promedia ${c.a10}` : ""}`}); }
+    R.push({w: 3, t: `${ok(c.h10[0] / c.h10[1] >= 0.6)} Racha: cumplió ${c.h10[0]} de sus últimos ${c.h10[1]}${mix}${c.md10 != null ? `, lo normal en él: ${c.md10}${c.a10 != null && Math.abs(c.a10 - c.md10) >= Math.max(1, c.l * 0.1) ? ` (promedio ${c.a10}, inflado por ${c.a10 > c.md10 ? "una noche grande" : "una noche mala"})` : ""}` : c.a10 != null ? `, promedia ${c.a10}` : ""}`}); }
   if (c.hc && c.hc[1] >= 3 && c.nC != null && c.nC < (c.h10 || [0, 0])[1]) R.push({w: 2, t: `${ok(c.hc[0] / c.hc[1] >= 0.6)} Esta temporada: ${c.hc[0]} de ${c.hc[1]}${c.aC != null ? `, promedia ${c.aC}` : ""}`});
   if (c.chg) R.push({w: 3, t: `${ok((c.chg > 0) === over)} Cambio de rol: este año promedia ${Math.abs(Math.round(c.chg * 100))}% ${c.chg > 0 ? "más" : "menos"} ${st} que el pasado`});
   const mk = sp === "NFL" && MUK(c), mu = mk && D.mu && D.mu[c.o];
   if (mu && mu.r[mk] != null && (mu.r[mk] <= 10 || mu.r[mk] > 22)) { const top = mu.r[mk] <= 10; R.push({w: 2, t: `${ok(over === top)} Rival: ${c.o} es de las defensas que ${top ? "más" : "menos"} permiten a ${POSPL[c.pos] || c.pos} (#${mu.r[mk]} de 32)`}); }
+  else if (c.sty && c.m === "PTS") { const z = ["triples", "dentro del arco (pintura y media)", "tiros libres"], main = c.sty.sh.indexOf(Math.max(...c.sty.sh)), dz = Math.round((c.sty.def[main] - 1) * 100), p = Math.round((c.f - 1) * 100);
+    R.push({w: 2, t: `${Math.abs(p) < 2 ? "➖" : ok((p > 0) === over)} Rival por estilo: ${Math.round(c.sty.sh[main] * 100)}% de sus puntos salen de ${z[main]} y ${c.o} permite ${Math.abs(dz)}% ${dz >= 0 ? "más" : "menos"} de lo normal ahí${Math.abs(Math.round((c.sty.fPos - 1) * 100)) >= 3 ? `; a su posición le permite ${Math.abs(Math.round((c.sty.fPos - 1) * 100))}% ${c.sty.fPos > 1 ? "más" : "menos"}` : ""}`}); }
   else if (c.f && Math.abs(c.f - 1) >= 0.03) { const p = Math.round((c.f - 1) * 100); R.push({w: 2, t: `${ok((p > 0) === over)} Rival: ${c.o} permite ${Math.abs(p)}% ${p > 0 ? "más" : "menos"} ${st} de lo normal a ${POSPL[c.pos] || c.pos}`}); }
   if (c.vm && c.vm !== 1) { const up = c.vm > 1, un = g && g.usage ? (c.h ? g.usage.h : g.usage.a) || [] : [];
     R.push({w: 3, t: `${ok(up === over)} ${sp === "NBA" ? `Minutos: se esperan ~${c.minExp} (normalmente ${c.min})` : `Volumen: ${up ? "sube" : "baja"} ~${Math.round(Math.abs(c.vm - 1) * 100)}%`}${un.length ? ` por ${un.join("; ")}` : ""}`}); }
