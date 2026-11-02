@@ -62,13 +62,16 @@ export async function buildNFL(now = new Date()) {
   // Box scores of every game this season -> yards and catches allowed by position
   const box = {};
   await pool([...new Set(Object.values(played).flat())], 8, async id => {
-    const s = await J(`${SITE}/summary?event=${id}`); if (!s) return; const o = {};
+    const s = await J(`${SITE}/summary?event=${id}`); if (!s) return; const o = {}, use = {};
     for (const t of (s.boxscore && s.boxscore.players) || []) {
-      const a = Object.fromEntries(MUKEYS.map(k => [k, 0]));
+      const a = Object.fromEntries(MUKEYS.map(k => [k, 0])), U = use[t.team.abbreviation] = {};
       for (const st of t.statistics || []) {
         const K = st.keys || [], col = k => K.findIndex(x => x === k || x.split("/").includes(k));
         for (const at of st.athletes || []) {
           const pos = (roster[at.athlete.id] || {}).pos, num = k => { const i = col(k); if (i < 0) return 0; const raw = String(at.stats[i]); return parseFloat((raw.includes("/") && k === "completions" ? raw.split("/")[0] : raw).replace(/,/g, "")) || 0; };
+          // Volume per player (targets and carries) for the usage model
+          if (st.name === "receiving") (U[at.athlete.id] = U[at.athlete.id] || {tg: 0, car: 0}).tg += num("receivingTargets");
+          if (st.name === "rushing") (U[at.athlete.id] = U[at.athlete.id] || {tg: 0, car: 0}).car += num("rushingAttempts");
           if (st.name === "rushing" && pos === "RB") a.RBRUSHYDS += num("rushingYards");
           if (st.name === "receiving" && ["RB", "WR", "TE"].includes(pos)) { a[pos + "RECYDS"] += num("receivingYards"); a[pos + "REC"] += num("receptions"); }
           if (st.name === "passing" && pos === "QB") a.QBPASSYDS += num("passingYards");
@@ -76,11 +79,11 @@ export async function buildNFL(now = new Date()) {
       }
       o[t.team.abbreviation] = a;
     }
-    box[id] = o;
+    box[id] = o; box[id].__use = use;
   });
   const allowed = {};
   for (const [ab, ids] of Object.entries(played)) { const a = Object.fromEntries(MUKEYS.map(k => [k, 0])); let n = 0;
-    for (const id of ids) { const b = box[id]; if (!b || !b[ab]) continue; const opp = Object.keys(b).find(k => k !== ab); if (!opp) continue; n++; MUKEYS.forEach(k => a[k] += b[opp][k]); }
+    for (const id of ids) { const b = box[id]; if (!b || !b[ab]) continue; const opp = Object.keys(b).find(k => k !== ab && k !== "__use"); if (!opp) continue; n++; MUKEYS.forEach(k => a[k] += b[opp][k]); }
     if (n) allowed[ab] = {n, a: Object.fromEntries(Object.entries(a).map(([k, v]) => [k, r1(v / n)]))}; }
   const mu = {};
   for (const k of MUKEYS.concat(["RBTOT"])) {
@@ -126,13 +129,42 @@ export async function buildNFL(now = new Date()) {
   const ids = [...new Set(props.map(p => p.aid))], logs = {};
   await pool(ids, 8, async id => { const [c, p] = await Promise.all([J(`${LOG}/${id}/gamelog`), J(`${LOG}/${id}/gamelog?season=${PREV}`)]); logs[id] = {c: parseLog(c), p: parseLog(p)}; });
 
+  // Usage model: each player's share of his team's targets and carries in the games he played. When a starter is out,
+  // his share goes to the active teammates (the WR2 becomes the WR1, the backup RB gets the carries); when a starter
+  // comes back, the others' share goes down. vm = expected volume today / his usual volume.
+  const usage = {};
+  for (const [ab, ids] of Object.entries(played)) {
+    const P = {}; let tgT = 0, carT = 0, n = 0, last = null;
+    for (const id of ids) { const U = box[id] && box[id].__use && box[id].__use[ab]; if (!U) continue; n++; last = U;
+      for (const [aid, v] of Object.entries(U)) { const q = P[aid] = P[aid] || {n: 0, tg: 0, car: 0}; q.n++; q.tg += v.tg; q.car += v.car; tgT += v.tg; carT += v.car; } }
+    usage[ab] = {P, n, tgG: n ? tgT / n : 0, carG: n ? carT / n : 0, last: last || {}};
+  }
+  const statusOf = aid => inj[aid] || (roster[aid] || {}).inj;
+  function teamUsage(ab) {
+    const T = usage[ab]; if (!T || !T.n) return null;
+    const ids = Object.keys(T.P).filter(aid => roster[aid] && roster[aid].t === ab && ["RB", "WR", "TE"].includes(roster[aid].pos));
+    const shT = aid => T.tgG ? T.P[aid].tg / T.P[aid].n / T.tgG : 0, shC = aid => T.carG ? T.P[aid].car / T.P[aid].n / T.carG : 0;
+    const active = ids.filter(aid => !SKIP.has(statusOf(aid)));
+    const sumT = active.reduce((s, a) => s + shT(a), 0), sumC = active.filter(a => roster[a].pos === "RB").reduce((s, a) => s + shC(a), 0);
+    const vm = {}, notes = [];
+    for (const a of active) vm[a] = {t: sumT ? M.clamp(1 / Math.max(sumT, 0.6), 0.75, 1.4) : 1, c: roster[a].pos === "RB" && sumC ? M.clamp(1 / Math.max(sumC, 0.5), 0.7, 1.5) : 1};
+    for (const a of ids.filter(a => SKIP.has(statusOf(a)))) { if (shT(a) >= 0.12) notes.push(`Sin ${roster[a].n} (${Math.round(shT(a) * 100)}% de los targets)`); else if (roster[a].pos === "RB" && shC(a) >= 0.25) notes.push(`Sin ${roster[a].n} (${Math.round(shC(a) * 100)}% de los acarreos)`); }
+    for (const a of active.filter(a => !T.last[a] && T.P[a].n >= 2 && (shT(a) >= 0.15 || (roster[a].pos === "RB" && shC(a) >= 0.3)))) notes.push(`Regresa ${roster[a].n} (no jugó el último partido)`);
+    return {vm, notes};
+  }
+  const TU = {}; games.forEach(g => [g.home.abbr, g.away.abbr].forEach(ab => { TU[ab] = teamUsage(ab); }));
+  games.forEach(g => { const nh = TU[g.home.abbr] && TU[g.home.abbr].notes, na = TU[g.away.abbr] && TU[g.away.abbr].notes; if ((nh && nh.length) || (na && na.length)) g.usage = {h: nh || [], a: na || []}; });
   const G = Object.fromEntries(games.map(g => [g.id, g])), all = [];
   for (const p of props) {
     const R = roster[p.aid], L = logs[p.aid]; if (!R || !L || !(POSOK[p.m] || []).includes(R.pos)) continue;
     const st = inj[p.aid] || R.inj; if (SKIP.has(st)) continue;
     const g = G[p.g], h = R.t === g.home.abbr; if (!h && R.t !== g.away.abbr) continue;
     const o = h ? g.away.abbr : g.home.abbr, cur = L.c, prev = L.p, both = cur.concat(prev); if (cur.length < 2) continue;
-    const V = VAL[p.m], vc = cur.map(V), vp = prev.map(V), vo = both.filter(r => r[1] === o).map(V);
+    // Volume today vs his usual: scale his past values when a teammate is out or back
+    const um = (TU[R.t] && TU[R.t].vm[p.aid]) || {t: 1, c: 1}, crB = avg(cur.map(r => r[5])) || 0, tgB = avg(cur.map(r => r[10])) || 0;
+    let vm = ["REC", "RECYDS"].includes(p.m) ? um.t : ["CAR", "RUSHYDS"].includes(p.m) ? um.c : p.m === "RRY" ? (crB + tgB ? (um.c * crB + um.t * tgB) / (crB + tgB) : 1) : 1;
+    if (Math.abs(vm - 1) < 0.08) vm = 1;
+    const V0 = VAL[p.m], V = r => V0(r) * vm, vc = cur.map(V), vp = prev.map(V), vo = both.filter(r => r[1] === o).map(V);
     const mk = muKey(R.pos, p.m), d = mk && mu[o], f = d ? M.defFactor(d.a[mk] / lgAvg[mk], d.n, 6) : 1;
     let best = null;
     for (const s of ["over", "under"]) {
@@ -145,8 +177,8 @@ export async function buildNFL(now = new Date()) {
       const envAdj = +((["CMP", "PASSYDS", "REC", "RECYDS", "RRY", "RUSHYDS"].includes(p.m) ? M.envAdj(te, s, 0.5) : 0) + script).toFixed(3);
       const pr = M.clamp(M.withDef(hs.pr0, s, f) + wadj + envAdj, 0.05, 0.95);
       const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, el: p.l, s, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: mk ? 1 : 0,
-        hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh, aC: avg(vc), a10: avg(both.slice(0, 10).map(V)), aP: avg(vp), aH: avg(vo),
-        sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, wind: wadj ? wind : 0, wadj, envAdj, q: st === "Questionable" ? 1 : 0, tg: avg(cur.map(r => r[10])) || 0, cr: avg(cur.map(r => r[5])) || 0, vc, vp, vo};
+        hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh, aC: avg(cur.map(V0)), a10: avg(both.slice(0, 10).map(V0)), aP: avg(prev.map(V0)), aH: avg(both.filter(r => r[1] === o).map(V0)),
+        sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, wind: wadj ? wind : 0, wadj, envAdj, q: st === "Questionable" ? 1 : 0, tg: +(tgB * um.t).toFixed(1), cr: +(crB * um.c).toFixed(1), vm: +vm.toFixed(2), vc, vp, vo};
       // Role: main = starting QB, WR/TE with 5+ targets a game, RB with 12+ carries (or 8+ carries and 3.5+ targets for catching props)
       const tgA = c.tg, crA = c.cr; c.role = R.pos === "QB" ? (avg(cur.map(r => r[7])) >= 12 ? 1 : 0) : ["WR", "TE"].includes(R.pos) ? (tgA >= 5 ? 1 : 0)
         : (crA >= 12 || (["REC", "RECYDS"].includes(p.m) && crA >= 8 && tgA >= 3.5) ? 1 : 0);
