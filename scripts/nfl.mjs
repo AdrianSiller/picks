@@ -144,11 +144,15 @@ export async function buildNFL(now = new Date()) {
     const T = usage[ab]; if (!T || !T.n) return null;
     const ids = Object.keys(T.P).filter(aid => roster[aid] && roster[aid].t === ab && ["RB", "WR", "TE"].includes(roster[aid].pos));
     const shT = aid => T.tgG ? T.P[aid].tg / T.P[aid].n / T.tgG : 0, shC = aid => T.carG ? T.P[aid].car / T.P[aid].n / T.carG : 0;
-    const active = ids.filter(aid => !SKIP.has(statusOf(aid)));
-    const sumT = active.reduce((s, a) => s + shT(a), 0), sumC = active.filter(a => roster[a].pos === "RB").reduce((s, a) => s + shC(a), 0);
+    // Players already out last game are left out of the base: their teammates' recent numbers already show it
+    // Base = who played the last game; active = who plays today. A new absence lowers the active share (the rest gain),
+    // a starter coming back raises it (the rest lose)
+    const base = ids.filter(aid => T.last[aid]), active = ids.filter(aid => !SKIP.has(statusOf(aid)));
+    const norm = (list, f) => list.reduce((s, a) => s + f(a), 0);
+    const sumT = norm(active, shT) / (norm(base, shT) || 1), sumC = norm(active.filter(a => roster[a].pos === "RB"), shC) / (norm(base.filter(a => roster[a].pos === "RB"), shC) || 1);
     const vm = {}, notes = [];
     for (const a of active) vm[a] = {t: sumT ? M.clamp(1 / Math.max(sumT, 0.6), 0.75, 1.4) : 1, c: roster[a].pos === "RB" && sumC ? M.clamp(1 / Math.max(sumC, 0.5), 0.7, 1.5) : 1};
-    for (const a of ids.filter(a => SKIP.has(statusOf(a)))) { if (shT(a) >= 0.12) notes.push(`Sin ${roster[a].n} (${Math.round(shT(a) * 100)}% de los targets)`); else if (roster[a].pos === "RB" && shC(a) >= 0.25) notes.push(`Sin ${roster[a].n} (${Math.round(shC(a) * 100)}% de los acarreos)`); }
+    for (const a of ids.filter(a => SKIP.has(statusOf(a)) && T.last[a])) { if (shT(a) >= 0.12) notes.push(`Sin ${roster[a].n} (${Math.round(shT(a) * 100)}% de los targets)`); else if (roster[a].pos === "RB" && shC(a) >= 0.25) notes.push(`Sin ${roster[a].n} (${Math.round(shC(a) * 100)}% de los acarreos)`); }
     for (const a of active.filter(a => !T.last[a] && T.P[a].n >= 2 && (shT(a) >= 0.15 || (roster[a].pos === "RB" && shC(a) >= 0.3)))) notes.push(`Regresa ${roster[a].n} (no jugó el último partido)`);
     return {vm, notes};
   }

@@ -96,8 +96,8 @@ export async function buildNBA(now = new Date()) {
   // Scoring environment: game total vs the average total of today's teams this season
   const allRows = Object.values(teams).flatMap(T => T.cur), lgTot = allRows.length ? allRows.reduce((s, r) => s + r[3] + r[4], 0) / allRows.length : 225;
   games.forEach(g => { const t = Number(g.lines.total); if (t) g.env = {total: t, avg: Math.round(lgTot * 10) / 10, env: +((t - lgTot) / lgTot).toFixed(3)}; });
-  // Minutes model: when a rotation player is out, his minutes go to active teammates (70% same position group,
-  // 30% the neighbouring one), up to +8 each and 38 in total; when a regular comes back after missing the last game,
+  // Minutes model: when a rotation player is newly out, part of his minutes go to active teammates (mostly his own
+  // position group, some to the neighbouring one), up to +6 each and 38 in total; when a regular comes back after missing the last game,
   // teammates of his position give some back. vm = expected minutes today / his usual minutes.
   const grp = {G: ["G", "F"], F: ["F", "G", "C"], C: ["C", "F"]};
   const known = Object.entries(logs).map(([id, L]) => ({id, R: roster[id], min: avg((L.c.length ? L.c : L.p.slice(0, 20)).map(r => r[3])) || 0, lastD: (L.c[0] || [])[0]})).filter(x => x.R && x.min >= 12);
@@ -106,8 +106,10 @@ export async function buildNBA(now = new Date()) {
     const team = known.filter(x => x.R.t === ab), lastTeam = ((teams[ab] || {}).cur || []).slice(-1)[0];
     const out = team.filter(x => (inj[x.id] || x.R.inj) === "Out"), act = team.filter(x => (inj[x.id] || x.R.inj) !== "Out");
     const add = Object.fromEntries(act.map(x => [x.id, 0]));
-    for (const o of out.filter(o => o.min >= 15)) {
-      for (const [k, w] of [[0, 0.7], [1, 0.3]]) { const pos = grp[o.R.pos][k]; if (!pos) continue; const rec = act.filter(x => x.R.pos === pos), tot = rec.reduce((s, x) => s + x.min, 0);
+    // Only new absences: if he already missed the team's last game, his teammates' recent minutes already show it.
+    // 60% of his minutes are shared among the players we track (the rest goes to the deep bench).
+    for (const o of out.filter(o => o.min >= 15 && lastTeam && o.lastD === lastTeam[0])) {
+      for (const [k, w] of [[0, 0.42], [1, 0.18]]) { const pos = grp[o.R.pos][k]; if (!pos) continue; const rec = act.filter(x => x.R.pos === pos), tot = rec.reduce((s, x) => s + x.min, 0);
         rec.forEach(x => { add[x.id] += o.min * w * x.min / (tot || 1); }); }
       (minNotes[ab] = minNotes[ab] || []).push(`Sin ${o.R.n} (${Math.round(o.min)} min por juego)`);
     }
@@ -116,7 +118,7 @@ export async function buildNBA(now = new Date()) {
       rec.forEach(x => { add[x.id] -= Math.min(6, b.min * 0.5 * x.min / (tot || 1)); });
       (minNotes[ab] = minNotes[ab] || []).push(`Regresa ${b.R.n} (no jugó el último partido)`);
     }
-    act.forEach(x => { const a = M.clamp(add[x.id], -6, 8), nm = Math.min(38, x.min + a); MV[x.id] = x.min ? nm / x.min : 1; });
+    act.forEach(x => { const a = M.clamp(add[x.id], -6, 6), nm = Math.min(38, x.min + a); MV[x.id] = x.min ? nm / x.min : 1; });
   }
   games.forEach(g => { const nh = minNotes[g.home.abbr], na = minNotes[g.away.abbr]; if (nh || na) g.usage = {h: nh || [], a: na || []}; });
   const G = Object.fromEntries(games.map(g => [g.id, g])), all = [];
