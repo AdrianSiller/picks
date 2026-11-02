@@ -218,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 3:30 p.m.</footer>
-<script src="model.js?v=20261102-1530"></script>
+<footer class="ver">Versión de la app: 2 nov 3:45 p.m.</footer>
+<script src="model.js?v=20261102-1545"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-1530";
+const APP_VERSION = "20261102-1545";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -587,6 +587,7 @@ function reasons(c) {
   else if (un.length) R.push({w: 1, ok: null, t: `Cambios en ${esc(c.t)}: ${un.map(esc).join("; ")}. A él casi no le mueve el volumen`});
   if (c.mv) R.push({w: 3, ok: c.mv > 0, t: c.mv < 0 ? `Movimiento de línea: abrió en ${c.ol}${c.ol === c.l ? ` a ${fx(c.op)} y ahora paga ${fx(c.p)}` : ` y ahora está en ${c.l}`}. Cuando la casa mueve así, casi siempre sabe algo (lesión, rol, dinero fuerte): le bajamos 3 puntos` : `Movimiento de línea: abrió en ${c.ol}${c.ol === c.l ? ` a ${fx(c.op)}` : ""} y se movió a favor (ahora ${c.l} a ${fx(c.p)}): el mercado coincide con el pick`});
   if (c.us && c.us > 1) R.push({w: 3, ok: over, t: `${{PTS: "Más tiros", "3PM": "Más triples intentados", AST: "Más balón para repartir"}[c.m] || "Más volumen"}: ${un.length ? un.filter(x => /^Sin /.test(x)).map(esc).join("; ") : "baja nueva en su equipo"}; además de los minutos, se le reparten ~${Math.round((c.us - 1) * 100)}% más ${st}`});
+  if (c.sf && c.sf !== 1) R.push({w: 2, ok: (c.sf > 1) === over, t: `Marcador esperado: ${esc(c.t)} ${c.spr < 0 ? "favorito" : "underdog"} por ${Math.abs(c.spr)}. ${c.spr < 0 ? "El que va ganando corre más para gastar reloj" : "El que va perdiendo pasa más para alcanzar"}: su volumen ${c.sf > 1 ? "sube" : "baja"} ~${Math.abs(Math.round((c.sf - 1) * 100))}%`});
   if (c.pace && c.pace !== 1) R.push({w: 1, ok: (c.pace > 1) === over, t: `Ritmo: partido ${c.pace > 1 ? "más rápido" : "más lento"} de lo que suele jugar su equipo (${c.pace > 1 ? "+" : "−"}${Math.abs(Math.round((c.pace - 1) * 100))}% posesiones): ${c.pace > 1 ? "más" : "menos"} oportunidades para todos`});
   if (c.ven && c.ven !== 1) R.push({w: 1, ok: (c.ven > 1) === over, t: `Rinde ${Math.abs(Math.round((c.ven - 1) * 100))}% ${c.ven > 1 ? "más" : "menos"} ${c.h ? "de local" : "de visitante"} que en general`});
   if (c.wind) R.push({w: 1, ok: !over, t: `Viento de ${c.wind} mph en el partido`});

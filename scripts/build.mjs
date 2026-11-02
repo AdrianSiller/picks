@@ -38,7 +38,11 @@ if (runSgo && key) {
 } else {
   // Carry prices from the previous build when the props and lines match
   const old = new Map(((prev.nfl || {}).cands || []).filter(c => c.p).map(c => [c.aid + c.m + c.s, c]));
-  for (const c of nfl.cands) { const o = old.get(c.aid + c.m + c.s); if (o && !c.p && (o.l === c.l || o.moved === c.l)) Object.assign(c, {p: o.p, bk: o.bk, l: o.l, moved: o.moved, pr: o.pr, imp: o.imp, e: o.e}); }
+  // Only the price and the book's line are carried; the probability is recomputed fresh at that line
+  // (carrying it would re-apply calibration and line movement on every build)
+  for (const c of nfl.cands) { const o = old.get(c.aid + c.m + c.s); if (!(o && !c.p && (o.l === c.l || o.moved === c.l))) continue;
+    Object.assign(c, {p: o.p, bk: o.bk, l: o.l, moved: o.moved}); const r = M.repricePr({...c, calAdj: 0, mvAdj: 0}, c.l);
+    Object.assign(c, {hc: r.hc, h10: r.h10, hp: r.hp, hh: r.hh, pr0: +r.pr0.toFixed(3), pr: +r.pr.toFixed(3), imp: +(1 / c.p).toFixed(3), e: +(r.pr - 1 / c.p).toFixed(3)}); }
   const og = new Map(((prev.soc || {}).games || []).map(g => [g.id, g]));
   for (const g of soc.games) { const o = og.get(g.id); if (o) { if (o.btts) g.btts = o.btts; if (o.corn) g.corn = o.corn; } }
 }

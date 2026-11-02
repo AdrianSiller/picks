@@ -180,7 +180,12 @@ export async function buildNFL(now = new Date()) {
     const um = (TU[R.t] && TU[R.t].vm[p.aid]) || {t: 1, c: 1}, crB = avg(cur.map(r => r[5])) || 0, tgB = avg(cur.map(r => r[10])) || 0;
     let vm = ["REC", "RECYDS"].includes(p.m) ? um.t : ["CAR", "RUSHYDS"].includes(p.m) ? um.c : p.m === "RRY" ? (crB + tgB ? (um.c * crB + um.t * tgB) / (crB + tgB) : 1) : 1;
     if (Math.abs(vm - 1) < 0.08) vm = 1;
-    const V0 = VAL[p.m], V = r => V0(r) * vm, vc = cur.map(V), vp = prev.map(V), vo = both.filter(r => r[1] === o).map(V);
+    // Game script: the favorite runs more to burn clock, the underdog throws more chasing the score.
+    // Rushing volume ±1.2% per point of spread (max ±12%); passing volume ∓0.6% per point (max ±6%).
+    const tsp0 = h ? Number(g.lines.spreadHome) : Number(g.lines.spreadAway), rushF = isNaN(tsp0) ? 1 : M.clamp(1 - 0.012 * tsp0, 0.88, 1.12), passF = isNaN(tsp0) ? 1 : M.clamp(1 + 0.006 * tsp0, 0.94, 1.06);
+    let sf = ["CAR", "RUSHYDS"].includes(p.m) ? rushF : ["CMP", "PASSYDS", "REC", "RECYDS"].includes(p.m) ? passF : p.m === "RRY" ? (crB + tgB ? (rushF * crB + passF * tgB) / (crB + tgB) : 1) : 1;
+    if (Math.abs(sf - 1) < 0.02) sf = 1;
+    const V0 = VAL[p.m], V = r => V0(r) * vm * sf, vc = cur.map(V), vp = prev.map(V), vo = both.filter(r => r[1] === o).map(V);
     const mk = muKey(R.pos, p.m), d = mk && mu[o], f = d ? M.defFactor(d.a[mk] / lgAvg[mk], d.n, 6) : 1;
     let best = null;
     for (const s of ["over", "under"]) {
@@ -189,12 +194,12 @@ export async function buildNFL(now = new Date()) {
       const wadj = PASSM.has(p.m) && wind >= 15 ? (s === "over" ? (wind >= 20 ? -0.07 : -0.04) : (wind >= 20 ? 0.04 : 0.02)) : 0;
       // Team expected to score a lot -> overs; game script: big favorites run more, big underdogs throw more
       const te = g.env ? (h ? g.env.eh : g.env.ea) : 0, tsp = h ? Number(g.lines.spreadHome) : Number(g.lines.spreadAway);
-      const script = R.pos === "RB" && ["CAR", "RUSHYDS"].includes(p.m) && !isNaN(tsp) ? (tsp <= -6 ? 0.02 : tsp >= 6 ? -0.02 : 0) * (s === "under" ? -1 : 1) : 0;
+      const script = 0; // game script now scales the volume itself (sf)
       const envAdj = +((["CMP", "PASSYDS", "REC", "RECYDS", "RRY", "RUSHYDS"].includes(p.m) ? M.envAdj(te, s, 0.5) : 0) + script).toFixed(3);
       const pr = M.clamp(M.withDef(hs.pr0, s, f) + wadj + envAdj, 0.05, 0.95);
       const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, el: p.l, s, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: mk ? 1 : 0, chg: hs.chg, nC: vc.length,
         hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh, aC: avg(cur.map(V0)), a10: avg(both.slice(0, 10).map(V0)), md10: med(both.slice(0, 10).map(V0)), aP: avg(prev.map(V0)), aH: avg(both.filter(r => r[1] === o).map(V0)),
-        sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, wind: wadj ? wind : 0, wadj, envAdj, q: st === "Questionable" ? 1 : 0, tg: +(tgB * um.t).toFixed(1), cr: +(crB * um.c).toFixed(1), vm: +vm.toFixed(2), vc, vp, vo};
+        sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, wind: wadj ? wind : 0, wadj, envAdj, q: st === "Questionable" ? 1 : 0, tg: +(tgB * um.t).toFixed(1), cr: +(crB * um.c).toFixed(1), vm: +vm.toFixed(2), sf: +sf.toFixed(3), spr: isNaN(tsp0) ? null : tsp0, vc, vp, vo};
       // Role: main = starting QB, WR/TE with 5+ targets a game, RB with 12+ carries (or 8+ carries and 3.5+ targets for catching props)
       const tgA = c.tg, crA = c.cr; c.role = R.pos === "QB" ? (avg(cur.map(r => r[7])) >= 12 ? 1 : 0) : ["WR", "TE"].includes(R.pos) ? (tgA >= 5 ? 1 : 0)
         : (crA >= 12 || (["REC", "RECYDS"].includes(p.m) && crA >= 8 && tgA >= 3.5) ? 1 : 0);
