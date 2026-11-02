@@ -53,7 +53,7 @@ function view(B, key) {
   const [a, b, c] = key.split(":"), back = (to, lbl = "⬅️ Atrás") => [btn(lbl, to), btn("🏠 Inicio", "home")];
   if (key === "home") return {text: "¿De qué quieres los picks?", kb: HOME};
   if (a === "res" && b === "d") return {send: B.resd, after: "home"};
-  if (a === "res") return B.resd ? {send: B.res, after: "res:menu"} : {send: B.res, after: "home"};
+  if (a === "res") return B.resd ? {send: B.res, after: "res:menu", imgs: B.resImg} : {send: B.res, after: "home"};
   if (key === "res:menu") return {text: "¿Quieres ver los picks uno por uno?", kb: {inline_keyboard: [[btn("📋 Ver los picks del último día", "res:d")], ...HOME.inline_keyboard]}};
   if (a === "nba" || a === "nfl") {
     const D = B[a], name = a === "nba" ? "🏀 NBA" : "🏈 NFL";
@@ -214,6 +214,8 @@ async function handle(env, chat, key, editId) {
     return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: keyb}), "el menú");
   }
   if (v.send) {
+    // Charts first (if the chart service fails, the text still goes)
+    if (v.imgs && v.imgs.length) { const r = await tg(env, "sendMediaGroup", {chat_id: chat, media: v.imgs.map(u => ({type: "photo", media: u}))}); if (!r.ok) for (const u of v.imgs) await tg(env, "sendPhoto", {chat_id: chat, photo: u}); }
     await sendLong(env, chat, v.send + "\n\n" + B.foot);
     const next = view(B, v.after), kb = next.kb || HOME;
     const keyb = {inline_keyboard: [...(v.live && B.v >= 3 ? [[btn("🔄 Revisar en vivo (bajas y alineaciones)", `chk:${v.live}`)]] : []),

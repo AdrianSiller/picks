@@ -165,6 +165,26 @@ function record(R) {
     "", "<i>u = unidades: 1 por pick con el momio de DraftKings.</i>"].filter(x => x != null).join("\n");
 }
 
+// Charts for "Cómo nos fue" (rendered by quickchart.io from the URL; Telegram downloads the image)
+function charts(R) {
+  const days = (R.days || []).filter(d => d.items.some(x => x.hit === 0 || x.hit === 1)).slice(0, 14).reverse(); if (!days.length) return null;
+  const done = x => x.hit === 0 || x.hit === 1, items = days.flatMap(d => d.items.filter(done).map(x => ({...x, date: d.date})));
+  const groups = [["NBA props", x => x.sport === "NBA" && x.kind === "prop"], ["NBA ML/spread", x => x.sport === "NBA" && x.kind === "game"], ["NFL props", x => x.sport === "NFL" && x.kind === "prop"], ["NFL ML/spread", x => x.sport === "NFL" && x.kind === "game"], ["Soccer", x => x.sport === "SOC"]]
+    .map(([n, f]) => { const a = items.filter(f), w = a.filter(x => x.hit).length; return {n, a, w}; }).filter(g => g.a.length);
+  const url = (c, w = 640, h = 380) => `https://quickchart.io/chart?w=${w}&h=${h}&bkg=white&c=${encodeURIComponent(JSON.stringify(c))}`;
+  const bar = {type: "horizontalBar", data: {labels: groups.map(g => `${g.n} (${g.w}/${g.a.length})`), datasets: [{data: groups.map(g => Math.round(g.w / g.a.length * 100)),
+    backgroundColor: groups.map(g => g.w / g.a.length >= 0.55 ? "#2e9e5b" : g.w / g.a.length >= 0.5 ? "#e0a020" : "#d9534f")}]},
+    options: {layout: {padding: {right: 40}}, legend: {display: false}, title: {display: true, text: `% de acierto · últimos ${days.length} días`, fontSize: 16},
+      scales: {xAxes: [{ticks: {min: 0, max: 100, callback: "(v) => v + '%'"}}]}, plugins: {datalabels: {anchor: "end", align: "end", color: "#333", formatter: "(v) => v + '%'"}}}};
+  const SP = [["NBA", "#d9561a"], ["NFL", "#2f6fb3"], ["SOC", "#2e9e5b"]], lbl = days.map(d => new Date(d.date + "T12:00:00").toLocaleDateString("es-MX", {day: "numeric", month: "short"}));
+  const line = {type: "line", data: {labels: lbl, datasets: SP.filter(([sp]) => items.some(x => x.sport === sp)).map(([sp, col]) => { let acc = 0;
+    return {label: sp === "SOC" ? "Soccer" : sp, fill: false, lineTension: 0, pointRadius: 4, borderColor: col, backgroundColor: col, data: days.map(d => { d.items.filter(x => x.sport === sp && done(x)).forEach(x => acc += x.hit ? (x.p || 1.91) - 1 : -1); return +acc.toFixed(2); })}; })},
+    options: {plugins: {datalabels: {display: false}}, title: {display: true, text: "Unidades acumuladas (1 u por pick)", fontSize: 16}, scales: {yAxes: [{ticks: {callback: "(v) => (v > 0 ? '+' : '') + v + ' u'"}}]}}};
+  // Functions as strings are evaluated by quickchart
+  const fix = s => s.replace(/"\((v)\) => ([^"]*)"/g, (m, a, b) => `(v) => ${b.replace(/\\'/g, "'")}`);
+  return [url(bar).replace(/c=.*/, m => "c=" + encodeURIComponent(fix(JSON.stringify(bar)))), url(line).replace(/c=.*/, m => "c=" + encodeURIComponent(fix(JSON.stringify(line))))];
+}
+
 function results(R) {
   const day = (R.days || []).find(d => d.items.some(x => x.hit === 0 || x.hit === 1)); if (!day) return "Todavía no hay resultados calificados.";
   const NAME = {NBA: "🏀 NBA", NFL: "🏈 NFL", SOC: "⚽ Soccer"}, L = [`<b>Cómo nos fue el ${new Date(day.date + "T12:00:00").toLocaleDateString("es-MX", {day: "numeric", month: "short"})}</b>`];
@@ -181,7 +201,7 @@ export function botData(latest, R, now) {
   const at = new Date(latest.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
   BETS = {};
   const out = {v: 3, generatedAt: latest.generatedAt, foot: `<i>Datos de las ${at} · antes de apostar dale ↻ Actualizar en la app</i>`,
-    nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: record(R), resd: results(R)};
+    nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: record(R), resd: results(R), resImg: charts(R)};
   out.bets = BETS;
   return out;
 }
