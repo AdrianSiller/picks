@@ -28,7 +28,54 @@ function parlay(top) {
   }
   return best;
 }
-const propLine = (sp, c, i) => `${i != null ? `${i + 1}. ` : "• "}<b>${esc(c.n)}</b> (${esc(c.t)}) · ${propLbl(sp, c)} · <b>${fx(c.p)}</b> · ${pct(c.pr)}${c.q ? " ⚠️ en duda" : ""}` +
+// Why each pick: the same reasons as the app, ✅ = supports the pick, ⚠️ = goes against it
+const POSPL = {G: "bases y escoltas", F: "aleros", C: "centros", WR: "WR", TE: "TE", RB: "RB", QB: "QB"};
+const MUK = c => c.pos === "RB" && ["CAR", "RUSHYDS"].includes(c.m) ? "RBRUSHYDS" : ["RB", "WR", "TE"].includes(c.pos) && ["REC", "RECYDS"].includes(c.m) ? c.pos + c.m : c.pos === "QB" && ["CMP", "PASSYDS"].includes(c.m) ? "QBPASSYDS" : null;
+function whyProp(sp, c, D, g, max) {
+  const st = LBL[sp][c.m], over = c.s === "over", R = [], ok = b => b ? "✅" : "⚠️";
+  if (c.h10 && c.h10[1]) { const mix = c.nC != null && c.nC < c.h10[1] ? ` (${c.h10[1] - c.nC} de la temporada pasada)` : "";
+    R.push({w: 3, t: `${ok(c.h10[0] / c.h10[1] >= 0.6)} Racha: cumplió ${c.h10[0]} de sus últimos ${c.h10[1]}${mix}${c.a10 != null ? `, promedia ${c.a10}` : ""}`}); }
+  if (c.hc && c.hc[1] >= 3 && c.nC != null && c.nC < (c.h10 || [0, 0])[1]) R.push({w: 2, t: `${ok(c.hc[0] / c.hc[1] >= 0.6)} Esta temporada: ${c.hc[0]} de ${c.hc[1]}${c.aC != null ? `, promedia ${c.aC}` : ""}`});
+  if (c.chg) R.push({w: 3, t: `${ok((c.chg > 0) === over)} Cambio de rol: este año promedia ${Math.abs(Math.round(c.chg * 100))}% ${c.chg > 0 ? "más" : "menos"} ${st} que el pasado`});
+  const mk = sp === "NFL" && MUK(c), mu = mk && D.mu && D.mu[c.o];
+  if (mu && mu.r[mk] != null && (mu.r[mk] <= 10 || mu.r[mk] > 22)) { const top = mu.r[mk] <= 10; R.push({w: 2, t: `${ok(over === top)} Rival: ${c.o} es de las defensas que ${top ? "más" : "menos"} permiten a ${POSPL[c.pos] || c.pos} (#${mu.r[mk]} de 32)`}); }
+  else if (c.f && Math.abs(c.f - 1) >= 0.03) { const p = Math.round((c.f - 1) * 100); R.push({w: 2, t: `${ok((p > 0) === over)} Rival: ${c.o} permite ${Math.abs(p)}% ${p > 0 ? "más" : "menos"} ${st} de lo normal a ${POSPL[c.pos] || c.pos}`}); }
+  if (c.vm && c.vm !== 1) { const up = c.vm > 1, un = g && g.usage ? (c.h ? g.usage.h : g.usage.a) || [] : [];
+    R.push({w: 3, t: `${ok(up === over)} ${sp === "NBA" ? `Minutos: se esperan ~${c.minExp} (normalmente ${c.min})` : `Volumen: ${up ? "sube" : "baja"} ~${Math.round(Math.abs(c.vm - 1) * 100)}%`}${un.length ? ` por ${un.join("; ")}` : ""}`}); }
+  if (c.us && c.us > 1) R.push({w: 3, t: `${ok(over)} Más tiros por las bajas de su equipo: ~${Math.round((c.us - 1) * 100)}% más ${st}`});
+  if (c.envAdj >= 0.015 || c.envAdj <= -0.015) { const good = c.envAdj > 0, env = g && g.env;
+    R.push({w: 2, t: `${ok(good)} ${c.blow && !good ? "Spread grande: riesgo de paliza y menos minutos al final" : `Tipo de partido: ${env ? (sp === "NBA" ? `total ${env.total} contra ${env.avg} de promedio` : `su equipo espera ${c.h ? env.h : env.a} puntos`) : ""} (${good === over ? "a favor" : "en contra"})`}`.replace(" ()", "")}); }
+  if (c.mv) R.push({w: 3, t: c.mv < 0 ? `⚠️ La línea se movió en contra (abrió en ${c.ol})` : `✅ La línea se movió a favor (abrió en ${c.ol})`});
+  if (c.hh && c.hh[1] >= 2) R.push({w: 1, t: `${ok(c.hh[0] / c.hh[1] >= 0.5)} Contra ${c.o}: ${c.hh[0]} de ${c.hh[1]}`});
+  if (c.wind) R.push({w: 1, t: `${ok(!over)} Viento de ${c.wind} mph`});
+  if (c.b2b) R.push({w: 1, t: `${ok(!over)} Segunda noche seguida`});
+  return R.sort((a, b) => b.w - a.w).slice(0, max).map(r => `   ${esc(r.t)}`);
+}
+// Soccer: form and goals of each team in its last 10 (league and continental) matches
+function whySoc(S, g, c, B) {
+  const rows = ab => (S.teams[ab] || []).filter(r => !r[8]).slice(0, 10), H = rows(g.home.abbr), A = rows(g.away.abbr), R = [];
+  const form = r => { const w = r.filter(x => x[4] > x[5]).length, d = r.filter(x => x[4] === x[5]).length; return `${w}G ${d}E ${r.length - w - d}P`; };
+  const cnt = (r, f) => `${r.filter(f).length} de ${r.length}`;
+  const avg = (r, f) => r.length ? (r.reduce((s, x) => s + f(x), 0) / r.length).toFixed(1) : "–";
+  if (c.k === "btts") R.push(`Ambos anotaron en ${cnt(H, x => x[4] > 0 && x[5] > 0)} de ${g.home.abbr} y ${cnt(A, x => x[4] > 0 && x[5] > 0)} de ${g.away.abbr}`);
+  else if (c.k === "tot") R.push(`Más de ${c.line} goles en ${cnt(H, x => x[4] + x[5] > c.line)} de ${g.home.abbr} y ${cnt(A, x => x[4] + x[5] > c.line)} de ${g.away.abbr} (promedian ${avg(H, x => x[4] + x[5])} y ${avg(A, x => x[4] + x[5])} goles por partido)`);
+  else if (c.k === "tt") { const mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, ab = c.team === "H" ? g.home.abbr : g.away.abbr, ob = c.team === "H" ? g.away.abbr : g.home.abbr;
+    R.push(`${ab} mete ${avg(mine, x => x[4])} goles por partido; ${ob} recibe ${avg(opp, x => x[5])}`); }
+  else if (c.k === "cor") R.push(`Corners esperados: ${(B && B.lc ? B.lc.toFixed(1) : "–")}`);
+  else R.push(`Forma: ${g.home.abbr} ${form(H)} (dif. ${avg(H, x => x[4] - x[5])}) · ${g.away.abbr} ${form(A)} (dif. ${avg(A, x => x[4] - x[5])})`);
+  if (c.pm != null && c.mk != null) R.push(`Modelo ${pct(c.pm)} · casa ${pct(c.mk)}: ${Math.abs(c.pm - c.mk) <= 0.05 ? "coinciden" : c.pm > c.mk ? "el modelo lo ve un poco más probable que la casa" : "la casa lo ve más probable que el modelo"}`);
+  return R.map(t => `   ${esc(t)}`);
+}
+// Game pick (NBA / NFL): projection vs the line, form and absences
+function whyGame(g, m) {
+  const fav = m.margin >= 0 ? g.home.abbr : g.away.abbr, L = [];
+  L.push(`Proyectamos ${fav} por ~${Math.abs(m.margin).toFixed(1)} pts${g.lines && g.lines.spreadHome != null ? ` (spread de la casa: ${g.home.abbr} ${g.lines.spreadHome})` : ""}`);
+  L.push(`Récord: ${g.away.abbr} ${m.A.w}-${m.A.l} (dif. ${m.A.diff >= 0 ? "+" : ""}${m.A.diff.toFixed(1)}) · ${g.home.abbr} ${m.H.w}-${m.H.l} (dif. ${m.H.diff >= 0 ? "+" : ""}${m.H.diff.toFixed(1)})`);
+  if (m.H.inj || m.A.inj) L.push(`Bajas: ${[[g.away.abbr, m.A.inj], [g.home.abbr, m.H.inj]].filter(x => x[1]).map(x => `${x[0]} −${x[1]} pts`).join(" · ")}`);
+  if (g.rest && (g.rest.h === 1 || g.rest.a === 1)) L.push(`Segunda noche seguida: ${[g.rest.a === 1 ? g.away.abbr : null, g.rest.h === 1 ? g.home.abbr : null].filter(Boolean).join(" y ")}`);
+  return L.map(t => `   ${esc(t)}`);
+}
+const propLine = (sp, c, i, brief) => brief ? `${i != null ? `${i + 1}. ` : "• "}<b>${esc(c.n)}</b> (${esc(c.t)}) · ${propLbl(sp, c)} · <b>${fx(c.p)}</b> · ${pct(c.pr)}${c.q ? " ⚠️ en duda" : ""}` : `${i != null ? `${i + 1}. ` : "• "}<b>${esc(c.n)}</b> (${esc(c.t)}) · ${propLbl(sp, c)} · <b>${fx(c.p)}</b> · ${pct(c.pr)}${c.q ? " ⚠️ en duda" : ""}` +
   (c.mv === -1 ? `\n   📉 <i>la línea se movió en contra (abrió en ${c.ol})</i>` : c.mv === 1 ? `\n   📈 <i>la línea se movió a favor (abrió en ${c.ol})</i>` : "") + (c.h10 ? `\n   <i>cumplió ${c.h10[0]} de ${c.h10[1]}${c.hc && c.hc[1] ? `, esta temporada ${c.hc[0]} de ${c.hc[1]}` : ""}</i>` : "");
 
 function players(sp, D, now, hours) {
@@ -37,7 +84,7 @@ function players(sp, D, now, hours) {
   if (!games.length) return null;
   const cands = D.cands.filter(c => soon(G[c.g])), top = M.topPicks(cands, sp), cfg = M.CFG[sp];
   const model = g => D.teams[g.home.abbr] && D.teams[g.away.abbr] ? M.gameModel(g, {...cfg, teams: D.teams, outs: D.outs || {}}) : null;
-  const topTxt = [`<b>${icon} · Top ${top.length}</b>`, "", ...top.map((c, i) => propLine(sp, c, i))];
+  const topTxt = [`<b>${icon} · Top ${top.length}</b>`, "", ...top.flatMap((c, i) => [propLine(sp, c, i, true), ...whyProp(sp, c, D, G[c.g], 2), ""])];
   const pl = parlay(top);
   if (pl) topTxt.push("", `<b>Parlay más sólido</b>: ${pl.legs.map(c => `${esc(c.n)} ${propLbl(sp, c)}`).join(" + ")} · ${fx(pl.legs[0].p * pl.legs[1].p)} · ${pct(pl.p)}`);
   const mlRows = [], gameList = [], mlBets = [], topBets = top.map(c => propBet(sp, c, G[c.g].date));
@@ -48,13 +95,13 @@ function players(sp, D, now, hours) {
     const props = []; const seen = new Set();
     for (const c of D.cands.filter(c => c.g === g.id && !M.fails(c, sp)).sort((a, b) => M.score(b, sp) - M.score(a, sp))) { if (seen.has(c.aid)) continue; seen.add(c.aid); props.push(c); if (props.length === 8) break; }
     const L = [`<b>${esc(g.away.name)} @ ${esc(g.home.name)}</b>`, hora(g.date), ""];
-    if (m && m.play) L.push(`🎯 <b>Pick de partido</b>: ${esc(gameLbl(m.best.lbl))} · <b>${fx(m.best.price)}</b> · ${pct(m.best.p)}`);
+    if (m && m.play) L.push(`🎯 <b>Pick de partido</b>: ${esc(gameLbl(m.best.lbl))} · <b>${fx(m.best.price)}</b> · ${pct(m.best.p)}`, ...whyGame(g, m));
     else if (m) L.push(`🎯 Sin pick sólido de ML o spread (proyectamos casi lo mismo que la casa).`);
     if (m && m.value) L.push(`💸 Opción de valor (arriesgada): ${esc(gameLbl(m.value.lbl))} · ${fx(m.value.price)} · ${pct(m.value.p)}`);
     const L0 = g.lines || {}; if (L0.total) L.push(`Total ${L0.total} · ML ${g.away.abbr} ${fx(L0.mlAway)} / ${g.home.abbr} ${fx(L0.mlHome)}`);
     const outs = (g.inj || []).filter(i => i[2] === "Out").map(i => `${i[1]} (${i[0]})`);
     if (outs.length) L.push(`Fuera: ${esc(outs.join(", "))}`);
-    L.push("", props.length ? `<b>Props sólidos (${props.length})</b>` : "Ningún prop de este partido pasa los filtros. Mejor no forzarlo.", ...props.map(c => propLine(sp, c)));
+    L.push("", props.length ? `<b>Props sólidos (${props.length})</b>` : "Ningún prop de este partido pasa los filtros. Mejor no forzarlo.", ...props.flatMap(c => [propLine(sp, c, null, true), ...whyProp(sp, c, D, g, 4)]));
     gameList.push({id: g.id, d: g.date, solid: !!((m && m.play) || props.length), b: `${g.away.abbr} @ ${g.home.abbr} · ${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}`, t: L.join("\n"),
       bets: [...(m && m.play ? [gameBet(sp, g, m.best)] : []), ...props.map(c => propBet(sp, c, g.date))],
       chk: {sp: sp.toLowerCase(), h: g.home.abbr, a: g.away.abbr, outs: (g.inj || []).filter(i => i[2] === "Out").map(i => i[1]), props: props.map(c => ({aid: c.aid, n: c.n, lbl: propLbl(sp, c)}))}});
@@ -67,7 +114,7 @@ function soccer(S, now, hours) {
   const soon = g => new Date(g.date) > now && new Date(g.date) - now < hours * 36e5, games = S.games.filter(soon);
   if (!games.length) return null;
   const B = M.buildSoccer(S), G = Object.fromEntries(S.games.map(g => [g.id, g])), GM = Object.fromEntries(B.games.map(x => [x.id, x]));
-  const row = c => { const g = G[c.g]; return `• ${esc(g.away.abbr)} @ ${esc(g.home.abbr)} (${hora(g.date)}) · <b>${esc(c.lbl)}</b> · ${c.p ? `<b>${(c.est ? "≈" : "") + fx(c.p)}</b>` : "sin momio"} · ${pct(c.pr)}`; };
+  const row = c => { const g = G[c.g]; return [`• ${esc(g.away.abbr)} @ ${esc(g.home.abbr)} (${hora(g.date)}) · <b>${esc(c.lbl)}</b> · ${c.p ? `<b>${(c.est ? "≈" : "") + fx(c.p)}</b>` : "sin momio"} · ${pct(c.pr)}`, ...whySoc(S, g, c, GM[c.g]).slice(0, 1), ""].join("\n"); };
   const out = {top: null, leagues: []};
   const top = M.socTop(B.cands.filter(c => soon(G[c.g])), G, null, 10);
   out.topBets = top.map(c => socBet(G[c.g], c));
@@ -80,6 +127,7 @@ function soccer(S, now, hours) {
       const L = [`<b>${esc(g.away.name)} @ ${esc(g.home.name)}</b>`, `${lg} · ${hora(g.date)}`, ""];
       const best = ok.find(c => c.p);
       L.push(best ? `🎯 <b>Pick</b>: ${esc(best.lbl)} · <b>${(best.est ? "≈" : "") + fx(best.p)}</b> · ${pct(best.pr)}` : "🎯 Sin pick sólido con momio: el modelo y la casa no coinciden lo suficiente.");
+      if (best) L.push(...whySoc(S, g, best, m));
       const others = ok.filter(c => c !== best); if (others.length) L.push("", "<b>Otras opciones</b>", ...others.map(c => `• ${esc(c.lbl)} · ${c.p ? (c.est ? "≈" : "") + fx(c.p) : "sin momio"} · ${pct(c.pr)}`));
       if (m) L.push("", "<b>1 Up</b> (compáralo en tu casa)", `• ${esc(g.home.abbr)}: ${pct(m.up1H)} · conviene si paga ${fx(1 / m.up1H)} o más`, `• ${esc(g.away.abbr)}: ${pct(m.up1A)} · conviene si paga ${fx(1 / m.up1A)} o más`);
       const L0 = g.lines || {}; if (L0.mlHome) L.push("", `1X2: ${g.home.abbr} ${fx(L0.mlHome)} · empate ${fx(L0.draw)} · ${g.away.abbr} ${fx(L0.mlAway)}${L0.total ? ` · goles ${L0.total}` : ""}`);

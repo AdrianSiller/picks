@@ -89,8 +89,10 @@ async function check(env, chat, r, what) {
   return false;
 }
 async function sendLong(env, chat, text) {
-  for (let i = 0; i < text.length; i += 3800) {
-    const part = text.slice(i, i + 3800), r = await tg(env, "sendMessage", {chat_id: chat, text: part, parse_mode: "HTML", disable_web_page_preview: true});
+  // Split between lines (never inside one, so the formatting tags stay whole)
+  const parts = [""]; for (const line of String(text).split("\n")) { const cur = parts[parts.length - 1]; if (cur.length + line.length + 1 > 3800 && cur) parts.push(line); else parts[parts.length - 1] = cur ? cur + "\n" + line : line; }
+  for (const part0 of parts) {
+    const part = part0.slice(0, 4000), r = await tg(env, "sendMessage", {chat_id: chat, text: part, parse_mode: "HTML", disable_web_page_preview: true});
     // Formatting problem: send it as plain text
     if (!r.ok) await check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: part.replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")}), "el envío de picks");
   }
