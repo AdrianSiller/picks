@@ -205,6 +205,7 @@ export async function buildNFL(now = new Date()) {
   }
   cands.forEach(c => { const L = logs[c.aid]; out.logs[c.aid] = L.c.concat(L.p).slice(0, 8); });
   const inPlay = new Set(games.flatMap(g => [g.home.abbr, g.away.abbr]));
+  out.backDebug = backIds.map(id => [roster[id].n, roster[id].t, (logs[id] || {p: []}).p.length]);
   out.usageDebug = Object.fromEntries(Object.entries(TU).filter(([, v]) => v).map(([k, v]) => [k, {sumT: v.sumT, sumC: v.sumC, players: v.dbg}]));
   Object.assign(out, {games, cands, teams: Object.fromEntries(Object.entries(teams).filter(([k]) => inPlay.has(k))), mu: Object.fromEntries(Object.entries(mu).map(([k, v]) => [k, {a: v.a, r: v.r}]))});
   return out;
