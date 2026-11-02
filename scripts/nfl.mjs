@@ -158,13 +158,16 @@ export async function buildNFL(now = new Date()) {
     // Players already out last game are left out of the base: their teammates' recent numbers already show it
     // Base = who played the last game; active = who plays today. A new absence lowers the active share (the rest gain),
     // a starter coming back raises it (the rest lose)
-    const base = ids.filter(aid => T.last[aid]), active = ids.filter(aid => !SKIP.has(statusOf(aid)));
+    // Active = who played the last game and still plays, plus real returning regulars (12%+ of targets or, for RBs, 20%+ of carries).
+    // Depth players who were not used last game do not count (they were inflating the total and lowering everyone).
+    const back = a => !T.last[a] && T.P[a].n >= 2 && (shT(a) >= 0.12 || (roster[a].pos === "RB" && shC(a) >= 0.2));
+    const base = ids.filter(aid => T.last[aid]), active = ids.filter(aid => !SKIP.has(statusOf(aid)) && (T.last[aid] || back(aid)));
     const norm = (list, f) => list.reduce((s, a) => s + f(a), 0);
     const sumT = norm(active, shT) / (norm(base, shT) || 1), sumC = norm(active.filter(a => roster[a].pos === "RB"), shC) / (norm(base.filter(a => roster[a].pos === "RB"), shC) || 1);
     const vm = {}, notes = [];
     for (const a of active) vm[a] = {t: sumT ? M.clamp(1 / Math.max(sumT, 0.6), 0.75, 1.4) : 1, c: roster[a].pos === "RB" && sumC ? M.clamp(1 / Math.max(sumC, 0.5), 0.7, 1.5) : 1};
     for (const a of ids.filter(a => SKIP.has(statusOf(a)) && T.last[a])) { if (shT(a) >= 0.12) notes.push(`Sin ${roster[a].n} (${Math.round(shT(a) * 100)}% de los targets)`); else if (roster[a].pos === "RB" && shC(a) >= 0.1) notes.push(`Sin ${roster[a].n} (${Math.round(shC(a) * 100)}% de los acarreos)`); }
-    for (const a of active.filter(a => !T.last[a] && T.P[a].n >= 2 && (shT(a) >= 0.12 || (roster[a].pos === "RB" && shC(a) >= 0.2)))) notes.push(`Regresa ${roster[a].n} (${T.P[a].back ? "sin jugar esta temporada; se usa su volumen de la pasada" : "no jugó el último partido"})`);
+    for (const a of active.filter(a => back(a))) notes.push(`Regresa ${roster[a].n} (${T.P[a].back ? "sin jugar esta temporada; se usa su volumen de la pasada" : "no jugó el último partido"})`);
     const dbg = ids.map(a => ({n: roster[a].n, pos: roster[a].pos, st: statusOf(a) || "", last: !!T.last[a], back: !!T.P[a].back, g: T.P[a].n, shT: +shT(a).toFixed(2), shC: +shC(a).toFixed(2)})).filter(x => x.shT >= 0.05 || x.shC >= 0.05);
     return {vm, notes, dbg, sumT: +sumT.toFixed(2), sumC: +sumC.toFixed(2)};
   }
