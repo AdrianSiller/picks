@@ -18,7 +18,7 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     for (const e of (sb && sb.events) || []) if (e.status.type.state === "pre" && !evs.some(x => x.e.id === e.id)) evs.push({e, slug, lg});
   });
   if (!okBoards) throw new Error("ESPN soccer scoreboards unavailable");
-  const games = [], teamIds = {};
+  const games = [], teamIds = {}, PBT = {};
   await pool(evs, 5, async ({e, slug, lg}) => {
     const c = e.competitions[0], H = c.competitors.find(x => x.homeAway === "home"), A = c.competitors.find(x => x.homeAway === "away");
     const tm = x => ({abbr: x.team.abbreviation, name: x.team.displayName, record: (x.records && x.records[0] && x.records[0].summary) || ""});
@@ -40,6 +40,8 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     g.cl = Object.keys(lad).map(Number).sort((a, b) => a - b);
     const main = g.cl.filter(l => lad[l].over && lad[l].under).sort((a, b) => Math.abs(lad[a].over - lad[a].under) - Math.abs(lad[b].over - lad[b].under))[0];
     if (main != null) g.corn = {line: main, over: lad[main].over, under: lad[main].under};
+    // Inventory of the side markets the book publishes (to know what else can be priced)
+    for (const i of items) { const n = (i.type && i.type.name) || "?"; PBT[n] = PBT[n] || {n: 0, ex: null}; PBT[n].n++; if (!PBT[n].ex) PBT[n].ex = {team: tid(i) === H.team.id ? "H" : tid(i) === A.team.id ? "A" : tid(i) || null, ath: !!i.athlete, t: i.current && i.current.target ? i.current.target.value : null, p: pr(i), u: i.current && i.current.under ? +i.current.under.decimal : null}; }
     games.push(g);
   });
   games.sort((a, b) => a.date < b.date ? -1 : 1);
@@ -72,5 +74,5 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     }
     if (rot.h || rot.a) g.rot = rot;
   }
-  return {asOf: now.toISOString(), games, teams};
+  return {asOf: now.toISOString(), games, teams, pbTypes: PBT};
 }
