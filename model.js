@@ -15,10 +15,14 @@
   M.hitStats = (vc, vp, vo, line, side) => {
     const cnt = a => [a.filter(v => hitOf(side, line, v)).length, a.length];
     const hc = cnt(vc), h10 = cnt(vc.concat(vp).slice(0, 10)), hp = cnt(vp), hh = cnt(vo || []);
-    const raw = hp[1] ? 0.4 * sh(hc) + 0.3 * sh(h10) + 0.3 * sh(hp) : 0.55 * sh(hc) + 0.45 * sh(h10);
+    // Role change: if this season's average is 20%+ away from last season's (4+ games), this season and the recent
+    // games weigh much more and last season much less (e.g. a guard rebounding more since the starting center went down)
+    const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0, mc = mean(vc), mp = mean(vp);
+    const changed = vc.length >= 4 && vp.length >= 10 && mp > 0 && Math.abs(mc - mp) / mp >= 0.2;
+    const raw = !hp[1] ? 0.55 * sh(hc) + 0.45 * sh(h10) : changed ? 0.6 * sh(hc) + 0.25 * sh(h10) + 0.15 * sh(hp) : 0.4 * sh(hc) + 0.3 * sh(h10) + 0.3 * sh(hp);
     // Calibration: the first graded days showed hit rates about 20% too optimistic (picks at ~68% hit ~60%)
     const pr = 0.5 + (raw - 0.5) * M.CAL;
-    return {hc, h10, hp, hh, pr0: pr};
+    return {hc, h10, hp, hh, pr0: pr, chg: changed ? +(mc / mp - 1).toFixed(2) : 0};
   };
   // Opponent-by-position factor f (1 = average) moves the probability up to 6 points
   M.withDef = (pr0, side, f) => clamp(pr0 + (side === "under" ? -1 : 1) * ((f || 1) - 1) * 0.3, 0.05, 0.95);

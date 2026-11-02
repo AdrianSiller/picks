@@ -191,7 +191,7 @@ export async function buildNFL(now = new Date()) {
       const script = R.pos === "RB" && ["CAR", "RUSHYDS"].includes(p.m) && !isNaN(tsp) ? (tsp <= -6 ? 0.02 : tsp >= 6 ? -0.02 : 0) * (s === "under" ? -1 : 1) : 0;
       const envAdj = +((["CMP", "PASSYDS", "REC", "RECYDS", "RRY", "RUSHYDS"].includes(p.m) ? M.envAdj(te, s, 0.5) : 0) + script).toFixed(3);
       const pr = M.clamp(M.withDef(hs.pr0, s, f) + wadj + envAdj, 0.05, 0.95);
-      const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, el: p.l, s, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: mk ? 1 : 0,
+      const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, el: p.l, s, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: mk ? 1 : 0, chg: hs.chg, nC: vc.length,
         hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh, aC: avg(cur.map(V0)), a10: avg(both.slice(0, 10).map(V0)), aP: avg(prev.map(V0)), aH: avg(both.filter(r => r[1] === o).map(V0)),
         sm: hs.hc[1] + hs.hp[1] < 10 ? 1 : 0, wind: wadj ? wind : 0, wadj, envAdj, q: st === "Questionable" ? 1 : 0, tg: +(tgB * um.t).toFixed(1), cr: +(crB * um.c).toFixed(1), vm: +vm.toFixed(2), vc, vp, vo};
       // Role: main = starting QB, WR/TE with 5+ targets a game, RB with 12+ carries (or 8+ carries and 3.5+ targets for catching props)
