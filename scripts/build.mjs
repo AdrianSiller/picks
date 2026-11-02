@@ -1,5 +1,5 @@
 // Daily build: downloads everything, writes data/latest.json, snapshots today's picks and grades past ones.
-// Usage: SGO_API_KEY=... node scripts/build.mjs   (RUN_SGO=0 reuses yesterday's SportsGameOdds prices)
+// Usage: SGO_API_KEY=... node scripts/build.mjs   (RUN_SGO=0 reuses yesterday's SportsGameOdds prices) 
 import fs from "node:fs";
 import path from "node:path";
 import {buildNBA} from "./nba.mjs";
