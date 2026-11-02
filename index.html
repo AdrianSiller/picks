@@ -213,12 +213,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 9:00 a.m.</footer>
-<script src="model.js?v=20261102-0900"></script>
+<footer class="ver">Versión de la app: 2 nov 8:15 a.m.</footer>
+<script src="model.js?v=20261102-0815"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-0900";
+const APP_VERSION = "20261102-0815";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -569,7 +569,10 @@ function chips(c) {
   const fp = Math.round((c.f - 1) * 100), rf = rivalFav(c);
   const mk = MUKEY(c), mx = mk && muOf(c.o, mk);
   if (mx) { const good = mx.r <= Math.round(mx.n / 4), bad = mx.r > mx.n - Math.round(mx.n / 4);
-    if (good || bad) { const fav = (c.s === "over") === good; out.push(`<span class="chip ${fav ? "c-good" : "c-warn"}">Rival ${fav ? "a favor" : "en contra"}: ${c.o} es ${rankTxt(mx)} en ${MULBL[mk]}</span>`); } }
+    if (good || bad) { const fav = (c.s === "over") === good; // Plain words: "one of the defenses that allows the most / the least", then the rank
+      const what = MULBL[mk].replace(" permitidas", "").replace(" permitida", "");
+      const verb = (good ? "de las que más " : "de las que menos ") + (what.startsWith("yardas") ? "yardas" : what.split(" ")[0]) + " permite" + what.replace(/^(yardas|recepciones)/, "").replace(/^ por (tierra|recepción|pase)/, m => m);
+      out.push(`<span class="chip ${fav ? "c-good" : "c-warn"}">Rival ${fav ? "a favor" : "en contra"}: ${c.o} es ${verb} (${mx.r}.º de ${mx.n})</span>`); } }
   else if (c.hd && Math.abs(fp) >= 3) out.push(`<span class="chip ${rf > 0 ? "c-good" : "c-warn"}">Rival ${rf > 0 ? "a favor" : "en contra"}: ${c.o} permite ${Math.abs(fp)}% ${fp > 0 ? "más" : "menos"} ${MK[c.m].lbl} a ${POSPL[c.pos] || c.pos}</span>`);
   return out.length ? `<div class="chips">${out.join("")}</div>` : "";
 }
@@ -615,7 +618,7 @@ function detail(c) {
       ${c.p ? `<dt>Momio ${fx(c.p)}</dt><dd>Momio decimal: por cada $100 apostados recibes $${Math.round(c.p * 100)} si se cumple (incluye tu apuesta).</dd>` : `<dt>Momio</dt><dd>${c.altLine ? `Las casas tienen esta prop en ${c.altLine}, no en ${c.l}, así que el momio no aplica a esta línea.` : "No encontramos el momio de esta línea en las casas que consultamos."} Revísalo en tu casa: si paga menos de ${fx(1 / c.pr)}, nuestra estimación dice que no conviene.</dd>`}
       <dt>Probabilidad estimada ${pct(c.pr)}</dt><dd>Qué tan seguido calculamos que se cumple, según cuántas veces lo ha logrado esta temporada, en sus últimos 10 juegos y la temporada pasada, ajustado por el rival.</dd>
       ${c.hd ? `<dt>Rival ${rivalFav(c) >= 0 ? "a favor" : "en contra"}</dt><dd>${esc(rivalTxt(c))} Mide cómo defiende ese equipo a los de su posición contra cualquier rival, no al jugador en particular. ${Math.abs(rivalFav(c)) < 0.03 ? "El efecto es chico y casi no mueve el pick." : rivalFav(c) > 0 ? `Le ayuda al pick: sube la estimación de ${pct(c.pr0)} a ${pct(c.pr)}.` : `Le juega en contra: baja la estimación de ${pct(c.pr0)} a ${pct(c.pr)}.`}</dd>` : ""}
-      ${(() => { const mk = MUKEY(c), mx = mk && muOf(c.o, mk); if (!mx) return ""; return `<dt>Defensa de ${esc(c.o)}: ${rankTxt(mx)}</dt><dd>${esc(tname(c.o))} permite ${mx.a} ${MULBL[mk].replace(" permitidas", "")} por juego esta temporada. El #1 es la defensa que más permite, así que un número bajo favorece al over y uno alto al under.${mx.n < 32 ? ` Este ranking compara a ${mx.n} equipos.` : ""}</dd>`; })()}
+      ${(() => { const mk = MUKEY(c), mx = mk && muOf(c.o, mk); if (!mx) return ""; return `<dt>Defensa de ${esc(c.o)}: ${mx.r}.º de ${mx.n}</dt><dd>${esc(tname(c.o))} permite ${mx.a} ${MULBL[mk].replace(" permitidas", "")} por juego esta temporada. El 1.º es la defensa que más permite y el ${mx.n}.º la que menos: cerca del 1.º favorece al over, cerca del ${mx.n}.º favorece al under.${mx.n < 32 ? ` Este ranking compara a ${mx.n} equipos.` : ""}</dd>`; })()}
       ${c.imp ? `<dt>Probabilidad según el momio ${pct(c.imp)}</dt><dd>La probabilidad que la casa le da al pick (1 ÷ momio). Si nuestra estimación es más alta, el momio paga más de lo que debería.</dd>` : ""}
       ${c.e != null && c.e >= 0.04 ? `<dt>Valor +${Math.round(c.e * 100)}%</dt><dd>Diferencia entre nuestra estimación y la de la casa. Aparece cuando es de 4 puntos o más.</dd>` : ""}
       ${c.q ? `<dt>En duda por lesión</dt><dd>Aparece como "questionable" en el reporte de lesiones. Confirma que juegue antes de apostar.</dd>` : ""}
