@@ -3,7 +3,7 @@ import {J, pool, dkLines, dloc, ymd} from "./lib.mjs";
 
 const SITE = "https://site.api.espn.com/apis/site/v2/sports/soccer";
 const CORE = "https://sports.core.api.espn.com/v2/sports/soccer/leagues";
-const LEAGUES = [["mex.1", "Liga MX"], ["esp.1", "La Liga"], ["eng.1", "Premier"], ["ger.1", "Bundesliga"], ["uefa.champions", "Champions"]];
+const LEAGUES = [["mex.1", "Liga MX"], ["esp.1", "La Liga"], ["eng.1", "Premier"], ["ger.1", "Bundesliga"], ["ita.1", "Serie A"], ["fra.1", "Ligue 1"], ["uefa.champions", "Champions"]];
 const CODE = {"mex.1": "LMX", "esp.1": "LL", "uefa.champions": "UCL", "uefa.europa": "UEL", "uefa.europa.conf": "UECL", "eng.1": "PL", "ger.1": "BUN", "ita.1": "SA", "fra.1": "L1",
   "por.1": "POR", "ned.1": "ERE", "tur.1": "TUR", "bel.1": "BEL", "aut.1": "AUT", "gre.1": "GRE", "nor.1": "NOR", "sco.1": "SCO", "den.1": "DEN", "sui.1": "SUI", "cze.1": "CZE",
   "concacaf.leagues.cup": "LC", "concacaf.champions": "CC", "usa.1": "MLS"};
