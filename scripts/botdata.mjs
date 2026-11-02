@@ -167,6 +167,28 @@ function record(R) {
     "", "<i>u = unidades: 1 por pick con el momio de DraftKings.</i>"].filter(x => x != null).join("\n");
 }
 
+// Soccer record by league (last 7 days and everything), each with its markets
+function recordSoc(R) {
+  const days = (R.days || []).filter(d => d.items.some(x => x.sport === "SOC" && (x.hit === 0 || x.hit === 1))); if (!days.length) return "Todavía no hay resultados de soccer calificados.";
+  const FLAG = {"Liga MX": "🇲🇽", "La Liga": "🇪🇸", Premier: "🏴", Bundesliga: "🇩🇪", "Serie A": "🇮🇹", "Ligue 1": "🇫🇷", Champions: "⭐"};
+  const SK = {"1x2": "Resultado", dc: "Doble oport.", dc1h: "Doble oport. 1T", hc: "Handicap", tot: "Goles", btts: "Ambos anotan", cor: "Corners", tt: "Goles por equipo"};
+  const fmt = arr => { const w = arr.filter(x => x.hit).length, u = arr.reduce((s, x) => s + (x.hit ? (x.p || 1.91) - 1 : -1), 0); return {w, n: arr.length, u}; };
+  const block = (title, items) => {
+    const L = [`<b>${title}</b>`], by = {}; items.forEach(x => (by[x.lg || "Otra"] = by[x.lg || "Otra"] || []).push(x));
+    for (const [lg, a] of Object.entries(by).sort((p, q) => q[1].length - p[1].length)) {
+      const t = fmt(a); L.push(`${FLAG[lg] || "⚽"} ${lg} <b>${t.w}/${t.n}</b> · ${t.u >= 0 ? "+" : ""}${t.u.toFixed(1)} u`);
+      const bm = {}; a.forEach(x => (bm[SK[x.k] || "Otros"] = bm[SK[x.k] || "Otros"] || []).push(x));
+      Object.entries(bm).sort((p, q) => q[1].length - p[1].length).forEach(([k, b]) => { const m = fmt(b); L.push(`   ${k} ${m.w}/${m.n}`); });
+      L.push("");
+    }
+    return L.join("\n");
+  };
+  const done = x => x.sport === "SOC" && (x.hit === 0 || x.hit === 1), flat = ds => ds.flatMap(d => d.items.filter(done));
+  const last7 = days.filter(d => (new Date(days[0].date) - new Date(d.date)) / 864e5 < 7), when = d => new Date(d + "T12:00:00").toLocaleDateString("es-MX", {day: "numeric", month: "short"});
+  return ["<b>⚽ Soccer por liga</b>", "", block("Últimos 7 días", flat(last7)), ...(days.length > last7.length ? [block(`Desde el ${when(days[days.length - 1].date)}`, flat(days))] : []),
+    "<i>Ojo: hasta el 2 de nov los picks de soccer eran del modelo anterior.</i>"].join("\n");
+}
+
 // Charts for "Cómo nos fue" (rendered by quickchart.io from the URL; Telegram downloads the image)
 function charts(R) {
   const days = (R.days || []).filter(d => d.items.some(x => x.hit === 0 || x.hit === 1)).slice(0, 14).reverse(); if (!days.length) return null;
@@ -203,7 +225,7 @@ export function botData(latest, R, now) {
   const at = new Date(latest.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
   BETS = {};
   const out = {v: 3, generatedAt: latest.generatedAt, foot: `<i>Datos de las ${at} · antes de apostar dale ↻ Actualizar en la app</i>`,
-    nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: record(R), resd: results(R), resImg: charts(R)};
+    nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: record(R), resd: results(R), resSoc: recordSoc(R), resImg: charts(R)};
   out.bets = BETS;
   return out;
 }

@@ -52,9 +52,10 @@ function picked(B, list, mask, tag) {
 function view(B, key) {
   const [a, b, c] = key.split(":"), back = (to, lbl = "⬅️ Atrás") => [btn(lbl, to), btn("🏠 Inicio", "home")];
   if (key === "home") return {text: "¿De qué quieres los picks?", kb: HOME};
-  if (a === "res" && b === "d") return {send: B.resd, after: "home"};
+  if (a === "res" && b === "d") return {send: B.resd, after: "res:menu"};
+  if (a === "res" && b === "s") return {send: B.resSoc, after: "res:menu"};
   if (a === "res") return B.resd ? {send: B.res, after: "res:menu", imgs: B.resImg} : {send: B.res, after: "home"};
-  if (key === "res:menu") return {text: "¿Quieres ver los picks uno por uno?", kb: {inline_keyboard: [[btn("📋 Ver los picks del último día", "res:d")], ...HOME.inline_keyboard]}};
+  if (key === "res:menu") return {text: "¿Quieres ver los picks uno por uno?", kb: {inline_keyboard: [[btn("📋 Ver los picks del último día", "res:d")], ...(B.resSoc ? [[btn("⚽ Soccer por liga", "res:s")]] : []), ...HOME.inline_keyboard]}};
   if (a === "nba" || a === "nfl") {
     const D = B[a], name = a === "nba" ? "🏀 NBA" : "🏈 NFL";
     if (!D) return {text: `${name}: no hay partidos próximos con picks.`, kb: HOME};

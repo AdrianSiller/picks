@@ -22,7 +22,7 @@ export function snapshot(data, now, hours = 30) {
   if (S && S.games.length) {
     const B = M.buildSoccer(S), G = Object.fromEntries(S.games.map(g => [g.id, g])), seen = new Set();
     const add = (c, why) => { const g = G[c.g]; if (!soon(g) || seen.has(c.g + c.k + c.side)) return; seen.add(c.g + c.k + c.side);
-      items.push({sport: "SOC", kind: "soc", d: g.date, pr: c.pr, cal: c.cal || 0, e: c.e, g: c.g, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p || null, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: c.lbl, why}); };
+      items.push({sport: "SOC", kind: "soc", lg: g.lg, d: g.date, pr: c.pr, cal: c.cal || 0, e: c.e, g: c.g, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p || null, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: c.lbl, why}); };
     M.socTop(B.cands, G, null).forEach(c => add(c, "top"));
     for (const g of S.games) { const best = B.cands.filter(c => c.g === g.id && c.p && M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))[0]; if (best) add(best, "game"); }
   }
