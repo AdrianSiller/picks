@@ -1,5 +1,5 @@
 // Telegram bot for Picks del Día (Cloudflare Worker, free plan).
-// v4 · Menus step by step: sport -> (soccer: league) -> top / game picks / everything / one game. You can also write "nba", "premier", "como nos fue".
+// v5 · Menus step by step: sport -> (soccer: league) -> top / game picks / everything / one game. You can also write "nba", "premier", "como nos fue".
 // Setup: paste this file in a Worker, add the secret TELEGRAM_TOKEN, deploy, then open https://<your-worker>/setup once.
 const DATA = "https://adriansiller.github.io/picks/data/";
 const APP = "https://adriansiller.github.io/picks/";
@@ -32,6 +32,21 @@ async function secretOf(token) {
 const tg = (env, method, body) => fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/${method}`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
 const getJSON = u => fetch(u + "?t=" + Date.now(), {cf: {cacheTtl: 0}}).then(r => r.ok ? r.json() : null).catch(() => null);
 
+// Several games at once: the selection travels in the button as a bitmask (base 36) plus a tag of the data version,
+// so a tap on an old menu after the list changed asks to choose again instead of showing the wrong games
+const ver = B => (Math.floor(new Date(B.generatedAt).getTime() / 6e4) % 46656).toString(36);
+function multi(B, list, base, back, mask, title) {
+  const m = parseInt(mask || "0", 36) || 0, sel = list.filter((g, i) => m & (1 << i)), v = ver(B);
+  const kb = rows(list.map((g, i) => btn(`${m & (1 << i) ? "✅ " : ""}${g.b}`, `${base}:m:${(m ^ (1 << i)).toString(36)}:${v}`)), 2);
+  kb.push(sel.length ? [btn(`👀 Ver ${sel.length} seleccionado${sel.length > 1 ? "s" : ""}`, `${base}:mv:${m.toString(36)}:${v}`)] : []);
+  kb.push([btn("⬅️ Atrás", back), btn("🏠 Inicio", "home")]);
+  return {text: `${title}: toca los partidos que quieras (se marcan con ✅) y luego "Ver".`, kb: {inline_keyboard: kb.filter(r => r.length)}};
+}
+function picked(B, list, mask, tag) {
+  if (tag !== ver(B)) return null;
+  const m = parseInt(mask || "0", 36) || 0; return list.filter((g, i) => m & (1 << i));
+}
+
 // What to show for a key: {text, kb} = a menu (edits the current message), {send, after} = picks to send + the menu to show next
 function view(B, key) {
   const [a, b, c] = key.split(":"), back = (to, lbl = "⬅️ Atrás") => [btn(lbl, to), btn("🏠 Inicio", "home")];
@@ -40,8 +55,11 @@ function view(B, key) {
   if (a === "nba" || a === "nfl") {
     const D = B[a], name = a === "nba" ? "🏀 NBA" : "🏈 NFL";
     if (!D) return {text: `${name}: no hay partidos próximos con picks.`, kb: HOME};
-    if (!b) return {text: `${name} · ${D.games.length} partido${D.games.length > 1 ? "s" : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Top 10", `${a}:top`), btn("🎯 ML / spread", `${a}:ml`)], [btn("📋 Todo", `${a}:all`), btn("🔎 Un partido", `${a}:g`)], [btn("🏠 Inicio", "home")]]}};
+    if (!b) return {text: `${name} · ${D.games.length} partido${D.games.length > 1 ? "s" : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Top 10", `${a}:top`), btn("🎯 ML / spread", `${a}:ml`)], [btn("📋 Todo", `${a}:all`), btn("🔎 Un partido", `${a}:g`)], [btn("☑️ Varios partidos", `${a}:m:0:${ver(B)}`)], [btn("🏠 Inicio", "home")]]}};
     if (b === "top" || b === "ml" || b === "all") return {send: D[b], after: a};
+    if (b === "m") return multi(B, D.games, a, a, c, name);
+    if (b === "mv") { const sel = picked(B, D.games, c, key.split(":")[3]); if (!sel) return {text: "La lista de partidos se actualizó; elige otra vez.", kb: {inline_keyboard: [[btn("☑️ Varios partidos", `${a}:m:0:${ver(B)}`)], [btn("🏠 Inicio", "home")]]}};
+      return {sendMany: sel.map(g => g.t), after: a, liveMany: sel.map(g => g.id)}; }
     if (b === "g" && !c) return {text: `${name}: elige el partido`, kb: {inline_keyboard: [...rows(D.games.map(g => btn(g.b, `${a}:g:${g.id}`)), 2), back(a)]}};
     const g = D.games.find(x => x.id === c); return g ? {send: g.t, after: `${a}:g`, live: g.id} : {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME};
   }
@@ -51,8 +69,12 @@ function view(B, key) {
     if (b === "top") return {send: S.top, after: "soc"};
     if (b === "g") { for (const l of S.leagues) { const g = l.games.find(x => x.id === c); if (g) return {send: g.t, after: `soc:${l.code}:g`, live: g.id}; } return {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME}; }
     const L = S.leagues.find(l => l.code === b); if (!L) return {text: `${LGN[b] || "Esa liga"}: no tiene partidos en los próximos 3 días.`, kb: {inline_keyboard: [back("soc")]}};
-    if (!c) return {text: `${LGN[b]} · ${L.games.length} partido${L.games.length > 1 ? "s" : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Mejores picks", `soc:${b}:top`), btn("🔎 Un partido", `soc:${b}:g`)], back("soc")]}};
+    if (!c) return {text: `${LGN[b]} · ${L.games.length} partido${L.games.length > 1 ? "s" : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Mejores picks", `soc:${b}:top`), btn("🔎 Un partido", `soc:${b}:g`)], ...(L.games.length > 1 ? [[btn("☑️ Varios partidos", `soc:${b}:m:0:${ver(B)}`)]] : []), back("soc")]}};
     if (c === "top") return {send: L.top, after: `soc:${b}`};
+    const [, , , d, e] = key.split(":");
+    if (c === "m") return multi(B, L.games, `soc:${b}`, `soc:${b}`, d, LGN[b] || L.lg);
+    if (c === "mv") { const sel = picked(B, L.games, d, e); if (!sel) return {text: "La lista de partidos se actualizó; elige otra vez.", kb: {inline_keyboard: [[btn("☑️ Varios partidos", `soc:${b}:m:0:${ver(B)}`)], back("soc")]}};
+      return {sendMany: sel.map(g => g.t), after: `soc:${b}`, liveMany: sel.map(g => g.id)}; }
     if (c === "g") return {text: `${LGN[b]}: elige el partido`, kb: {inline_keyboard: [...rows(L.games.map(g => btn(g.b, `soc:g:${g.id}`)), 2), back(`soc:${b}`)]}};
   }
   return {text: "¿De qué quieres los picks?", kb: HOME};
@@ -113,10 +135,18 @@ async function handle(env, chat, key, editId) {
   const B = await getJSON(DATA + "bot.json");
   if (!B || !(B.v >= 2)) return tg(env, "sendMessage", {chat_id: chat, text: `No pude leer los picks ahorita. Ábrelos en la app: ${APP}`});
   if (key && key.startsWith("chk:")) {
-    await sendLong(env, chat, await live(B, key.slice(4)));
+    for (const id of key.slice(4).split(",")) await sendLong(env, chat, await live(B, id));
     return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: "¿Algo más?", reply_markup: {inline_keyboard: [[btn("🔄 Volver a revisar", key)], ...HOME.inline_keyboard]}}), "el menú");
   }
   const v = view(B, key || "home");
+  if (v.sendMany) {
+    // Each game in its own message so long selections never get cut in half
+    for (const t of v.sendMany) await sendLong(env, chat, t);
+    await sendLong(env, chat, B.foot);
+    const next = view(B, v.after), kb = next.kb || HOME, ids = v.liveMany.join(",");
+    const keyb = ids.length + 4 <= 64 ? {inline_keyboard: [[btn(`🔄 Revisar en vivo ${v.liveMany.length > 1 ? "los " + v.liveMany.length : ""}`.trim(), `chk:${ids}`)], ...kb.inline_keyboard]} : kb;
+    return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: keyb}), "el menú");
+  }
   if (v.send) {
     await sendLong(env, chat, v.send + "\n\n" + B.foot);
     const next = view(B, v.after), kb = next.kb || HOME;
