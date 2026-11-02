@@ -148,8 +148,11 @@ export async function buildNBA(now = new Date()) {
     // A bench shooter qualifies for threes; a wing's rebounds or a big's assists do not.
     const m8 = both.slice(0, 8).map(r => r[3]), mAvg = m8.reduce((s, v) => s + v, 0) / (m8.length || 1);
     const msd = Math.sqrt(m8.reduce((s, v) => s + (v - mAvg) ** 2, 0) / (m8.length || 1)), r10 = both.slice(0, 10), av = k => r10.reduce((s, r) => s + r[k], 0) / (r10.length || 1);
-    const statRole = {"3PM": av(8) >= 4, PTS: av(4) >= 12, REB: R.pos === "C" || av(5) >= 6, AST: av(6) >= 4}[p.m];
-    const role = min * vm >= 20 && msd <= 7 && statRole ? 1 : 0;
+    // Rebounds and assists: not by position but by how steady he is in that stat (a guard who grabs boards to push the break
+    // counts). Overs: 3+ per game and low swing (coefficient of variation up to 0.5); unders: low swing (up to 0.6).
+    const sv = r10.map(r => r[i]), sm = sv.reduce((s, v) => s + v, 0) / (sv.length || 1), cv = sm ? Math.sqrt(sv.reduce((s, v) => s + (v - sm) ** 2, 0) / (sv.length || 1)) / sm : 9;
+    const statRole = s => ({"3PM": av(8) >= 4, PTS: av(4) >= 12, REB: s === "over" ? sm >= 3 && cv <= 0.5 : cv <= 0.6, AST: s === "over" ? sm >= 3 && cv <= 0.5 : cv <= 0.6})[p.m];
+    const roleOf = s => min * vm >= 20 && msd <= 7 && statRole(s) ? 1 : 0;
     let best = null;
     for (const s of ["over", "under"]) {
       const price = s === "over" ? p.po : p.pu; if (!price || price < 1.25) continue; if (s === "over" && min < 20) continue;
@@ -160,7 +163,7 @@ export async function buildNBA(now = new Date()) {
       const pr = M.clamp(M.withDef(hs.pr0, s, f) + envAdj, 0.05, 0.95);
       const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, s, p: price, bk: "DraftKings", pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: 1, chg: hs.chg, nC: vc.length,
         imp: +(1 / price).toFixed(3), e: +(pr - 1 / price).toFixed(3), hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh,
-        aC: avg(cur.map(r => r[i])), a10: avg(both.slice(0, 10).map(r => r[i])), aP: avg(prev.map(r => r[i])), aH: avg(oppRows.map(r => r[i])), vm: +vm.toFixed(2), us: +us.toFixed(2), minExp: +(min * vm).toFixed(1), envAdj, blow: big ? 1 : 0, min, msd: Math.round(msd * 10) / 10, role, sm: hs.hc[1] + hs.hp[1] < 15, vc, vp, vo};
+        aC: avg(cur.map(r => r[i])), a10: avg(both.slice(0, 10).map(r => r[i])), aP: avg(prev.map(r => r[i])), aH: avg(oppRows.map(r => r[i])), vm: +vm.toFixed(2), us: +us.toFixed(2), minExp: +(min * vm).toFixed(1), envAdj, blow: big ? 1 : 0, min, msd: Math.round(msd * 10) / 10, role: roleOf(s), cv: +cv.toFixed(2), sm: hs.hc[1] + hs.hp[1] < 15, vc, vp, vo};
       if (st && st !== "Active") c.q = 1;
       if ((h ? g.rest.h : g.rest.a) === 1) c.b2b = 1;
       if (!best || c.pr > best.pr) best = c;
