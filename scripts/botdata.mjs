@@ -57,13 +57,39 @@ function whySoc(S, g, c, B) {
   const form = r => { const w = r.filter(x => x[4] > x[5]).length, d = r.filter(x => x[4] === x[5]).length; return `${w}G ${d}E ${r.length - w - d}P`; };
   const cnt = (r, f) => `${r.filter(f).length} de ${r.length}`;
   const avg = (r, f) => r.length ? (r.reduce((s, x) => s + f(x), 0) / r.length).toFixed(1) : "–";
-  if (c.k === "btts") R.push(`Ambos anotaron en ${cnt(H, x => x[4] > 0 && x[5] > 0)} de ${g.home.abbr} y ${cnt(A, x => x[4] > 0 && x[5] > 0)} de ${g.away.abbr}`);
-  else if (c.k === "tot") R.push(`Más de ${c.line} goles en ${cnt(H, x => x[4] + x[5] > c.line)} de ${g.home.abbr} y ${cnt(A, x => x[4] + x[5] > c.line)} de ${g.away.abbr} (promedian ${avg(H, x => x[4] + x[5])} y ${avg(A, x => x[4] + x[5])} goles por partido)`);
-  else if (c.k === "tt") { const mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, ab = c.team === "H" ? g.home.abbr : g.away.abbr, ob = c.team === "H" ? g.away.abbr : g.home.abbr;
-    R.push(`${ab} mete ${avg(mine, x => x[4])} goles por partido; ${ob} recibe ${avg(opp, x => x[5])}`); }
+  // ✅ both teams support the pick, ⚠️ both go against it, ➖ mixed
+  const two = (a, b) => a && b ? "✅" : !a && !b ? "⚠️" : "➖", rate = (r, f) => r.length ? r.filter(f).length / r.length : 0;
+  if (c.k === "btts") { const f = x => x[4] > 0 && x[5] > 0, y = c.side === "Y";
+    R.push(`${two((rate(H, f) >= 0.55) === y, (rate(A, f) >= 0.55) === y)} Ambos anotaron en ${cnt(H, f)} de ${g.home.abbr} y ${cnt(A, f)} de ${g.away.abbr}`); }
+  else if (c.k === "tot") { const f = x => x[4] + x[5] > c.line, o = c.side === "O";
+    R.push(`${two((rate(H, f) >= 0.5) === o, (rate(A, f) >= 0.5) === o)} Más de ${c.line} goles en ${cnt(H, f)} de ${g.home.abbr} y ${cnt(A, f)} de ${g.away.abbr} (promedian ${avg(H, x => x[4] + x[5])} y ${avg(A, x => x[4] + x[5])} goles por partido)`); }
+  else if (c.k === "tt") { const mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, ab = c.team === "H" ? g.home.abbr : g.away.abbr, ob = c.team === "H" ? g.away.abbr : g.home.abbr, o = c.side === "O";
+    R.push(`${two((+avg(mine, x => x[4]) > c.line) === o, (+avg(opp, x => x[5]) > c.line) === o)} ${ab} mete ${avg(mine, x => x[4])} goles por partido; ${ob} recibe ${avg(opp, x => x[5])}`); }
   else if (c.k === "cor") R.push(`Corners esperados: ${(B && B.lc ? B.lc.toFixed(1) : "–")}`);
-  else R.push(`Forma: ${g.home.abbr} ${form(H)} (dif. ${avg(H, x => x[4] - x[5])}) · ${g.away.abbr} ${form(A)} (dif. ${avg(A, x => x[4] - x[5])})`);
-  if (c.pm != null && c.mk != null) R.push(`Modelo ${pct(c.pm)} · casa ${pct(c.mk)}: ${Math.abs(c.pm - c.mk) <= 0.05 ? "coinciden" : c.pm > c.mk ? "el modelo lo ve un poco más probable que la casa" : "la casa lo ve más probable que el modelo"}`);
+  else {
+    // Result picks: which team we back, how it does at this venue, how the rival does at the other, form, goals, absences, the book
+    const side = c.side === "1X" || c.side === "H" ? "H" : c.side === "X2" || c.side === "A" ? "A" : null;
+    const T = side === "A" ? g.away : g.home, O = side === "A" ? g.home : g.away, TR = side === "A" ? A : H, OR = side === "A" ? H : A;
+    const tv = TR.filter(x => x[3] === (side === "A" ? "a" : "h")).slice(0, 5), ov = OR.filter(x => x[3] === (side === "A" ? "h" : "a")).slice(0, 5);
+    const rec = r => { const w = r.filter(x => x[4] > x[5]).length, d = r.filter(x => x[4] === x[5]).length; return {w, d, l: r.length - w - d, n: r.length, t: `${w}G ${d}E ${r.length - w - d}P`}; };
+    const needWin = c.k === "1x2" || (c.k === "hc" && c.line < 0), good = r => needWin ? r.w / (r.n || 1) >= 0.5 : (r.w + r.d) / (r.n || 1) >= 0.6, bad = r => needWin ? r.w / (r.n || 1) <= 0.2 : r.l / (r.n || 1) >= 0.5;
+    const ok = b => b ? "✅" : "⚠️", where = side === "A" ? "de visitante" : "de local", owhere = side === "A" ? "de local" : "de visitante";
+    if (side) {
+      const a = rec(tv), b = rec(ov), f1 = rec(TR.slice(0, 5)), f2 = rec(OR.slice(0, 5));
+      if (a.n) R.push(`${good(a) ? "✅" : bad(a) ? "⚠️" : "➖"} ${T.abbr} ${where}: ${a.t} (últimos ${a.n})`);
+      if (b.n) R.push(`${b.l / b.n >= 0.5 || (needWin && b.w / b.n <= 0.2) ? "✅" : b.w / b.n >= 0.6 ? "⚠️" : "➖"} ${O.abbr} ${owhere}: ${b.t} (últimos ${b.n})`);
+      R.push(`${f1.w * 3 + f1.d > f2.w * 3 + f2.d ? "✅" : f1.w * 3 + f1.d < f2.w * 3 + f2.d ? "⚠️" : "➖"} Forma (últimos 5): ${T.abbr} ${f1.t} · ${O.abbr} ${f2.t}`);
+      R.push(`${+avg(TR, x => x[4] - x[5]) >= +avg(OR, x => x[4] - x[5]) ? "✅" : "⚠️"} Goles por partido: ${T.abbr} mete ${avg(TR, x => x[4])} y recibe ${avg(TR, x => x[5])} · ${O.abbr} mete ${avg(OR, x => x[4])} y recibe ${avg(OR, x => x[5])}`);
+      if (T.record || O.record) R.push(`ℹ️ Temporada (G-E-P): ${T.abbr} ${T.record || "–"} · ${O.abbr} ${O.record || "–"}`);
+      const L0 = g.lines || {}, inv = L0.mlHome && L0.draw && L0.mlAway ? 1 / L0.mlHome + 1 / L0.draw + 1 / L0.mlAway : null;
+      if (inv) { const pT = (1 / (side === "A" ? L0.mlAway : L0.mlHome)) / inv, pO = (1 / (side === "A" ? L0.mlHome : L0.mlAway)) / inv;
+        R.push(`${pT >= pO ? "✅" : "➖"} La casa (plantel, momento, bajas): ${T.abbr} gana ${pct(pT)}, empate ${pct((1 / L0.draw) / inv)}, ${O.abbr} gana ${pct(pO)}`); }
+      if (g.xi) { const m = (g.xi[side === "A" ? "a" : "h"] || {}).miss || [], mo = (g.xi[side === "A" ? "h" : "a"] || {}).miss || [];
+        R.push(`${m.length >= 3 ? "⚠️" : "✅"} Alineaciones: ${T.abbr} ${m.length ? `sin ${m.length} titulares` : "con su once habitual"} · ${O.abbr} ${mo.length ? `sin ${mo.length} titulares` : "con su once habitual"}`); }
+      else if (g.rot && g.rot[side === "A" ? "a" : "h"]) R.push(`⚠️ ${T.abbr} juega Champions en pocos días: posible rotación (revisa alineaciones)`);
+    } else R.push(`Forma: ${g.home.abbr} ${form(H)} · ${g.away.abbr} ${form(A)}`);
+  }
+  if (c.pm != null && c.mk != null) R.push(`${Math.abs(c.pm - c.mk) <= 0.05 ? "✅" : "ℹ️"} Modelo ${pct(c.pm)} · casa ${pct(c.mk)}: ${Math.abs(c.pm - c.mk) <= 0.05 ? "coinciden" : c.pm > c.mk ? "el modelo lo ve un poco más probable que la casa" : "la casa lo ve más probable que el modelo"}`);
   return R.map(t => `   ${esc(t)}`);
 }
 // Game pick (NBA / NFL): projection vs the line, form and absences
@@ -114,7 +140,8 @@ function soccer(S, now, hours) {
   const soon = g => new Date(g.date) > now && new Date(g.date) - now < hours * 36e5, games = S.games.filter(soon);
   if (!games.length) return null;
   const B = M.buildSoccer(S), G = Object.fromEntries(S.games.map(g => [g.id, g])), GM = Object.fromEntries(B.games.map(x => [x.id, x]));
-  const row = c => { const g = G[c.g]; return [`• ${esc(g.away.abbr)} @ ${esc(g.home.abbr)} (${hora(g.date)}) · <b>${esc(c.lbl)}</b> · ${c.p ? `<b>${(c.est ? "≈" : "") + fx(c.p)}</b>` : "sin momio"} · ${pct(c.pr)}`, ...whySoc(S, g, c, GM[c.g]).slice(0, 1), ""].join("\n"); };
+  const FLAG = {"Liga MX": "🇲🇽", "La Liga": "🇪🇸", Premier: "🏴", Bundesliga: "🇩🇪", "Serie A": "🇮🇹", "Ligue 1": "🇫🇷", Champions: "⭐"};
+  const row = c => { const g = G[c.g]; return [`${FLAG[g.lg] || "⚽"} ${esc(g.away.abbr)} @ ${esc(g.home.abbr)} (${hora(g.date)}) · <b>${esc(c.lbl)}</b> · ${c.p ? `<b>${(c.est ? "≈" : "") + fx(c.p)}</b>` : "sin momio"} · ${pct(c.pr)}`, ...whySoc(S, g, c, GM[c.g]).slice(0, 2), ""].join("\n"); };
   const out = {top: null, leagues: []};
   const top = M.socTop(B.cands.filter(c => soon(G[c.g])), G, null, 10);
   out.topBets = top.map(c => socBet(G[c.g], c));
