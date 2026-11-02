@@ -218,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 9:05 a.m.</footer>
-<script src="model.js?v=20261102-0905"></script>
+<footer class="ver">Versión de la app: 2 nov 9:15 a.m.</footer>
+<script src="model.js?v=20261102-0915"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-0905";
+const APP_VERSION = "20261102-0915";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -892,7 +892,9 @@ function viewPicks() {
 }
 function viewGames() {
   return DATA.games.filter(g => (!filt.game || g.id === filt.game) && inDay(g)).map(g => {
-    const L = g.lines || {}, list = onePer(DATA.cands.filter(c => c.g === g.id).sort((a, b) => score(b) - score(a))).slice(0, 10);
+    const L = g.lines || {}, all = DATA.cands.filter(c => c.g === g.id).sort((a, b) => score(b) - score(a));
+    const list = onePer(all.filter(c => !window.M.fails(c, S.name))).slice(0, 10), inTop = new Set(topNow().map(c => c.aid + c.m + c.s));
+    const rest = onePer(all.filter(c => window.M.fails(c, S.name) && !list.some(x => x.aid === c.aid))).slice(0, 8);
     const inj = g.inj.filter(i => i[2] === "Out").map(i => `${esc(i[1])} (${i[0]})`);
     const dtd = g.inj.filter(i => i[2] !== "Out").map(i => `${esc(i[1])} (${i[0]})`);
     const M = gameModel(g), B = M.best;
@@ -926,8 +928,10 @@ function viewGames() {
       </div>
       <div class="inj">${inj.length ? `<b>Fuera:</b> ${inj.join(", ")}` : "Sin bajas confirmadas"}${dtd.length ? `<br><b>En duda:</b> ${dtd.join(", ")}` : ""}</div>
       <div class="detail" style="animation:none">
-        <h3>Props de este partido (top ${list.length})</h3>
-        ${list.length ? list.map(c => `<div class="mini"><span><b>${esc(c.n)}</b> <span class="meta">(${esc(c.t)})</span> · ${pickLbl(c)}${reasonsShort(c)}${last5(c)}</span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("") : `<div class="meta">Sin props con sustento suficiente.</div>`}
+        <h3>Props sólidos de este partido (${list.length})</h3>
+        <div class="meta" style="margin-bottom:6px">Pasan los mismos filtros que el Top 10: van con su rol, ${pct(window.M.CFG[S.name].minPr)} o más de probabilidad y momio justo.</div>
+        ${list.length ? list.map(c => `<div class="mini"><span><b>${esc(c.n)}</b> <span class="meta">(${esc(c.t)})</span> · ${pickLbl(c)}${inTop.has(c.aid + c.m + c.s) ? ` <span class="chip c-good">En el Top 10</span>` : ""}${reasonsShort(c)}${last5(c)}</span><span class="r"><b>${fx(c.p)}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("") : `<div class="meta">Ningún prop de este partido pasa los filtros. Mejor no forzarlo.</div>`}
+        ${rest.length ? `<details class="gmore" style="margin-top:8px"><summary>Props que no pasan los filtros (${rest.length})</summary>${rest.map(c => `<div class="mini" style="opacity:.7"><span><b>${esc(c.n)}</b> <span class="meta">(${esc(c.t)})</span> · ${pickLbl(c)}<br><span class="meta">No entra: ${esc(window.M.fails(c, S.name))}</span></span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</details>` : ""}
       </div>
       </details>
     </div>`;

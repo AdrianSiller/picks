@@ -40,12 +40,15 @@
   M.score = (c, sport) => { const marg = c.m === "ATD" || c.a10 == null ? 0 : (c.s === "over" ? 1 : -1) * (c.a10 - c.l) / Math.max(c.l, 1);
     return c.pr * 0.8 + clamp(marg, -0.2, 0.4) * 0.5 - (c.sm ? 0.06 : 0) - (c.q ? 0.04 : 0) - (M.lowRole(c, sport) ? 0.05 : 0) - (c.b2b && c.s === "over" ? 0.02 : 0); };
   M.CFG = {NBA: {perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6}};
+  // Why a prop doesn't qualify (same filters for the top 10 and for each game's list); "" = it qualifies
+  M.fails = (c, sport) => { const cfg = M.CFG[sport];
+    return c.out ? "no juega" : !c.p ? "sin momio en la casa" : c.role === 0 ? "fuera de su rol" : c.pr < cfg.minPr ? `probabilidad baja (${Math.round(c.pr * 100)}%)` : c.e < -0.02 ? "momio caro para lo que estimamos" : ""; };
   M.topPicks = (cands, sport, n = 10) => {
     const cfg = M.CFG[sport], out = [], per = {};
     for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
       // Same rule as game picks: support first, but never a price below what the probability is worth
       // Main-role players only (c.role 0 = bench / small or unstable role): their props swing with minutes and injuries
-      if (c.out || !c.p || c.role === 0 || c.pr < cfg.minPr || c.e < -0.02) continue; if ((per[c.aid] || 0) >= cfg.perPlayer) continue;
+      if (M.fails(c, sport)) continue; if ((per[c.aid] || 0) >= cfg.perPlayer) continue;
       per[c.aid] = (per[c.aid] || 0) + 1; out.push(c); if (out.length === n) break;
     }
     return out;
