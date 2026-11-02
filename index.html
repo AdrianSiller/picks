@@ -180,6 +180,11 @@ table.form tbody th small{display:block;font:400 10.5px var(--f-body);color:var(
 table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
 .pb{display:inline-block;width:54px;height:6px;border-radius:3px;background:var(--line);vertical-align:middle;overflow:hidden}
 .pb i{display:block;height:100%}.pb i.g{background:var(--good)}.pb i.m{background:var(--warn)}.pb i.b{background:var(--bad)}
+.why2{list-style:none;margin:6px 0 0;padding:0;font-size:12.5px;line-height:1.4}
+.why2 li{position:relative;padding-left:16px;margin:2px 0;color:var(--ink)}
+.why2 li::before{position:absolute;left:0;font-weight:700}
+.why2 li.ry::before{content:"+";color:var(--good)}.why2 li.rx::before{content:"−";color:var(--bad)}.why2 li.rn::before{content:"•";color:var(--muted)}
+.why2.full{margin-bottom:10px}
 .refresh{display:flex;align-items:center;gap:10px;margin-top:8px}
 .rbtn{border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:6px 14px;font:600 13px var(--f-body);cursor:pointer}
 .rbtn[disabled]{opacity:.6;cursor:wait}
@@ -213,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 8:20 a.m.</footer>
-<script src="model.js?v=20261102-0820"></script>
+<footer class="ver">Versión de la app: 2 nov 8:35 a.m.</footer>
+<script src="model.js?v=20261102-0835"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-0820";
+const APP_VERSION = "20261102-0835";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -553,6 +558,28 @@ function hits(c) {
   return `<div class="hits">${cell(c.h10, "Últimos 10 juegos")}${cell(c.hc, "Esta temporada")}${cell(c.hp, "Temporada pasada")}</div>`;
 }
 function why(c) { return `Cumplió ${c.h10[0]} de sus últimos ${c.h10[1]}` + (c.m === "ATD" ? "" : ` · promedia ${c.a10}`); }
+// Why this prop: the reasons behind it, each marked as helping (+) or hurting (−) the pick
+function reasons(c) {
+  const R = [], st = MK[c.m] ? MK[c.m].lbl : "", over = c.s === "over", g = games[c.g] || {};
+  if (c.h10 && c.h10[1]) { const marg = c.a10 == null ? 0 : (over ? 1 : -1) * (c.a10 - c.l);
+    R.push({w: 3, ok: c.h10[0] / c.h10[1] >= 0.6, t: `Tendencia: cumplió ${c.h10[0]} de sus últimos ${c.h10[1]}${c.a10 != null ? `; promedia ${c.a10} ${st} contra la línea de ${c.l}` : ""}${marg > 0 ? "" : " (el promedio no le da margen)"}`}); }
+  if (c.hp && c.hp[1] >= 10) R.push({w: 1, ok: c.hp[0] / c.hp[1] >= 0.55, t: `Temporada pasada: ${c.hp[0]} de ${c.hp[1]}`});
+  const mk = MUKEY(c), mx = mk && muOf(c.o, mk);
+  if (mx) { const top = mx.r <= 10, low = mx.r > mx.n - 10; if (top || low) { const ok = over === top; R.push({w: 2, ok, t: `Rival: ${esc(c.o)} es de las que ${top ? "más" : "menos"} permiten (${mx.r}.º de ${mx.n}), ${ok ? "ayuda" : "pesa en contra"}`}); } }
+  else if (c.hd && c.f && Math.abs(c.f - 1) >= 0.03) { const p = Math.round((c.f - 1) * 100), ok = rivalFav(c) > 0;
+    R.push({w: 2, ok, t: `Rival: ${esc(c.o)} permite ${Math.abs(p)}% ${p > 0 ? "más" : "menos"} ${st} de lo normal a ${POSPL[c.pos] || c.pos}`}); }
+  if (c.envAdj >= 0.015 || c.envAdj <= -0.015) { const ok = c.envAdj > 0, env = g.env;
+    R.push({w: 2, ok, t: c.blow && !ok ? "Spread grande: riesgo de paliza y menos minutos al final" : `Tipo de partido: ${env ? (S.name === "NBA" ? `total ${env.total} contra ${env.avg} de promedio` : `su equipo espera ${(c.h ? env.h : env.a)} puntos`) : ""}, ${ok ? "ayuda" : "pesa en contra"}`}); }
+  if (c.hh && c.hh[1] >= 2) R.push({w: 1, ok: c.hh[0] / c.hh[1] >= 0.5, t: `Contra ${esc(c.o)}: ${c.hh[0]} de ${c.hh[1]}`});
+  // Teammates out: not part of the calculation, but they can change his volume
+  const outs = (g.inj || []).filter(i => i[0] === c.t && i[2] === "Out" && i[1] !== c.n).map(i => i[1]).slice(0, 3);
+  if (outs.length) R.push({w: 1, ok: null, t: `Bajas en ${esc(c.t)}: ${outs.map(esc).join(", ")}. No entra al cálculo, pero ${over ? "puede darle más volumen" : "ojo, puede recibir más volumen"}`});
+  if (c.wind) R.push({w: 1, ok: !over, t: `Viento de ${c.wind} mph en el partido`});
+  if (c.b2b) R.push({w: 1, ok: !over, t: "Segunda noche seguida"});
+  return R.sort((a, b) => b.w - a.w);
+}
+const reasonLi = r => `<li class="${r.ok === null ? "rn" : r.ok ? "ry" : "rx"}">${r.t}</li>`;
+const reasonsShort = c => { const R = reasons(c).filter(r => r.ok !== null).slice(0, 2); return R.length ? `<ul class="why2">${R.map(reasonLi).join("")}</ul>` : ""; };
 function chips(c) {
   const out = [];
   if (c.pr >= 0.72) out.push(`<span class="chip c-good">Muy sólido</span>`);
@@ -600,6 +627,8 @@ function gameChart(c) {
 function detail(c) {
   const g = games[c.g], u = S.usage(c);
   return `<div class="detail">
+    <h3>Por qué este pick</h3>
+    <ul class="why2 full">${reasons(c).map(reasonLi).join("")}</ul>
     <h3>${c.m === "ATD" ? "Touchdowns por juego" : `Cuántos ${MK[c.m].lbl} promedia`}</h3>
     <div class="stats">
       <div class="stat"><b>${c.aC ?? "—"}</b><span>Esta temporada</span></div>
@@ -638,6 +667,7 @@ function pickCard(c, i) {
         <div class="team-line">${esc(tname(c.t))} · ${POS[c.pos] || c.pos}</div>
         <div class="meta">${c.h ? "En casa vs" : "De visita en"} ${esc(tname(c.o))} · ${time(games[c.g].date)}</div>
         <div class="pick">${pickLbl(c)}</div>
+        ${reasonsShort(c)}
       </div>
       <div class="price"><small>Momio</small><b>${c.p ? fx(c.p) : "—"}</b><small class="nop">${c.p ? esc(c.bk || "") + (c.moved != null ? ` · antes ${c.moved}` : "") : c.altLine ? `línea ${c.altLine} en ${esc(c.altBk)}` : "en tu casa"}</small></div>
     </div>
@@ -892,7 +922,7 @@ function viewGames() {
       <div class="inj">${inj.length ? `<b>Fuera:</b> ${inj.join(", ")}` : "Sin bajas confirmadas"}${dtd.length ? `<br><b>En duda:</b> ${dtd.join(", ")}` : ""}</div>
       <div class="detail" style="animation:none">
         <h3>Props de este partido (top ${list.length})</h3>
-        ${list.length ? list.map(c => `<div class="mini"><span><b>${esc(c.n)}</b> <span class="meta">(${esc(c.t)})</span> · ${pickLbl(c)}${last5(c)}</span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("") : `<div class="meta">Sin props con sustento suficiente.</div>`}
+        ${list.length ? list.map(c => `<div class="mini"><span><b>${esc(c.n)}</b> <span class="meta">(${esc(c.t)})</span> · ${pickLbl(c)}${reasonsShort(c)}${last5(c)}</span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("") : `<div class="meta">Sin props con sustento suficiente.</div>`}
       </div>
       </details>
     </div>`;
