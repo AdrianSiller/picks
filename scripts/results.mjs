@@ -22,7 +22,7 @@ export function snapshot(data, now, hours = 30) {
   if (S && S.games.length) {
     const B = M.buildSoccer(S), G = Object.fromEntries(S.games.map(g => [g.id, g])), seen = new Set();
     const add = (c, why) => { const g = G[c.g]; if (!soon(g) || seen.has(c.g + c.k + c.side)) return; seen.add(c.g + c.k + c.side);
-      items.push({sport: "SOC", kind: "soc", d: g.date, pr: c.pr, e: c.e, g: c.g, k: c.k, side: c.side, line: c.line, p: c.p || null, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: c.lbl, why}); };
+      items.push({sport: "SOC", kind: "soc", d: g.date, pr: c.pr, e: c.e, g: c.g, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p || null, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: c.lbl, why}); };
     M.socTop(B.cands, G, null).forEach(c => add(c, "top"));
     for (const g of S.games) { const best = B.cands.filter(c => c.g === g.id && c.p && M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))[0]; if (best) add(best, "game"); }
   }
@@ -74,6 +74,7 @@ export async function grade(items) {
         case "hc": { const m = x.side === "H" ? h - a + x.line : a - h + x.line; hit = m === 0 ? null : m > 0; break; }
         case "tot": hit = x.side === "O" ? h + a > x.line : h + a < x.line; break;
         case "btts": hit = (h > 0 && a > 0) === (x.side === "Y"); break;
+        case "tt": { const gl = x.team === "H" ? h : a; hit = x.side === "O" ? gl > x.line : gl < x.line; break; }
         case "cor": { const ch = corners(sc.hid), ca = corners(sc.aid); hit = ch == null || ca == null ? null : x.side === "O" ? ch + ca > x.line : ch + ca < x.line; break; }
       }
       x.res = {hit: hit == null ? null : hit ? 1 : 0, act: `${a}-${h}`};

@@ -104,6 +104,10 @@
       dist = nx; }
     return hit;
   };
+  // Soccer: model weight vs the book (the book is sharper), and max disagreement allowed for a solid pick
+  // The book is much sharper than a goals model: it weighs 70% (80% in Champions) and the model only confirms.
+  // If model and book disagree by more than 12 points, the model is probably missing something (lineups, rotation): no pick.
+  M.SOC = {w: 0.3, wCL: 0.2, gap: 0.12, minPr: 0.62, eMin: -0.03, minP: 1.2};
   M.buildSoccer = D => {
     const K = 4, HFA = 1.12, AFA = 0.90;
     const pois = (k, l) => { let p = Math.exp(-l); for (let i = 1; i <= k; i++) p *= l / i; return p; };
@@ -136,8 +140,8 @@
       const gi = {id: g.id, lh, la, lc, pH, pD, pA, pBTTS: P((i, j) => i > 0 && j > 0), H, A, up1H: M.everAhead(lh, la, 1), up1A: M.everAhead(la, lh, 1)};
       games.push(gi);
       // Model weight vs the market: lower in Champions, where teams come from leagues of very different level
-      const wM = g.lg === "Champions" ? 0.25 : 0.5;
-      const add = o => { const blend = o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7; cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null}); };
+      const wM = g.lg === "Champions" ? M.SOC.wCL : M.SOC.w;
+      const add = o => { const blend = o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7; cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
       const hN = g.home.abbr, aN = g.away.abbr;
       if (L.mlHome) add({k: "1x2", side: "H", lbl: `Gana ${hN}`, pm: pH, mk: nv3(L.mlHome), p: L.mlHome});
       if (L.draw) add({k: "1x2", side: "D", lbl: "Empate", pm: pD, mk: nv3(L.draw), p: L.draw});
@@ -165,6 +169,11 @@
       if (L.total) { const t = Number(L.total), po = P((i, j) => i + j > t), mk = nv2(L.overOdds, L.underOdds);
         add({k: "tot", side: "O", lbl: `Más de ${t} goles`, line: t, pm: po, mk, p: L.overOdds});
         add({k: "tot", side: "U", lbl: `Menos de ${t} goles`, line: t, pm: 1 - po, mk: mk != null ? 1 - mk : null, p: L.underOdds}); }
+      // Goals per team (each line of the book's ladder with sensible prices)
+      if (g.tt) for (const [sd, lam, nm] of [["H", lh, hN], ["A", la, aN]]) for (const [l, ov, un] of (g.tt[sd] || {}).lines || []) {
+        let c0 = 0; for (let k = 0; k <= Math.floor(l); k++) c0 += pois(k, lam); const mk = nv2(ov, un);
+        if (ov >= 1.15 && ov <= 2.6) add({k: "tt", side: "O", team: sd, lbl: `${nm} más de ${l} goles`, line: l, pm: 1 - c0, mk, p: ov});
+        if (un >= 1.15 && un <= 2.6) add({k: "tt", side: "U", team: sd, lbl: `${nm} menos de ${l} goles`, line: l, pm: c0, mk: 1 - mk, p: un}); }
       const mkB = g.btts ? nv2(g.btts[0], g.btts[1]) : null;
       add({k: "btts", side: "Y", lbl: "Ambos anotan: Sí", pm: gi.pBTTS, mk: mkB, p: g.btts ? g.btts[0] : null});
       add({k: "btts", side: "N", lbl: "Ambos anotan: No", pm: 1 - gi.pBTTS, mk: mkB != null ? 1 - mkB : null, p: g.btts ? g.btts[1] : null});
@@ -177,7 +186,7 @@
     return {games, cands, lgMu, lgC, rowsOf};
   };
   // Soccer picks need support too: priced ones must hit at least 52% (value alone is not enough)
-  M.socOk = c => c.p ? (c.p >= 1.2 && c.e >= -0.02 && c.pr >= 0.58) : (c.pr >= 0.62 && c.pr <= 0.75);
+  M.socOk = c => (c.gap == null || Math.abs(c.gap) <= M.SOC.gap) && (c.p ? (c.p >= M.SOC.minP && c.e >= M.SOC.eMin && c.pr >= M.SOC.minPr) : (c.pr >= 0.62 && c.pr <= 0.75));
   // Ranked by probability; value adds at most 5 points, and picks without a price start a bit lower
   M.socScore = c => c.pr + (c.p ? 0 : -0.03);
   // Top lists only take picks with a price in hand (real or estimated)
