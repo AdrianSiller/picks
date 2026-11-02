@@ -213,12 +213,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 8:15 a.m.</footer>
-<script src="model.js?v=20261102-0815"></script>
+<footer class="ver">Versión de la app: 2 nov 8:20 a.m.</footer>
+<script src="model.js?v=20261102-0820"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-0815";
+const APP_VERSION = "20261102-0820";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -903,8 +903,8 @@ function contextHtml(g, M) {
   const out = [];
   if (g.rest) { const d = (t, x) => x == null ? "" : x === 1 ? `<b>${t}</b> juega la segunda noche seguida (−1.5 pts en la proyección)` : `${t} con ${x - 1} día${x - 1 === 1 ? "" : "s"} de descanso`;
     const parts = [d(g.away.abbr, g.rest.a), d(g.home.abbr, g.rest.h)].filter(Boolean); if (parts.length) out.push(parts.join(" · ")); }
-  if (g.env && S.name === "NBA") out.push(`Total de la casa ${g.env.total} contra ${g.env.avg} de promedio: <b>partido ${M.envTag(g.env.env)}</b>.${g.env.env >= 0.03 ? " Favorece los overs de anotación." : g.env.env <= -0.03 ? " Favorece los unders." : ""}${Math.abs(Number((g.lines || {}).spreadHome) || 0) >= 11 ? " Spread de 11+: riesgo de paliza, los titulares pueden jugar menos al final." : ""}`);
-  if (g.env && S.name === "NFL") out.push(`Puntos esperados según la casa: ${esc(g.away.abbr)} ${g.env.a} · ${esc(g.home.abbr)} ${g.env.h} (promedio de la liga ${(g.env.avg / 2).toFixed(1)} por equipo): <b>partido ${M.envTag(g.env.env)}</b>.`);
+  if (g.env && S.name === "NBA") out.push(`Total de la casa ${g.env.total} contra ${g.env.avg} de promedio: <b>partido ${window.M.envTag(g.env.env)}</b>.${g.env.env >= 0.03 ? " Favorece los overs de anotación." : g.env.env <= -0.03 ? " Favorece los unders." : ""}${Math.abs(Number((g.lines || {}).spreadHome) || 0) >= 11 ? " Spread de 11+: riesgo de paliza, los titulares pueden jugar menos al final." : ""}`);
+  if (g.env && S.name === "NFL") out.push(`Puntos esperados según la casa: ${esc(g.away.abbr)} ${g.env.a} · ${esc(g.home.abbr)} ${g.env.h} (promedio de la liga ${(g.env.avg / 2).toFixed(1)} por equipo): <b>partido ${window.M.envTag(g.env.env)}</b>.`);
   if (g.wx) out.push(g.wx.indoor ? "Estadio techado: el clima no influye." : `Clima al inicio: ${g.wx.temp}°F, viento ${g.wx.wind} mph (ráfagas ${g.wx.gust}), lluvia ${g.wx.rain}%.${g.wx.wind >= 15 ? " <b>Viento fuerte: baja el juego aéreo; los overs de pase y recepción se castigan.</b>" : ""}`);
   return out.length ? `<div class="inj">${out.join("<br>")}</div>` : "";
 }
