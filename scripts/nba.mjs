@@ -103,7 +103,11 @@ export async function buildNBA(now = new Date()) {
   // teammates of his position give some back. vm = expected minutes today / his usual minutes.
   const grp = {G: ["G", "F"], F: ["F", "G", "C"], C: ["C", "F"]};
   const known = Object.entries(logs).map(([id, L]) => ({id, R: roster[id], min: avg((L.c.length ? L.c : L.p.slice(0, 20)).map(r => r[3])) || 0, lastD: (L.c[0] || [])[0]})).filter(x => x.R && x.min >= 12);
-  const MV = {}, minNotes = {};
+  const MV = {}, minNotes = {}, US = {};
+  // Shots and touches: besides minutes, the teammates already on the floor take more of the shots and passes of a new absence.
+  // 35% of his points, 30% of his three-point attempts and (if he is a passer, 5+) 30% of his assists go to active teammates
+  // in proportion to what each already does; at most +15% per stat and player.
+  const per = (id, k) => { const L = logs[id]; const r = L ? (L.c.length ? L.c : L.p.slice(0, 20)) : []; return avg(r.map(x => x[k])) || 0; };
   for (const ab of Object.keys(teamIds)) {
     const team = known.filter(x => x.R.t === ab), lastTeam = ((teams[ab] || {}).cur || []).slice(-1)[0];
     const out = team.filter(x => (inj[x.id] || x.R.inj) === "Out"), act = team.filter(x => (inj[x.id] || x.R.inj) !== "Out");
@@ -114,6 +118,11 @@ export async function buildNBA(now = new Date()) {
       for (const [k, w] of [[0, 0.42], [1, 0.18]]) { const pos = grp[o.R.pos][k]; if (!pos) continue; const rec = act.filter(x => x.R.pos === pos), tot = rec.reduce((s, x) => s + x.min, 0);
         rec.forEach(x => { add[x.id] += o.min * w * x.min / (tot || 1); }); }
       (minNotes[ab] = minNotes[ab] || []).push(`Sin ${o.R.n} (${Math.round(o.min)} min por juego)`);
+      for (const [stat, k, sh, need] of [["PTS", 4, 0.35, 8], ["3PM", 8, 0.3, 3], ["AST", 6, 0.3, 5]]) {
+        const tot0 = per(o.id, k); if (tot0 < need) continue;
+        const rec = act.filter(x => per(x.id, k) > 0), tot = rec.reduce((s, x) => s + per(x.id, k), 0);
+        rec.forEach(x => { const mine = per(x.id, k), extra = tot0 * sh * mine / (tot || 1); US[x.id] = US[x.id] || {}; US[x.id][stat] = (US[x.id][stat] || 1) + extra / mine; });
+      }
     }
     for (const b of act.filter(x => x.min >= 24 && lastTeam && x.lastD && x.lastD < lastTeam[0])) {
       const rec = act.filter(x => x !== b && x.R.pos === b.R.pos), tot = rec.reduce((s, x) => s + x.min, 0);
@@ -130,7 +139,8 @@ export async function buildNBA(now = new Date()) {
     const g = G[p.g], h = R.t === g.home.abbr; if (!h && R.t !== g.away.abbr) continue;
     const o = h ? g.away.abbr : g.home.abbr, cur = L.c, prev = L.p, both = cur.concat(prev); if (cur.length < 2) continue;
     let vm = MV[p.aid] || 1; if (Math.abs(vm - 1) < 0.08) vm = 1;
-    const i = IDX[p.m], vc = cur.map(r => r[i] * vm), vp = prev.map(r => r[i] * vm), oppRows = both.filter(r => r[1] === o), vo = oppRows.map(r => r[i] * vm);
+    let us = Math.min(1.15, (US[p.aid] || {})[p.m] || 1); if (us < 1.03) us = 1;
+    const k = vm * us, i = IDX[p.m], vc = cur.map(r => r[i] * k), vp = prev.map(r => r[i] * k), oppRows = both.filter(r => r[1] === o), vo = oppRows.map(r => r[i] * k);
     const min = avg(cur.map(r => r[3])), d = def[o], f = M.defFactor(d && d.f[R.pos + p.m], d ? d.n : 0, 15);
     // Role for this stat: steady minutes (20+, std dev of the last 8 games up to 7) and the stat is part of his job:
     // shooters (4+ threes tried) for 3PM, scorers (12+) for points, centers or 6+ boards for rebounds, 4+ assists for assists.
@@ -149,7 +159,7 @@ export async function buildNBA(now = new Date()) {
       const pr = M.clamp(M.withDef(hs.pr0, s, f) + envAdj, 0.05, 0.95);
       const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, s, p: price, bk: "DraftKings", pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: 1, chg: hs.chg, nC: vc.length,
         imp: +(1 / price).toFixed(3), e: +(pr - 1 / price).toFixed(3), hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh,
-        aC: avg(cur.map(r => r[i])), a10: avg(both.slice(0, 10).map(r => r[i])), aP: avg(prev.map(r => r[i])), aH: avg(oppRows.map(r => r[i])), vm: +vm.toFixed(2), minExp: +(min * vm).toFixed(1), envAdj, blow: big ? 1 : 0, min, msd: Math.round(msd * 10) / 10, role, sm: hs.hc[1] + hs.hp[1] < 15, vc, vp, vo};
+        aC: avg(cur.map(r => r[i])), a10: avg(both.slice(0, 10).map(r => r[i])), aP: avg(prev.map(r => r[i])), aH: avg(oppRows.map(r => r[i])), vm: +vm.toFixed(2), us: +us.toFixed(2), minExp: +(min * vm).toFixed(1), envAdj, blow: big ? 1 : 0, min, msd: Math.round(msd * 10) / 10, role, sm: hs.hc[1] + hs.hp[1] < 15, vc, vp, vo};
       if (st && st !== "Active") c.q = 1;
       if ((h ? g.rest.h : g.rest.a) === 1) c.b2b = 1;
       if (!best || c.pr > best.pr) best = c;
