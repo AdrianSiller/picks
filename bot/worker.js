@@ -5,7 +5,7 @@ const DATA = "https://adriansiller.github.io/picks/data/";
 const APP = "https://adriansiller.github.io/picks/";
 const btn = (text, data) => ({text, callback_data: data});
 const rows = (list, n) => { const out = []; for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n)); return out; };
-const HOME = {inline_keyboard: [[btn("🏀 NBA", "nba"), btn("🏈 NFL", "nfl"), btn("⚽ Soccer", "soc")], [btn("📊 Cómo nos fue", "res"), btn("🧾 Mis apuestas", "mine")], [btn("🔎 Buscar", "find"), btn("🔔 Avisos", "av")]]};
+const HOME = {inline_keyboard: [[btn("🏀 NBA", "nba"), btn("🏈 NFL", "nfl"), btn("⚽ Soccer", "soc")], [btn("📊 Cómo nos fue", "res"), btn("🧾 Mis apuestas", "mine")], [btn("📋 Picks de hoy", "hoy"), btn("🔎 Buscar", "find")], [btn("🔔 Avisos", "av")]]};
 const LGN = {mx: "🇲🇽 Liga MX", esp: "🇪🇸 La Liga", eng: "🏴 Premier", ger: "🇩🇪 Bundesliga", ita: "🇮🇹 Serie A", fra: "🇫🇷 Ligue 1", ucl: "⭐ Champions"};
 
 // Free text -> menu key; null = main menu
@@ -22,6 +22,7 @@ function intent(t) {
   if (/champions|ucl/.test(t)) return "soc:ucl";
   if (/soccer|futbol/.test(t)) return "soc";
   if (/mis apuestas|apuestas|aposte/.test(t)) return "mine";
+  if (/picks de hoy|de hoy|hoy/.test(t)) return "hoy";
   if (/ayer|resultado|como nos fue|como fue/.test(t)) return "res";
   return null;
 }
@@ -52,6 +53,7 @@ function picked(B, list, mask, tag) {
 function view(B, key) {
   const [a, b, c] = key.split(":"), back = (to, lbl = "⬅️ Atrás") => [btn(lbl, to), btn("🏠 Inicio", "home")];
   if (key === "home") return {text: "¿De qué quieres los picks?", kb: HOME};
+  if (key === "hoy") return {send: B.hoy || "Todavía no hay picks de hoy.", after: "home"};
   if (key === "find") return {text: "🔎 Escríbeme el nombre de un jugador o equipo (ej. Doncic, Lakers, Real Madrid, América).", kb: {inline_keyboard: [[btn("🏠 Inicio", "home")]]}};
   if (a === "pl") { const p = ((B[b] || {}).find || []).find(x => x.aid === c); return p ? {send: p.txt, after: "home", bets: p.refs, cmp: p.refs} : {text: "Ese jugador ya no tiene props en la lista.", kb: HOME}; }
   if (key === "res:menu") return {text: "¿Quieres ver más detalle?", kb: {inline_keyboard: [[btn("📋 Ver los picks del último día", "res:d")], ...(B.resSoc ? [[btn("⚽ Soccer por liga", "res:s")]] : []), ...HOME.inline_keyboard]}};

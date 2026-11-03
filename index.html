@@ -218,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 2 nov 3:45 p.m.</footer>
-<script src="model.js?v=20261102-1545"></script>
+<footer class="ver">Versión de la app: 3 nov 9:00 a.m.</footer>
+<script src="model.js?v=20261103-0900"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261102-1545";
+const APP_VERSION = "20261103-0900";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -243,6 +243,17 @@ const getJSON = u => fetch(u + (u.includes("?") ? "&" : "?") + "t=" + Date.now()
 const LATEST = await getJSON("data/latest.json");
 window.M.CALIB = LATEST.calib || {};
 const RESULTS = (await getJSON("data/results.json")) || {days: []};
+// Today's picks as they were before each game started (so they stay visible after kickoff, with their result)
+const SNAP_TODAY = (await getJSON(`data/snap/${new Date().toLocaleDateString("en-CA", {timeZone: "America/Mexico_City"})}.json`)) || {items: []};
+function startedHtml(sp) {
+  const now = new Date(), it = SNAP_TODAY.items.filter(x => x.sport === sp && new Date(x.d) <= now);
+  if (!it.length) return "";
+  const st = x => x.res ? (x.res.hit === 1 ? "✅" : x.res.hit === 0 ? "❌" : "➖") : now - new Date(x.d) < 3.5 * 36e5 ? "⏳" : "🕓";
+  const done = it.filter(x => x.res && (x.res.hit === 0 || x.res.hit === 1)), w = done.filter(x => x.res.hit).length;
+  return `<details class="card" style="cursor:default" open><summary><b>Picks de hoy que ya empezaron (${it.length})</b>${done.length ? ` · van ${w} de ${done.length}` : ""}</summary>
+    ${it.map(x => `<div class="mini"><span>${st(x)} <b>${esc(x.n)}</b> · ${esc(x.lbl)}${x.res && x.res.act != null ? ` <span class="meta">(${esc(x.res.act)})</span>` : ""}</span><span class="r"><b>${x.p ? fx(x.p) : "—"}</b><br><span class="meta">${x.pr ? pct(x.pr) : ""}</span></span></div>`).join("")}
+    <div class="note">⏳ en juego · 🕓 terminado, se califica en la próxima actualización · ✅ pegó · ❌ falló · ➖ anulado (no jugó o empate con el handicap).</div></details>`;
+}
 if (!LATEST) { document.getElementById("view").innerHTML = '<div class="loading">No se pudieron cargar los datos. Revisa tu conexión y recarga.</div>'; return; }
 const NBA_DATA = LATEST.nba, NBA_TEAMS = NBA_DATA.teams, NBA_OUTS = NBA_DATA.outs || {};
 const NFL_DATA = LATEST.nfl;
@@ -351,7 +362,7 @@ function socViewPicks() {
   if (filt.game) { const g = socGames[filt.game]; const list = SOC.cands.filter(c => c.g === filt.game && socOk(c)).sort((a, b) => socScore(b) - socScore(a));
     return `<p class="lead">Picks de ${esc(g.away.name)} @ ${esc(g.home.name)}.</p>` + (list.length ? list.map(socCard).join("") : `<div class="card meta" style="cursor:default">Sin picks con sustento suficiente en este partido. Revisa la proyección en Partidos.</div>`); }
   const top = socTopFor(filt.lg);
-  return resultsHtml() + `<p class="lead">Liga MX, La Liga, Premier, Bundesliga, Serie A, Ligue 1 y Champions de los próximos días. Cada pick muestra cuántas veces se habría cumplido en los últimos partidos de cada equipo y lo compara con la casa. Toca uno para ver la proyección del partido.</p>` + top.map(socCard).join("");
+  return resultsHtml() + `<p class="lead">Liga MX, La Liga, Premier, Bundesliga, Serie A, Ligue 1 y Champions de los próximos días. Cada pick muestra cuántas veces se habría cumplido en los últimos partidos de cada equipo y lo compara con la casa. Toca uno para ver la proyección del partido.</p>` + top.map(socCard).join("") + startedHtml("SOC");
 }
 function socViewGames() {
   const order = ["Liga MX", "La Liga", "Premier", "Bundesliga", "Serie A", "Ligue 1", "Champions"];
@@ -915,7 +926,7 @@ function gameLinesHtml() {
 function viewPicks() {
   if (filt.game) { const list = onePer(DATA.cands.filter(c => c.g === filt.game).sort((a, b) => score(b) - score(a))).slice(0, 10); const g = games[filt.game];
     return `<p class="lead">Picks de ${esc(g.away.name)} @ ${esc(g.home.name)}, ordenados por solidez.</p>` + (list.length ? list.map(pickCard).join("") : `<div class="card meta" style="cursor:default">Sin props con sustento suficiente en este partido.</div>`); }
-  return resultsHtml() + `<p class="lead">Ordenados por solidez: qué tanto se ha cumplido la línea en la temporada, los últimos 10 y la temporada pasada, más el margen del promedio sobre la línea.${S.name === "NFL" ? " Si un pick no trae momio es porque las casas tienen otra línea; revísalo en tu casa." : ""} Toca un pick para ver sus últimos juegos.</p>` + gameLinesHtml() + topNow().map(pickCard).join("");
+  return resultsHtml() + `<p class="lead">Ordenados por solidez: qué tanto se ha cumplido la línea en la temporada, los últimos 10 y la temporada pasada, más el margen del promedio sobre la línea.${S.name === "NFL" ? " Si un pick no trae momio es porque las casas tienen otra línea; revísalo en tu casa." : ""} Toca un pick para ver sus últimos juegos.</p>` + gameLinesHtml() + topNow().map(pickCard).join("") + startedHtml(S.name);
 }
 function viewGames() {
   return DATA.games.filter(g => (!filt.game || g.id === filt.game) && inDay(g)).map(g => {

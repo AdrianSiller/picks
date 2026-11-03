@@ -348,11 +348,22 @@ function results(R) {
   return L.join("\n");
 }
 
-export function botData(latest, R, now) {
+// Today's picks including the ones already started, with their status
+function today(snap, now) {
+  const it = (snap && snap.items) || []; if (!it.length) return "Todavía no hay picks de hoy.";
+  const NAME = {NBA: "🏀 NBA", NFL: "🏈 NFL", SOC: "⚽ Soccer"}, st = x => x.res ? (x.res.hit === 1 ? "✅" : x.res.hit === 0 ? "❌" : "➖") : new Date(x.d) > now ? "🔜" : now - new Date(x.d) < 3.5 * 36e5 ? "⏳" : "🕓";
+  const L = ["<b>📋 Picks de hoy</b>", "<i>🔜 por empezar · ⏳ en juego · 🕓 por calificar · ✅ / ❌</i>"];
+  for (const sp of ["NBA", "NFL", "SOC"]) { const a = it.filter(x => x.sport === sp).sort((x, y) => x.d < y.d ? -1 : 1); if (!a.length) continue;
+    const d = a.filter(x => x.res && (x.res.hit === 0 || x.res.hit === 1)), w = d.filter(x => x.res.hit).length;
+    L.push("", `<b>${NAME[sp]}</b>${d.length ? ` · van ${w} de ${d.length}` : ""}`, ...a.map(x => `${st(x)} ${esc(x.n)} · ${esc(x.lbl)} · ${x.p ? fx(x.p) : "—"}${x.res && x.res.act != null ? ` (${esc(x.res.act)})` : ` · ${hora(x.d)}`}`)); }
+  return L.join("\n");
+}
+
+export function botData(latest, R, now, snap) {
   const at = new Date(latest.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
   BETS = {};
   const out = {v: 3, generatedAt: latest.generatedAt, foot: `<i>Datos de las ${at} · antes de apostar dale ↻ Actualizar en la app</i>`,
-    nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: record(R), resd: results(R), resSoc: recordSoc(R)};
+    nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: record(R), resd: results(R), resSoc: recordSoc(R), hoy: today(snap, now)};
   out.bets = BETS;
   return out;
 }

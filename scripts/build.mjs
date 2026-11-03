@@ -119,5 +119,5 @@ for (let i = 0; i < 10; i++) {
 // Days graded before this pipeline existed (or whose snapshot is gone) stay in the file
 const oldDays = read("results.json", {days: []}).days.filter(d => !days.some(x => x.date === d.date));
 write("results.json", {updatedAt: now.toISOString(), days: days.concat(oldDays).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 30)});
-await step("bot.json", () => write("bot.json", botData(latest, read("results.json", {days: []}), now)));
+await step("bot.json", () => write("bot.json", botData(latest, read("results.json", {days: []}), now, read(`snap/${dloc(now.toISOString(), "America/Mexico_City")}.json`, null))));
 log("done");
