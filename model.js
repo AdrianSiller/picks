@@ -159,6 +159,18 @@
   // Level of each domestic league (Champions: goals against a weak league count less). 1 = Premier League.
   M.SOC_LVL = {PL: 1, LL: 0.95, SA: 0.93, BUN: 0.92, L1: 0.88, POR: 0.82, ERE: 0.8, BEL: 0.78, TUR: 0.76, AUT: 0.74, SUI: 0.73, GRE: 0.72, SCO: 0.72, CZE: 0.72, DEN: 0.72, UKR: 0.72, NOR: 0.7, SRB: 0.7, CRO: 0.7, CYP: 0.68, LMX: 0.75};
   M.SOC_INTL = new Set(["UCL", "UEL", "UECL", "UEFA "]);
+  // Goals each team is expected to score according to the book: total from the over/under price, split from the 1X2
+  M.mktLambdas = (L, pois) => {
+    if (!L.mlHome || !L.draw || !L.mlAway || !L.total || !L.overOdds || !L.underOdds) return null;
+    const inv = 1 / L.mlHome + 1 / L.draw + 1 / L.mlAway, tH = (1 / L.mlHome) / inv, tA = (1 / L.mlAway) / inv, tO = (1 / L.overOdds) / (1 / L.overOdds + 1 / L.underOdds), line = Number(L.total);
+    let best = null;
+    for (let s = 0.8; s <= 5; s += 0.05) { let c = 0; for (let k = 0; k <= Math.floor(line); k++) c += pois(k, s); const d = Math.abs((1 - c) - tO); if (!best || d < best.d) best = {d, s}; }
+    let bestR = null;
+    for (let r = 0.12; r <= 0.88; r += 0.01) { const h = best.s * r, a = best.s - h; let pH = 0, pA = 0;
+      for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++) { const q = pois(i, h) * pois(j, a); if (i > j) pH += q; else if (j > i) pA += q; }
+      const d = Math.abs((pH - pA) - (tH - tA)); if (!bestR || d < bestR.d) bestR = {d, h, a}; }
+    return {h: bestR.h, a: bestR.a};
+  };
   M.buildSoccer = D => {
     const K = 4, HFA = 1.12, AFA = 0.90;
     const pois = (k, l) => { let p = Math.exp(-l); for (let i = 1; i <= k; i++) p *= l / i; return p; };
@@ -195,7 +207,11 @@
       const sumInv = (L.mlHome && L.draw && L.mlAway) ? 1 / L.mlHome + 1 / L.draw + 1 / L.mlAway : null;
       const nv3 = x => sumInv ? (1 / x) / sumInv : null;
       const nv2 = (a, b) => a && b ? (1 / a) / (1 / a + 1 / b) : null;
-      const gi = {id: g.id, lh, la, lc, pH, pD, pA, pBTTS: P((i, j) => i > 0 && j > 0), H, A, up1H: M.everAhead(lh, la, 1), up1A: M.everAhead(la, lh, 1)};
+      // 1 Up anchored to the book: the goals each team is expected to score according to its 1X2 and total prices,
+      // then the same minute-by-minute walk; mixed with the model's like every other market
+      const wM0 = g.lg === "Champions" ? M.SOC.wCL : M.SOC.w, mkL = M.mktLambdas(L, pois);
+      const up = (a, b) => M.everAhead(a, b, 1), u1H = mkL ? wM0 * up(lh, la) + (1 - wM0) * up(mkL.h, mkL.a) : up(lh, la), u1A = mkL ? wM0 * up(la, lh) + (1 - wM0) * up(mkL.a, mkL.h) : up(la, lh);
+      const gi = {id: g.id, lh, la, lc, pH, pD, pA, pBTTS: P((i, j) => i > 0 && j > 0), H, A, up1H: u1H, up1A: u1A, mkL};
       games.push(gi);
       // Model weight vs the market: lower in Champions, where teams come from leagues of very different level
       const wM = g.lg === "Champions" ? M.SOC.wCL : M.SOC.w;
@@ -249,6 +265,16 @@
   // Ranked by probability; value adds at most 5 points, and picks without a price start a bit lower
   M.socScore = c => c.pr + (c.p ? 0 : -0.03);
   // Top lists only take picks with a price in hand (real or estimated)
+  // One pick per match: the solid one if there is one; otherwise the most likely option (62%+) that pays 1.25+ and only loses
+  // the book's usual commission (up to 7 points) with model and book agreeing; 1 Up when it is clearly more likely (price to check)
+  M.socGamePick = (cands, gi) => {
+    const cs = cands.filter(c => c.p), solid = cs.filter(c => M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))[0];
+    if (solid) return {c: solid, tier: "solid"};
+    const fair = cs.filter(c => c.p >= 1.25 && c.pr >= M.SOC.minPr && c.e >= -0.07 && (c.gap == null || Math.abs(c.gap) <= 0.15)).sort((a, b) => b.pr - a.pr)[0];
+    const u = gi ? (gi.up1H >= gi.up1A ? {side: "H", pr: gi.up1H} : {side: "A", pr: gi.up1A}) : null;
+    if (u && u.pr >= 0.7 && (!fair || u.pr >= fair.pr + 0.03)) return {up1: u, tier: "up1"};
+    return fair ? {c: fair, tier: "fair"} : null;
+  };
   M.socTop = (cands, gamesById, lg, n = 10) => { const out = [], per = {};
     for (const c of cands.filter(c => c.p && M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))) { if (lg && gamesById[c.g].lg !== lg) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === n) break; }
     return out; };

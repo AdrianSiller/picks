@@ -218,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 3 nov 9:00 a.m.</footer>
-<script src="model.js?v=20261103-0900"></script>
+<footer class="ver">Versión de la app: 3 nov 11:15 a.m.</footer>
+<script src="model.js?v=20261103-1115"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261103-0900";
+const APP_VERSION = "20261103-1115";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -372,7 +372,7 @@ function socViewGames() {
     return `<h3 class="sub" style="margin:4px 0 -2px">${lg}</h3>` + gs.map(g => {
       const m = socModel[g.id], L = g.lines || {};
       const props = SOC.cands.filter(c => c.g === g.id && socOk(c)).sort((a, b) => (!!b.p - !!a.p) || socScore(b) - socScore(a)).slice(0, 5);
-      const top = props.find(c => c.p), others = props.filter(c => c !== top);
+      const gp = M.socGamePick(SOC.cands.filter(c => c.g === g.id), m), top = gp && gp.c, others = props.filter(c => c !== top);
       const form = t => { const rows = SOC.rowsOf(t.abbr).slice(0, 5).reverse(); return rows.map(r => `<i class="${r[4] > r[5] ? "w" : "l"}" title="${dateLbl(r[0])} ${r[3] === "h" ? "vs" : "@"} ${r[2]} ${r[4]}-${r[5]}">${r[4] > r[5] ? "G" : r[4] < r[5] ? "P" : "E"}</i>`).join(""); };
       const cl = g.cl && g.cl.length ? g.cl[Math.floor(g.cl.length / 2)] : null;
       return `<div class="card game" style="cursor:default">
@@ -382,12 +382,15 @@ function socViewGames() {
           <div class="team" style="text-align:right">${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record || ""}</small></div>
         </div>
         ${top ? `<div class="gpick">
-          <div class="gpick-h">Pick sugerido</div>
+          <div class="gpick-h">${gp.tier === "solid" ? "Pick sólido" : "Pick del partido · paga lo justo"}</div>
           <div class="gpick-main"><span>${esc(top.lbl)}</span><b>${top.p ? (top.est ? "≈" : "") + fx(top.p) : "—"}</b></div>
           <div class="probtxt"><span>Probabilidad estimada <b>${pct(top.pr)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / top.pr)}</b> o más</span></div>
-          <div class="gpick-why">${top.est ? `Momio estimado con el 1X2 de DraftKings (la casa no publica doble oportunidad en la fuente); revísalo en tu casa. ` : ""}${top.p ? `Es la opción con más probabilidad de pegar que tiene momio justo, y el modelo coincide con la casa (no la contradice).` : `La fuente no trae momio de este mercado; revísalo en tu casa.`}</div>
+          <div class="gpick-why">${top.est ? `Momio estimado con el 1X2 de DraftKings (la casa no publica doble oportunidad en la fuente); revísalo en tu casa. ` : ""}${gp.tier === "solid" ? `Es la opción con más probabilidad de pegar que tiene momio justo, y el modelo coincide con la casa (no la contradice).` : `Es lo más probable del partido con un pago decente. No tiene valor extra: paga lo justo y la casa se queda su comisión normal.`}</div>
         </div>
-        ${others.length ? `<div class="others"><h4>Otras opciones</h4>${others.map(c => `<div class="mini"><span><b>${esc(c.lbl)}</b></span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</div>` : ""}` : `<div class="gpick pass">
+        ${others.length ? `<div class="others"><h4>Otras opciones</h4>${others.map(c => `<div class="mini"><span><b>${esc(c.lbl)}</b></span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</div>` : ""}` : (gp && gp.up1 ? `<div class="gpick"><div class="gpick-h">Pick del partido · 1 Up</div>
+          <div class="gpick-main"><span>1 Up ${esc(gp.up1.side === "H" ? g.home.name : g.away.name)}</span><b>—</b></div>
+          <div class="probtxt"><span>Probabilidad estimada <b>${pct(gp.up1.pr)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / gp.up1.pr)}</b> o más</span></div>
+          <div class="gpick-why">Es lo más probable del partido. La fuente no trae el momio del 1 Up: compáralo en tu casa.</div></div>` : "") + `<div class="gpick pass"${gp && gp.up1 ? ' style="display:none"' : ""}>
           <div class="gpick-h">Sin pick con momio</div>
           <div class="gpick-why" style="margin-top:4px">${others.length ? "Ninguna opción sólida trae momio en la fuente. Abajo van las que sí tienen sustento; compáralas en tu casa." : "Nuestra estimación queda muy cerca de la casa en todos los mercados; mejor pasar este partido."}</div>
         </div>

@@ -25,7 +25,9 @@ export function snapshot(data, now, hours = 30) {
     const add = (c, why) => { const g = G[c.g]; if (!soon(g) || seen.has(c.g + c.k + c.side)) return; seen.add(c.g + c.k + c.side);
       items.push({sport: "SOC", kind: "soc", lg: g.lg, d: g.date, pr: c.pr, cal: c.cal || 0, e: c.e, g: c.g, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p || null, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: c.lbl, why}); };
     M.socTop(B.cands, G, null).forEach(c => add(c, "top"));
-    for (const g of S.games) { const best = B.cands.filter(c => c.g === g.id && c.p && M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))[0]; if (best) add(best, "game"); }
+    // The pick of each match (solid or fair) is tracked too, with its tier, to see if the "fair" ones hold up
+    const GI = Object.fromEntries(B.games.map(x => [x.id, x]));
+    for (const g of S.games) { const gp = M.socGamePick(B.cands.filter(c => c.g === g.id), GI[g.id]); if (gp && gp.c) add(gp.c, gp.tier === "solid" ? "game" : "fair"); }
   }
   return items;
 }
