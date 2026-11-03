@@ -1,9 +1,15 @@
-[3s] NBA ok
-[5s] NFL ok
-[13s] Soccer ok
-[13s] calibración {"_n":50,"NBA|prop|over":-0.027,"NBA|prop|under":-0.05,"NBA|game":-0.034,"NFL|prop|over":-0.05,"NFL|prop|under":-0.038,"NFL|game":-0.024,"SOC|soc":0}
-[13s] latest.json 282 KB NBA 6 games/76 props · NFL 1/16 · soccer 49
-[13s] candidatos guardados 871
-[13s] grade 2026-11-02 ok
-[13s] bot.json ok
-[13s] done
+[0s] NBA ok
+[0s] NFL ok
+[16s] Soccer ok
+[16s] SGO NFL ok
+[16s] SGO NFL priced 0
+[19s] SGO UCL ok
+[19s] SGO UCL matched 14
+[19s] calibración {"_n":64,"NBA|prop|over":-0.05,"NBA|prop|under":-0.05,"NBA|game":-0.05,"NFL|prop|over":-0.05,"NFL|prop|under":-0.05,"NFL|game":-0.05,"SOC|soc":0.005}
+[19s] latest.json 145 KB NBA 0 games/0 props · NFL 0/0 · soccer 75
+[19s] grade all 2026-11-02 ok
+[19s] candidatos guardados 1350
+[19s] grade 2026-11-03 ok
+[19s] grade 2026-11-02 ok
+[20s] bot.json ok
+[20s] done
