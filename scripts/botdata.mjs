@@ -20,7 +20,7 @@ const reg = x => { const r = hash([x.sport, x.kind, x.g, x.aid, x.m, x.l, x.s, x
 const propBet = (sp, c, d) => reg({sport: sp, kind: "prop", d, g: c.g, aid: c.aid, m: c.m, l: c.l, s: c.s, p: c.p, pr: c.pr, lbl: `${c.n} ${propLbl(sp, c)}`, b: `${c.n.split(" ").slice(-1)[0]} ${c.s === "over" ? "O" : "U"}${c.l} ${SHORT[c.m] || c.m}`});
 const gameBet = (sp, g, o) => reg({sport: sp, kind: "game", d: g.date, g: g.id, side: o.side, bet: o.kind, line: o.line, p: o.price, pr: o.p, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${o.kind === "tot" ? "Total " + o.lbl : gameLbl(o.lbl)}`, b: `${o.kind === "tot" ? `${g.away.abbr}@${g.home.abbr} ` : ""}${o.kind === "tot" ? o.lbl : gameLbl(o.lbl)}`});
 const up1Bet = (g, side, pr) => reg({sport: "SOC", kind: "up1", nomark: 1, d: g.date, g: g.id, team: side, pr, lbl: `${g.away.abbr} @ ${g.home.abbr} · 1 Up ${side === "H" ? g.home.abbr : g.away.abbr}`, b: `1 Up ${side === "H" ? g.home.abbr : g.away.abbr}`});
-const socBet = (g, c) => reg({sport: "SOC", kind: "soc", d: g.date, g: g.id, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p, pr: c.pr, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${c.lbl}`, b: (s => s.length > 40 ? s.slice(0, 39) + "…" : s)(`${g.away.abbr}@${g.home.abbr}: ${c.lbl}`)});
+const socBet = (g, c) => reg({sport: "SOC", kind: "soc", d: g.date, g: g.id, k: c.k, side: c.side, team: c.team, aid: c.aid, line: c.line, p: c.p, pr: c.pr, lbl: `${g.away.abbr} @ ${g.home.abbr} · ${c.lbl}`, b: (s => s.length > 40 ? s.slice(0, 39) + "…" : s)(`${g.away.abbr}@${g.home.abbr}: ${c.lbl}`)});
 
 function parlay(top) {
   const pool = top.filter(c => !c.sm && !c.q && c.p); let best = null;
@@ -167,6 +167,9 @@ function shortSoc(S, g, c) {
       const L0 = g.lines || {}, inv = L0.mlHome && L0.draw && L0.mlAway ? 1 / L0.mlHome + 1 / L0.draw + 1 / L0.mlAway : null;
       if (inv) out.push(`La casa: ${T.abbr} ${pct((1 / (side === "A" ? L0.mlAway : L0.mlHome)) / inv)} · ${O.abbr} ${pct((1 / (side === "A" ? L0.mlHome : L0.mlAway)) / inv)}`);
       if (g.xi) { const m = (g.xi[side === "A" ? "a" : "h"] || {}).miss || []; if (m.length) out.unshift(`⚠️ ${T.abbr} sin ${m.length} titulares`); } } }
+  if (c.k === "psot") out.unshift(`${c.pl} llegó a ${c.line}+ tiros a puerta en ${c.ph[0]} de sus últimos ${c.ph[1]}`);
+  if (c.k === "tc") { const mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, ab = c.team === "H" ? g.home.abbr : g.away.abbr, ob = c.team === "H" ? g.away.abbr : g.home.abbr, cr = mine.filter(x => x[6] != null), co = opp.filter(x => x[7] != null);
+    if (cr.length && co.length) out.unshift(`${ab} saca ${(cr.reduce((s, x) => s + x[6], 0) / cr.length).toFixed(1)} corners · ${ob} concede ${(co.reduce((s, x) => s + x[7], 0) / co.length).toFixed(1)}`); }
   if (out.length < 2 && c.pm != null && c.mk != null) out.push(Math.abs(c.pm - c.mk) <= 0.05 ? `Modelo y casa coinciden (${pct(c.pm)} y ${pct(c.mk)})` : `Modelo ${pct(c.pm)} · casa ${pct(c.mk)}`);
   return out.slice(0, 3).map(t => `- ${esc(t)}`);
 }

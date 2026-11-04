@@ -113,7 +113,7 @@ for (const [sp, D] of [["NBA", nba], ["NFL", nfl]]) {
 }
 { const SB = M.buildSoccer(soc), SG = Object.fromEntries(soc.games.map(g => [g.id, g]));
   for (const c of SB.cands) { const g = SG[c.g]; if (!c.p || !g || new Date(g.date) < now) continue;
-    allItems.push({sport: "SOC", kind: "soc", lg: g.lg, d: g.date, g: c.g, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p, pr: c.pr, pm: c.pm, mk: c.mk, gap: c.gap, pass: M.socOk(c) ? 1 : 0}); } }
+    allItems.push({sport: "SOC", kind: "soc", lg: g.lg, d: g.date, g: c.g, k: c.k, side: c.side, team: c.team, aid: c.aid, line: c.line, p: c.p, pr: c.pr, pm: c.pm, mk: c.mk, gap: c.gap, pass: M.socOk(c) ? 1 : 0}); } }
 const allBy = {}; for (const x of allItems) (allBy[dayOf(x.d)] = allBy[dayOf(x.d)] || []).push(x);
 for (const [d, its] of Object.entries(allBy)) { const old = read(`cands/${d}.json`, null), kept = old ? old.items.filter(x => !its.some(y => y.sport === x.sport && y.g === x.g)) : [];
   write(`cands/${d}.json`, {date: d, items: kept.concat(its)}); }

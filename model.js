@@ -272,6 +272,20 @@
         let c0 = 0; for (let k = 0; k <= Math.floor(l); k++) c0 += pois(k, lam); const mk = nv2(ov, un);
         if (ov >= 1.15 && ov <= 2.6) add({k: "tt", side: "O", team: sd, lbl: `${nm} más de ${l} goles`, line: l, pm: 1 - c0, mk, p: ov});
         if (un >= 1.15 && un <= 2.6) add({k: "tt", side: "U", team: sd, lbl: `${nm} menos de ${l} goles`, line: l, pm: c0, mk: 1 - mk, p: un}); }
+      // Corners per team: each team's corners won and the rival's corners conceded (home a bit more)
+      if (g.tc) for (const [sd, nm, lam] of [["H", hN, (H.cf + A.ca) / 2 * 1.05], ["A", aN, (A.cf + H.ca) / 2 * 0.95]]) { const t = g.tc[sd]; if (!t) continue;
+        let c0 = 0; for (let k = 0; k <= Math.floor(t.line); k++) c0 += pois(k, lam); const po = 0.5 + ((1 - c0) - 0.5) * 0.8, mk = nv2(t.over, t.under);
+        add({k: "tc", side: "O", team: sd, lbl: `${nm} más de ${t.line} corners`, line: t.line, pm: po, mk, p: t.over});
+        add({k: "tc", side: "U", team: sd, lbl: `${nm} menos de ${t.line} corners`, line: t.line, pm: 1 - po, mk: mk != null ? 1 - mk : null, p: t.under}); }
+      // Players' shots on target (1+ / 2+): how often he got there in his last 10 matches, as a regular starter (6+ starts of 10),
+      // nudged by how many shots on target the rival allows; the book's price has a bigger commission (~7%)
+      for (const x of g.psot || []) { const P = (D.players || {})[x.aid]; if (!P || P.rows.length < 5) continue; const starts = P.rows.filter(r => r[3]).length; if (starts < 6) continue;
+        const xiMiss = g.xi && g.xi[P.t === g.home.abbr ? "h" : "a"]; if (xiMiss && xiMiss.miss.some(n => n === P.n)) continue;
+        const hit = P.rows.filter(r => r[1] >= x.t).length, n = P.rows.length, base = (hit + 1) / (n + 2);
+        const opp = P.t === g.home.abbr ? g.away.abbr : g.home.abbr, oR = (D.teams[opp] || []).filter(r => !r[8] && r[13] != null).slice(0, 10);
+        const oA = oR.length ? oR.reduce((s, r) => s + r[13], 0) / oR.length : null, f = oA ? clamp(oA / 4.2, 0.8, 1.25) : 1;
+        const pm = clamp(base * (1 + (f - 1) * 0.5), 0.03, 0.97), mk = Math.min(0.95, (1 / x.p) / 1.07);
+        add({k: "psot", side: "O", aid: x.aid, pl: P.n, team: P.t === g.home.abbr ? "H" : "A", line: x.t, lbl: `${P.n} ${x.t}+ tiros a puerta`, pm, mk, p: x.p, ph: [hit, n]}); }
       const mkB = g.btts ? nv2(g.btts[0], g.btts[1]) : null;
       add({k: "btts", side: "Y", lbl: "Ambos anotan: Sí", pm: gi.pBTTS, mk: mkB, p: g.btts ? g.btts[0] : null});
       add({k: "btts", side: "N", lbl: "Ambos anotan: No", pm: 1 - gi.pBTTS, mk: mkB != null ? 1 - mkB : null, p: g.btts ? g.btts[1] : null});

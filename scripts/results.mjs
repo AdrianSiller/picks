@@ -24,7 +24,7 @@ export function snapshot(data, now, hours = 30) {
   if (S && S.games.length) {
     const B = M.buildSoccer(S), G = Object.fromEntries(S.games.map(g => [g.id, g])), seen = new Set();
     const add = (c, why) => { const g = G[c.g]; if (!soon(g) || seen.has(c.g + c.k + c.side)) return; seen.add(c.g + c.k + c.side);
-      items.push({sport: "SOC", kind: "soc", lg: g.lg, d: g.date, pr: c.pr, cal: c.cal || 0, e: c.e, g: c.g, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p || null, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: c.lbl, why}); };
+      items.push({sport: "SOC", kind: "soc", lg: g.lg, d: g.date, pr: c.pr, cal: c.cal || 0, e: c.e, g: c.g, k: c.k, side: c.side, team: c.team, aid: c.aid, line: c.line, p: c.p || null, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: c.lbl, why}); };
     M.socTop(B.cands, G, null).forEach(c => add(c, "top"));
     // The pick of each match (solid or fair) is tracked too, with its tier, to see if the "fair" ones hold up
     const GI = Object.fromEntries(B.games.map(x => [x.id, x]));
@@ -79,9 +79,12 @@ export async function grade(items) {
         case "tot": hit = x.side === "O" ? h + a > x.line : h + a < x.line; break;
         case "btts": hit = (h > 0 && a > 0) === (x.side === "Y"); break;
         case "tt": { const gl = x.team === "H" ? h : a; hit = x.side === "O" ? gl > x.line : gl < x.line; break; }
+        case "tc": { const cn = corners(x.team === "H" ? sc.hid : sc.aid); hit = cn == null ? null : x.side === "O" ? cn > x.line : cn < x.line; break; }
+        case "psot": { let v = null; for (const r of s.rosters || []) for (const p of r.roster || []) if (p.athlete && String(p.athlete.id) === String(x.aid)) { const st = (p.stats || []).find(z => z.name === "shotsOnTarget"); const ap = (p.stats || []).find(z => z.name === "appearances"); v = ap && !+ap.value && !p.starter ? "dnp" : st ? +st.value : null; }
+          hit = v === "dnp" || v == null ? null : v >= x.line; break; }
         case "cor": { const ch = corners(sc.hid), ca = corners(sc.aid); hit = ch == null || ca == null ? null : x.side === "O" ? ch + ca > x.line : ch + ca < x.line; break; }
       }
-      x.res = {hit: hit == null ? null : hit ? 1 : 0, act: `${a}-${h}`};
+      x.res = {hit: hit == null ? null : hit ? 1 : 0, act: x.k === "tc" ? `${a}-${h}, corners` : `${a}-${h}`};
     }
   }
   return items;
