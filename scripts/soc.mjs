@@ -68,13 +68,16 @@ export async function buildSOC(now = new Date(), nDays = 6) {
       if (!me || !op) return null;
       const sc = x => Number(x.score && x.score.value != null ? x.score.value : x.score);
       const sm = await J(`${SITE}/all/summary?event=${e.id}`);
-      const corn = t => { const T = ((sm && sm.boxscore && sm.boxscore.teams) || []).find(x => x.team.id === t.team.id); const st = T && (T.statistics || []).find(x => x.name === "wonCorners"); return st ? +st.displayValue : null; };
+      const stat = (t, name) => { const T = ((sm && sm.boxscore && sm.boxscore.teams) || []).find(x => x.team.id === t.team.id); const st = T && (T.statistics || []).find(x => x.name === name); return st && st.displayValue !== "" ? parseFloat(st.displayValue) : null; };
+      const corn = t => stat(t, "wonCorners");
       const slug = (e.league && e.league.slug) || "";
       // Who started (to know each team's usual eleven)
       const ros = ((sm && sm.rosters) || []).find(r => r.team && r.team.id === me.team.id);
       const xi = ros ? (ros.roster || []).filter(p => p.starter && p.athlete).map(p => [p.athlete.id, p.athlete.shortName || p.athlete.displayName]) : [];
       if (xi.length >= 10) (XI[ab] = XI[ab] || []).push({d: e.date, cls: klass(slug), xi});
-      return [dloc(e.date).slice(5), CODE[slug] || ((e.league && e.league.abbreviation) || "?").slice(0, 5), op.team.abbreviation, me.homeAway === "home" ? "h" : "a", sc(me), sc(op), corn(me), corn(op), klass(slug)];
+      return [dloc(e.date).slice(5), CODE[slug] || ((e.league && e.league.abbreviation) || "?").slice(0, 5), op.team.abbreviation, me.homeAway === "home" ? "h" : "a", sc(me), sc(op), corn(me), corn(op), klass(slug),
+        // How it plays: shots, shots on target and possession, for and against (indexes 9-13)
+        stat(me, "totalShots"), stat(me, "shotsOnTarget"), stat(me, "possessionPct"), stat(op, "totalShots"), stat(op, "shotsOnTarget")];
     })).filter(Boolean);
   });
   // Usual eleven: players who started at least 3 of the team's last 5 league / continental matches

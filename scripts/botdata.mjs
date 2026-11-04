@@ -133,6 +133,21 @@ function shortProp(sp, c, D, g, n) {
   return pick.map(r => `- ${r.ok ? "" : "⚠️ "}${esc(r.t)}`);
 }
 const shortPick = (sp, c) => `<b>${esc(c.n)} ${c.s === "over" ? "Over" : "Under"} ${c.l} ${SH[c.m] || c.m}</b> · ${fx(c.p)} · ${pct(c.pr)}${c.q ? " ⚠️ en duda" : ""}`;
+// How each team plays (last 10 with box data): shots on target for / against, possession, and goals per shot on target
+function styleOf(S, ab) {
+  const r = (S.teams[ab] || []).filter(x => !x[8] && x[10] != null).slice(0, 10); if (r.length < 4) return null;
+  const a = f => r.reduce((s, x) => s + f(x), 0) / r.length, sotF = a(x => x[10]), sotA = a(x => x[13] || 0), pos = a(x => x[11] || 0), gf = a(x => x[4]);
+  return {n: r.length, sotF, sotA, pos, conv: sotF ? gf / sotF : 0};
+}
+function styleLine(S, g) {
+  const tag = (ab, s) => { const t = [];
+    if (s.sotF >= 6) t.push("llega mucho"); else if (s.sotF <= 3.5) t.push("llega poco");
+    if (s.sotA >= 5.5) t.push("concede mucho"); else if (s.sotA <= 3) t.push("concede poco");
+    if (s.conv >= 0.45) t.push("mete casi todo lo que llega (puede bajar)"); else if (s.conv <= 0.2) t.push("falla mucho (puede mejorar)");
+    return `${ab} ${s.sotF.toFixed(1)} a puerta, recibe ${s.sotA.toFixed(1)}, ${Math.round(s.pos)}% posesión${t.length ? ` (${t.join(", ")})` : ""}`; };
+  const h = styleOf(S, g.home.abbr), a = styleOf(S, g.away.abbr); if (!h && !a) return null;
+  return `🧭 ${[h && tag(g.home.abbr, h), a && tag(g.away.abbr, a)].filter(Boolean).join(" · ")}`;
+}
 function shortSoc(S, g, c) {
   const rows = ab => (S.teams[ab] || []).filter(r => !r[8]).slice(0, 10), H = rows(g.home.abbr), A = rows(g.away.abbr), out = [];
   const cnt = (r, f) => r.filter(f).length, avg = (r, f) => r.length ? (r.reduce((s, x) => s + f(x), 0) / r.length).toFixed(1) : "–";
@@ -260,6 +275,7 @@ function soccer(S, now, hours, day, started = []) {
       const others = ok.filter(c => c !== best && c.p); if (others.length) L.push("", "<b>Otras opciones</b>", ...others.flatMap(c => [`• ${esc(c.lbl)} · ${c.p ? (c.est ? "≈" : "") + fx(c.p) : "sin momio"} · ${pct(c.pr)}`, ...whySoc(S, g, c, m).slice(0, 2)]));
       if (m) L.push("", "<b>1 Up</b> (compáralo en tu casa)", `• ${esc(g.home.abbr)}: ${pct(m.up1H)} · conviene si paga ${fx(1 / m.up1H)} o más`, `• ${esc(g.away.abbr)}: ${pct(m.up1A)} · conviene si paga ${fx(1 / m.up1A)} o más`);
       const L0 = g.lines || {}; if (L0.mlHome) L.push("", `1X2: ${g.home.abbr} ${fx(L0.mlHome)} · empate ${fx(L0.draw)} · ${g.away.abbr} ${fx(L0.mlAway)}${L0.total ? ` · goles ${L0.total}` : ""}`);
+      { const sty = styleLine(S, g); if (sty) L.push("", esc(sty)); }
       if (g.xi) L.push(`📋 Alineaciones confirmadas: ${["h", "a"].filter(k => g.xi[k]).map(k => { const t = g[k === "h" ? "home" : "away"].abbr, m = g.xi[k].miss; return m.length ? `${t} sin ${m.length} titular${m.length > 1 ? "es" : ""} habitual${m.length > 1 ? "es" : ""} (${esc(m.join(", "))})` : `${t} con su once habitual`; }).join("; ")}. Ya entra en el modelo.`);
       else if (g.rot) L.push(`⚠️ ${["h", "a"].filter(k => g.rot[k]).map(k => `${g[k === "h" ? "home" : "away"].abbr} ${g.rot[k].next != null ? `juega Champions en ${g.rot[k].next} días (posible rotación)` : "viene de jugar Champions"}`).join("; ")}. Revisa alineaciones con ↻ Actualizar en la app antes de apostar.`);
       const S1 = [`<b>${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</b> · ${lg} · ${hora(g.date)}`, ""];
@@ -267,6 +283,7 @@ function soccer(S, now, hours, day, started = []) {
       else if (gp && gp.up1) S1.push(`<b>🎯 ${esc(upTxt.split(" · ")[0])}</b> · ${pct(gp.up1.pr)} · 🟡 conviene desde ${fx(1 / gp.up1.pr)}`, "- Es lo más probable del partido; revisa el momio en tu casa");
       else S1.push("🎯 Sin pick: nada llega a 62% con un pago decente");
       if (others.length) S1.push(`Otras: ${others.map(c => `${esc(c.lbl)} ${c.p ? fx(c.p) : "s/m"} (${pct(c.pr)})`).join(" · ")}`);
+      const sty = styleLine(S, g); if (sty) S1.push(esc(sty));
       if (m) S1.push(`1 Up: ${esc(g.home.abbr)} ${pct(m.up1H)} (desde ${fx(1 / m.up1H)}) · ${esc(g.away.abbr)} ${pct(m.up1A)} (desde ${fx(1 / m.up1A)})`);
       if (g.xi) S1.push(`📋 ${["h", "a"].filter(k => g.xi[k]).map(k => { const mm = g.xi[k].miss; return `${g[k === "h" ? "home" : "away"].abbr} ${mm.length ? `sin ${mm.length} titulares` : "once habitual"}`; }).join(" · ")}`);
       else if (g.rot) S1.push("⚠️ Posible rotación por Champions: revisa alineaciones");
