@@ -216,7 +216,7 @@
       // Model weight vs the market: lower in Champions, where teams come from leagues of very different level
       const wM = g.lg === "Champions" ? M.SOC.wCL : M.SOC.w;
       const cal = M.calAdj("SOC|soc");
-      const add = o => { const blend = clamp((o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7) + cal, 0.02, 0.98); cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, cal, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
+      const add = o => { const blend = clamp((o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7) + cal, 0.02, 0.98); cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, cal, thin: Math.min(H.n, A.n) < 6 ? 1 : 0, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
       const hN = g.home.abbr, aN = g.away.abbr;
       if (L.mlHome) add({k: "1x2", side: "H", lbl: `Gana ${hN}`, pm: pH, mk: nv3(L.mlHome), p: L.mlHome});
       if (L.draw) add({k: "1x2", side: "D", lbl: "Empate", pm: pD, mk: nv3(L.draw), p: L.draw});
@@ -261,16 +261,19 @@
     return {games, cands, lgMu, lgC, rowsOf};
   };
   // Soccer picks need support too: priced ones must hit at least 52% (value alone is not enough)
-  M.socOk = c => (c.gap == null || Math.abs(c.gap) <= M.SOC.gap) && (c.p ? (c.p >= M.SOC.minP && c.e >= M.SOC.eMin && c.pr >= M.SOC.minPr) : (c.pr >= 0.62 && c.pr <= 0.75));
+  M.socOk = c => !c.thin && (c.gap == null || Math.abs(c.gap) <= M.SOC.gap) && (c.p ? (c.p >= M.SOC.minP && c.e >= M.SOC.eMin && c.pr >= M.SOC.minPr) : (c.pr >= 0.62 && c.pr <= 0.75));
   // Ranked by probability; value adds at most 5 points, and picks without a price start a bit lower
   M.socScore = c => c.pr + (c.p ? 0 : -0.03);
   // Top lists only take picks with a price in hand (real or estimated)
   // One pick per match: the solid one if there is one; otherwise the most likely option (62%+) that pays 1.25+ and only loses
   // the book's usual commission (up to 7 points) with model and book agreeing; 1 Up when it is clearly more likely (price to check)
   M.socGamePick = (cands, gi) => {
+    // Too few matches of either team in the data (e.g. a league ESPN does not cover): no pick
+    if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return null;
     const cs = cands.filter(c => c.p), solid = cs.filter(c => M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))[0];
     if (solid) return {c: solid, tier: "solid"};
-    const fair = cs.filter(c => c.p >= 1.25 && c.pr >= M.SOC.minPr && c.e >= -0.07 && (c.gap == null || Math.abs(c.gap) <= 0.15)).sort((a, b) => b.pr - a.pr)[0];
+    // The model must not see it as less likely than the book (it only confirms; it never rides on the book alone)
+    const fair = cs.filter(c => c.p >= 1.25 && c.pr >= M.SOC.minPr && c.e >= -0.07 && (c.gap == null || (c.gap >= -0.05 && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr)[0];
     const u = gi ? (gi.up1H >= gi.up1A ? {side: "H", pr: gi.up1H} : {side: "A", pr: gi.up1A}) : null;
     if (u && u.pr >= 0.7 && (!fair || u.pr >= fair.pr + 0.03)) return {up1: u, tier: "up1"};
     return fair ? {c: fair, tier: "fair"} : null;

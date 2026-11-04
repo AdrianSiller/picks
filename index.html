@@ -218,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 3 nov 9:00 p.m.</footer>
-<script src="model.js?v=20261103-2100"></script>
+<footer class="ver">Versión de la app: 3 nov 8:50 p.m.</footer>
+<script src="model.js?v=20261103-2050"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261103-2100";
+const APP_VERSION = "20261103-2050";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -447,7 +447,7 @@ function socMethod() {
   <p>Rotaciones: que un equipo juegue Champions en pocos días es solo un aviso; no se supone nada. Cuando salen las alineaciones (como 1 hora antes) y le das ↻ Actualizar, se compara el once contra sus titulares habituales (los que arrancaron 3 de sus últimos 5 partidos). Por cada titular que no arranca, el modelo le baja un poco el ataque y le sube los goles en contra.</p>
   <p>1 Up: la apuesta se paga como ganada si el equipo llega a ir arriba por 1 gol en cualquier momento, aunque luego le empaten o le volteen. Se calcula siguiendo el marcador minuto a minuto con los goles esperados del modelo. La fuente no trae su momio: compáralo en tu casa con el "conviene si paga".</p>
   <p>Corners: se promedian los corners que saca cada equipo y los que permite su rival, y se calcula la probabilidad de pasar la línea de la casa.</p>
-  <p>Cuando hay momio, la estimación final pesa 70% la probabilidad de la casa sin su comisión y 30% el modelo (en Champions 80/20). La casa sabe más que un modelo de goles (alineaciones, lesiones, rotaciones), así que el modelo sirve para confirmar, no para pelearse con ella: si el modelo y la casa difieren por más de 12 puntos, no hay pick, porque lo más probable es que al modelo le falte información. Sin momio, la estimación se ajusta hacia 50%.</p><p>Champions: cada equipo se ajusta por el nivel de su liga (Premier 1.00, La Liga 0.95, Serie A 0.93, Bundesliga 0.92, Ligue 1 0.88, Portugal 0.82, Países Bajos 0.80… Grecia 0.72), porque meter goles en una liga débil vale menos. Aun así, en Champions la casa pesa 80%.</p><p>Goles por equipo: DraftKings publica una escalera de líneas por equipo (más/menos de 0.5, 1.5, 2.5…); se evalúa cada una con los goles esperados de ese equipo.</p>
+  <p>Cuando hay momio, la estimación final pesa 70% la probabilidad de la casa sin su comisión y 30% el modelo (en Champions 80/20). La casa sabe más que un modelo de goles (alineaciones, lesiones, rotaciones), así que el modelo sirve para confirmar, no para pelearse con ella: si el modelo y la casa difieren por más de 12 puntos, no hay pick, porque lo más probable es que al modelo le falte información. Sin momio, la estimación se ajusta hacia 50%.</p><p>Champions: cada equipo se ajusta por el nivel de su liga (Premier 1.00, La Liga 0.95, Serie A 0.93, Bundesliga 0.92, Ligue 1 0.88, Portugal 0.82, Países Bajos 0.80… Grecia 0.72), porque meter goles en una liga débil vale menos. Aun así, en Champions la casa pesa 80%.</p><p>Pick del partido: si no hay pick sólido, se da la opción más probable (62%+) que pague 1.25 o más y solo pierda la comisión normal de la casa, siempre que el modelo no la vea menos probable que la casa. Si algún equipo tiene menos de 6 partidos en los datos (ligas que ESPN no cubre), ese partido no lleva pick.</p><p>Goles por equipo: DraftKings publica una escalera de líneas por equipo (más/menos de 0.5, 1.5, 2.5…); se evalúa cada una con los goles esperados de ese equipo.</p>
   <p>Momios: DraftKings vía ESPN para resultado, doble oportunidad, handicap asiático, goles totales, ambos anotan y corners (en Champions también SportsGameOdds). Doble oportunidad al medio tiempo se estima con el resultado al medio tiempo de DraftKings; el modelo supone que el 44% de los goles caen en el primer tiempo.</p></details>`;
 }
 
