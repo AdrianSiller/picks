@@ -15,6 +15,7 @@ jobs:
         working-directory: bot
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "Falta el secreto CLOUDFLARE_API_TOKEN"; exit 1; fi
           # Private storage for the bets you mark in the bot (created once)
@@ -23,3 +24,5 @@ jobs:
           echo "KV: $ID"
           if [ -n "$ID" ]; then printf '\n[[kv_namespaces]]\nbinding = "BETS"\nid = "%s"\n' "$ID" >> wrangler.toml; fi
           npx -y wrangler@3 deploy --keep-vars
+          # Token so the bot can start the before-the-game job on time (only if you added it in GitHub)
+          if [ -n "$GH_DISPATCH_TOKEN" ]; then echo "$GH_DISPATCH_TOKEN" | npx -y wrangler@3 secret put GH_TOKEN; echo "token del aviso: listo"; else echo "token del aviso: falta GH_DISPATCH_TOKEN"; fi

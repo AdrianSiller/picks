@@ -319,7 +319,23 @@ async function handle(env, chat, key, editId) {
   return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: v.text, reply_markup: v.kb}), "el menú");
 }
 
+// Every 5 min (Cloudflare is punctual; GitHub's own schedule runs late): if a game with picks starts in 20-55 min and was not
+// announced yet, start the "before the game" job on GitHub (fresh lineups, injuries, lines + Telegram message)
+async function pregameTick(env) {
+  if (!env.GH_TOKEN || !env.BETS) return;
+  const [B, A] = await Promise.all([getJSON(DATA + "bot.json"), getJSON(DATA + "alerted.json")]); if (!B) return;
+  const al = (A && A.ids) || {}, now = Date.now();
+  const games = [...((B.nba && B.nba.games) || []), ...((B.nfl && B.nfl.games) || []), ...((B.soc && (B.soc.days || [B.soc])) || []).flatMap(d => (d.leagues || []).flatMap(l => l.games || []))];
+  const due = games.filter(g => g.d && g.solid && !al[g.id] && (new Date(g.d) - now) / 6e4 >= 20 && (new Date(g.d) - now) / 6e4 <= 55);
+  const fresh = []; for (const g of due) if (!(await env.BETS.get(`disp:${g.id}`))) fresh.push(g);
+  if (!fresh.length) return;
+  const r = await fetch("https://api.github.com/repos/AdrianSiller/picks/actions/workflows/pregame.yml/dispatches", {method: "POST",
+    headers: {authorization: `Bearer ${env.GH_TOKEN}`, accept: "application/vnd.github+json", "user-agent": "picks-bot", "content-type": "application/json"}, body: JSON.stringify({ref: "main"})});
+  if (r.status === 204) for (const g of fresh) await env.BETS.put(`disp:${g.id}`, "1", {expirationTtl: 7200});
+}
+
 export default {
+  async scheduled(ev, env, ctx) { ctx.waitUntil(pregameTick(env)); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (!env.TELEGRAM_TOKEN) return new Response("Falta el secreto TELEGRAM_TOKEN en el Worker.", {status: 500});
