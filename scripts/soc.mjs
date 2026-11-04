@@ -58,6 +58,9 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     g.psot = of("Shots on Target Milestones").map(i => ({aid: (((i.athlete || {}).$ref || "").match(/athletes\/(\d+)/) || [])[1], t: i.current && i.current.target ? +i.current.target.value : null, p: pr(i)}))
       .filter(x => x.aid && (x.t === 1 || x.t === 2) && x.p && x.p >= 1.3 && x.p <= 4);
     for (const x of g.psot) WANT.add(x.aid);
+    // Anytime goalscorer prices
+    g.pgoal = of("Anytime Goalscorer").map(i => ({aid: (((i.athlete || {}).$ref || "").match(/athletes\/(\d+)/) || [])[1], p: pr(i)})).filter(x => x.aid && x.p && x.p >= 1.3 && x.p <= 4);
+    for (const x of g.pgoal) WANT.add(x.aid);
     // Inventory of the side markets the book publishes (to know what else can be priced)
     for (const i of items) { const n = (i.type && i.type.name) || "?"; PBT[n] = PBT[n] || {n: 0, ex: null}; PBT[n].n++; if (!PBT[n].ex) PBT[n].ex = {team: tid(i) === H.team.id ? "H" : tid(i) === A.team.id ? "A" : tid(i) || null, ath: !!i.athlete, t: i.current && i.current.target ? i.current.target.value : null, p: pr(i), u: i.current && i.current.under ? +i.current.under.decimal : null}; }
     games.push(g);
@@ -85,7 +88,7 @@ export async function buildSOC(now = new Date(), nDays = 6) {
       if (ros) for (const p of ros.roster || []) { if (!p.athlete || !p.stats) continue; const v = n => { const s = p.stats.find(x => x.name === n); return s ? +s.value || 0 : 0; };
         if (!v("appearances") && !p.starter) continue;
         const q = PL[p.athlete.id] = PL[p.athlete.id] || {n: p.athlete.shortName || p.athlete.displayName, t: ab, rows: []};
-        q.rows.push([e.date, v("shotsOnTarget"), v("totalShots"), p.starter ? 1 : 0, klass(slug)]); }
+        q.rows.push([e.date, v("shotsOnTarget"), v("totalShots"), p.starter ? 1 : 0, v("totalGoals"), v("goalAssists"), klass(slug)]); }
       if (xi.length >= 10) (XI[ab] = XI[ab] || []).push({d: e.date, cls: klass(slug), xi});
       return [dloc(e.date).slice(5), CODE[slug] || ((e.league && e.league.abbreviation) || "?").slice(0, 5), op.team.abbreviation, me.homeAway === "home" ? "h" : "a", sc(me), sc(op), corn(me), corn(op), klass(slug),
         // How it plays: shots, shots on target and possession, for and against (indexes 9-13)
@@ -123,6 +126,6 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     if (rot.h || rot.a) g.rot = rot;
   }
   // Shot logs only for players with a shots-on-target price, last 10 league / continental matches, newest first
-  const players = {}; for (const id of WANT) { const q = PL[id]; if (!q) continue; const rows = q.rows.filter(r => r[4] !== "CUP").sort((a, b) => a[0] < b[0] ? 1 : -1).slice(0, 10).map(r => r.slice(0, 4)); if (rows.length >= 5 && rows.filter(r => r[3]).length >= 6) players[id] = {n: q.n, t: q.t, rows}; }
+  const players = {}; for (const id of WANT) { const q = PL[id]; if (!q) continue; const rows = q.rows.filter(r => r[6] !== "CUP").sort((a, b) => a[0] < b[0] ? 1 : -1).slice(0, 10).map(r => r.slice(0, 6)); if (rows.length >= 5 && rows.filter(r => r[3]).length >= 6) players[id] = {n: q.n, t: q.t, rows}; }
   return {asOf: now.toISOString(), games, teams, meta, players};
 }

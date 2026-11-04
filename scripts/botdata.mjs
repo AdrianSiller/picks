@@ -168,6 +168,7 @@ function shortSoc(S, g, c) {
       if (inv) out.push(`La casa: ${T.abbr} ${pct((1 / (side === "A" ? L0.mlAway : L0.mlHome)) / inv)} · ${O.abbr} ${pct((1 / (side === "A" ? L0.mlHome : L0.mlAway)) / inv)}`);
       if (g.xi) { const m = (g.xi[side === "A" ? "a" : "h"] || {}).miss || []; if (m.length) out.unshift(`⚠️ ${T.abbr} sin ${m.length} titulares`); } } }
   if (c.k === "1x2" && c.early >= 0.005) out.push(`Con pago anticipado (2 goles arriba = ganado): +${Math.round(c.early * 100)} pts`);
+  if (c.k === "pgoal") out.unshift(`${c.pl}: ${c.gl} goles en sus últimos ${c.ph[1]} (anotó en ${c.ph[0]})`);
   if (c.k === "psot") out.unshift(`${c.pl} llegó a ${c.line}+ tiros a puerta en ${c.ph[0]} de sus últimos ${c.ph[1]}`);
   if (c.k === "tc") { const mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, ab = c.team === "H" ? g.home.abbr : g.away.abbr, ob = c.team === "H" ? g.away.abbr : g.home.abbr, cr = mine.filter(x => x[6] != null), co = opp.filter(x => x[7] != null);
     if (cr.length && co.length) out.unshift(`${ab} saca ${(cr.reduce((s, x) => s + x[6], 0) / cr.length).toFixed(1)} corners · ${ob} concede ${(co.reduce((s, x) => s + x[7], 0) / co.length).toFixed(1)}`); }
@@ -266,9 +267,13 @@ function soccer(S, now, hours, day, started = []) {
   const row = c => { const g = G[c.g]; return [`${FLAG[g.lg] || "⚽"} <b>${esc(c.lbl)}</b> · ${c.p ? (c.est ? "≈" : "") + fx(c.p) : "sin momio"} · ${pct(c.pr)}`, `<i>${esc(g.away.abbr)} @ ${esc(g.home.abbr)}, ${hora(g.date)}</i>`, ...shortSoc(S, g, c).slice(0, 2), ""].join("\n"); };
   const out = {top: null, leagues: []};
   const inDay = c => G[c.g] && games.includes(G[c.g]);
-  const top = M.socTop(B.cands.filter(inDay), G, null, 10);
-  out.topBets = top.map(c => socBet(G[c.g], c));
-  out.top = [`<b>⚽ Soccer · Top ${top.length}</b>`, "", ...(top.length ? top.map(row) : games.length ? ["Ningún partido por jugar tiene un pick sólido con momio."] : ["No quedan partidos por empezar."]), ...startedLines(started, now)].join("\n");
+  // Probables: the backed picks of every match (up to 2 per match) that are not already solid
+  const probOf = (gs, skip, n) => { const pool = gs.flatMap(g => M.socGamePicks(B.cands.filter(c => c.g === g.id), GM[g.id]).filter(x => x.c && !skip.includes(x.c)).slice(0, 2).map(x => x.c));
+    return pool.sort((a, b) => b.pr - a.pr).slice(0, n); };
+  const tierTxt = (title, top, prob, emptyMsg) => [title, "", ...(top.length ? [`<b>✅ Sólidos</b>`, "", ...top.map(row)] : []), ...(prob.length ? [`<b>🟡 También probables</b> <i>(pagan lo justo)</i>`, "", ...prob.map(row)] : []), ...(!top.length && !prob.length ? [emptyMsg] : [])];
+  const top = M.socTop(B.cands.filter(inDay), G, null, 10), prob = probOf(games, top, Math.max(5, 10 - top.length));
+  out.topBets = top.concat(prob).map(c => socBet(G[c.g], c));
+  out.top = [...tierTxt(`<b>⚽ Soccer · Top</b>`, top, prob, games.length ? "Ningún partido por jugar tiene un pick respaldado." : "No quedan partidos por empezar."), ...startedLines(started, now)].join("\n");
   for (const [lg, code] of Object.entries(LG)) {
     const gs = games.filter(g => g.lg === lg), st = started.filter(x => x.lg === lg); if (!gs.length && !st.length) continue;
     const lt = M.socTop(B.cands.filter(c => inDay(c) && G[c.g].lg === lg), G, lg, 10);
@@ -276,7 +281,8 @@ function soccer(S, now, hours, day, started = []) {
       const m = GM[g.id], ok = B.cands.filter(c => c.g === g.id && M.socOk(c)).sort((a, b) => (!!b.p - !!a.p) || M.socScore(b) - M.socScore(a)).slice(0, 5);
       const L = [`<b>${esc(g.away.name)} @ ${esc(g.home.name)}</b>`, `${lg} · ${hora(g.date)}`, ""];
       // One pick per match: solid, or the most likely fair one, or a clear 1 Up
-      const gp = M.socGamePick(B.cands.filter(c => c.g === g.id), m), best = gp && gp.c, TIER = {solid: "✅ Pick sólido", fair: "🟡 Pick del partido", up1: "🟡 Pick del partido"};
+      const gps = M.socGamePicks(B.cands.filter(c => c.g === g.id), m), extras = gps.slice(1).map(x => x.c);
+      const gp = gps[0] || null, best = gp && gp.c, TIER = {solid: "✅ Pick sólido", fair: "🟡 Pick del partido", up1: "🟡 Pick del partido"};
       const upTxt = gp && gp.up1 ? `1 Up ${gp.up1.side === "H" ? g.home.abbr : g.away.abbr} · ${pct(gp.up1.pr)} · conviene si tu casa paga ${fx(1 / gp.up1.pr)} o más` : null;
       if (gp) L.push(`🎯 <b>${TIER[gp.tier]}</b>: ${best ? `${esc(best.lbl)} · <b>${(best.est ? "≈" : "") + fx(best.p)}</b> · ${pct(best.pr)}` : esc(upTxt)}`,
         ...(gp.tier === "fair" ? ["   <i>Es lo más probable del partido; paga lo justo (la casa se queda su comisión normal), no tiene valor extra.</i>"] : gp.tier === "up1" ? ["   <i>La fuente no trae el momio del 1 Up: compáralo en tu casa.</i>"] : []));
@@ -292,17 +298,19 @@ function soccer(S, now, hours, day, started = []) {
       if (best) S1.push(`<b>🎯 ${esc(best.lbl)}</b> · ${(best.est ? "≈" : "") + fx(best.p)} · ${pct(best.pr)}${gp.tier === "fair" ? " · 🟡 paga lo justo" : ""}`, ...shortSoc(S, g, best));
       else if (gp && gp.up1) S1.push(`<b>🎯 ${esc(upTxt.split(" · ")[0])}</b> · ${pct(gp.up1.pr)} · 🟡 conviene desde ${fx(1 / gp.up1.pr)}`, "- Es lo más probable del partido; revisa el momio en tu casa");
       else S1.push("🎯 Sin pick: nada llega a 62% con un pago decente");
-      if (others.length) S1.push(`Otras: ${others.map(c => `${esc(c.lbl)} ${c.p ? fx(c.p) : "s/m"} (${pct(c.pr)})`).join(" · ")}`);
+      if (extras.length) S1.push("", "<b>También respaldados</b>", ...extras.flatMap(c => [`<b>${esc(c.lbl)}</b> · ${fx(c.p)} · ${pct(c.pr)}`, ...shortSoc(S, g, c).slice(0, 1)]));
+      const others2 = others.filter(c => !extras.includes(c)); if (others2.length) S1.push(`Otras: ${others2.map(c => `${esc(c.lbl)} ${c.p ? fx(c.p) : "s/m"} (${pct(c.pr)})`).join(" · ")}`);
       const sty = styleLine(S, g); if (sty) S1.push(esc(sty));
       if (m) S1.push(`1 Up: ${esc(g.home.abbr)} ${pct(m.up1H)} (desde ${fx(1 / m.up1H)}) · ${esc(g.away.abbr)} ${pct(m.up1A)} (desde ${fx(1 / m.up1A)})`);
       if (g.xi) S1.push(`📋 ${["h", "a"].filter(k => g.xi[k]).map(k => { const mm = g.xi[k].miss; return `${g[k === "h" ? "home" : "away"].abbr} ${mm.length ? `sin ${mm.length} titulares` : "once habitual"}`; }).join(" · ")}`);
       else if (g.rot) S1.push("⚠️ Posible rotación por Champions: revisa alineaciones");
       const meta = S.meta || {}, reg = ab => ((meta[ab] || {}).reg || []).map(x => [x[0], x[1]]);
-      const sb = [...(best && !ok.includes(best) ? [best] : []), ...ok.filter(c => c.p)].map(c => socBet(g, c));
+      const sb = [...new Set([...(best ? [best] : []), ...extras, ...ok.filter(c => c.p)])].map(c => socBet(g, c));
       return {id: g.id, d: g.date, solid: !!gp, tl: L.join("\n"), bets: sb, cmp: [...sb, ...(m ? [up1Bet(g, "H", m.up1H), up1Bet(g, "A", m.up1A)] : [])], b: `${g.away.abbr} @ ${g.home.abbr} · ${new Date(g.date).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ})}`, t: S1.join("\n"),
         chk: {sp: "soc", slug: g.slug, h: g.home.abbr, a: g.away.abbr, pick: best ? {lbl: best.lbl, team: best.team || (best.side === "H" || best.side === "1X" ? "H" : best.side === "A" || best.side === "X2" ? "A" : null)} : null, xi: {h: reg(g.home.abbr), a: reg(g.away.abbr)}, lineups: !!g.xi}};
     });
-    out.leagues.push({code, lg, topBets: lt.map(c => socBet(G[c.g], c)), top: [`<b>⚽ ${lg} · mejores picks</b>`, "", ...(lt.length ? lt.map(row) : gs.length ? ["Ningún partido por jugar tiene un pick sólido con momio."] : ["No quedan partidos por empezar."]), ...startedLines(st, now)].join("\n"), games: gameList, started: st.length});
+    const lp = probOf(gs, lt, Math.max(5, 10 - lt.length));
+    out.leagues.push({code, lg, topBets: lt.concat(lp).map(c => socBet(G[c.g], c)), top: [...tierTxt(`<b>⚽ ${lg} · mejores picks</b>`, lt, lp, gs.length ? "Ningún partido por jugar tiene un pick respaldado." : "No quedan partidos por empezar."), ...startedLines(st, now)].join("\n"), games: gameList, started: st.length});
   }
   out.teams = games.map(g => ({names: [g.home.abbr, g.home.name, g.away.abbr, g.away.name], key: `soc:g:${g.id}`, b: `${g.away.abbr} @ ${g.home.abbr}`}));
   return out;

@@ -307,6 +307,13 @@
         const oA = oR.length ? oR.reduce((s, r) => s + r[13], 0) / oR.length : null, f = oA ? clamp(oA / 4.2, 0.8, 1.25) : 1;
         const pm = clamp(base * (1 + (f - 1) * 0.5), 0.03, 0.97), mk = Math.min(0.95, (1 / x.p) / 1.07);
         add({k: "psot", side: "O", aid: x.aid, pl: P.n, team: P.t === g.home.abbr ? "H" : "A", line: x.t, lbl: `${P.n} ${x.t}+ tiros a puerta`, pm, mk, p: x.p, ph: [hit, n]}); }
+      // Anytime goalscorer: his goals per match in the last 10 (regular starters), scaled by how many goals the book expects
+      // from his team today vs what it usually scores; goalscorer prices carry a bigger commission (~8%)
+      for (const x of g.pgoal || []) { const P = (D.players || {})[x.aid]; if (!P || P.rows.length < 5 || P.rows[0].length < 5) continue; if (P.rows.filter(r => r[3]).length < 6) continue;
+        const side = P.t === g.home.abbr ? "H" : "A", tR = (D.teams[P.t] || []).filter(r => !r[8]).slice(0, 10), tAvg = tR.length ? tR.reduce((s, r) => s + r[4], 0) / tR.length : 1.4;
+        const lamT = mkL ? (side === "H" ? mkL.h : mkL.a) : (side === "H" ? lh : la), sc = clamp(lamT / Math.max(tAvg, 0.5), 0.6, 1.6);
+        const gl = P.rows.reduce((s, r) => s + r[4], 0), n = P.rows.length, rate = (gl + 0.5) / (n + 1), pm = clamp(1 - Math.exp(-rate * sc), 0.03, 0.9);
+        add({k: "pgoal", side: "Y", aid: x.aid, pl: P.n, team: side, lbl: `${P.n} anota`, pm, mk: Math.min(0.95, (1 / x.p) / 1.08), p: x.p, ph: [P.rows.filter(r => r[4] > 0).length, n], gl}); }
       const mkB = g.btts ? nv2(g.btts[0], g.btts[1]) : null;
       add({k: "btts", side: "Y", lbl: "Ambos anotan: Sí", pm: gi.pBTTS, mk: mkB, p: g.btts ? g.btts[0] : null});
       add({k: "btts", side: "N", lbl: "Ambos anotan: No", pm: 1 - gi.pBTTS, mk: mkB != null ? 1 - mkB : null, p: g.btts ? g.btts[1] : null});
@@ -355,6 +362,16 @@
     if (fair) return {c: fair, tier: "fair"};
     return u && u.pr >= 0.7 ? {up1: u, tier: "up1"} : null;
   };
+  // Up to 3 backed picks per match: the main one plus other markets that also pass (60%+, usual commission, model agrees,
+  // coherent with the favorite), never two of the same family (e.g. two team-goal lines) and never forced
+  const fam = c => c.k === "psot" || c.k === "pgoal" ? c.k + c.aid : ["dc", "1x2", "hc", "dc1h"].includes(c.k) ? "res" : c.k === "tt" || c.k === "tc" ? c.k + c.team : c.k;
+  M.socBacked = (cands, gi) => { const fav = gi && gi.fav, okPrice = c => c.mk != null ? c.p * c.mk >= 0.92 : c.e >= -0.07;
+    return cands.filter(c => c.p && c.p >= 1.25 && c.pr >= 0.6 && !c.thin && okPrice(c) && M.socAligned(c, fav) && (c.gap == null || (c.gap >= (c.ucl ? -0.15 : -0.05) && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr); };
+  M.socGamePicks = (cands, gi, max = 3) => {
+    const main = M.socGamePick(cands, gi); if (!main) return [];
+    const out = [main], seen = new Set(main.c ? [fam(main.c)] : ["up1"]);
+    for (const c of M.socBacked(cands, gi)) { if (out.length >= max) break; if (main.c === c || seen.has(fam(c))) continue; seen.add(fam(c)); out.push({c, tier: M.socOk(c) ? "solid" : "fair"}); }
+    return out; };
   M.socTop = (cands, gamesById, lg, n = 10) => { const out = [], per = {};
     for (const c of cands.filter(c => c.p && M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))) { if (lg && gamesById[c.g].lg !== lg) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === n) break; }
     return out; };

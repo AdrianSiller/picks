@@ -80,6 +80,8 @@ export async function grade(items) {
         case "btts": hit = (h > 0 && a > 0) === (x.side === "Y"); break;
         case "tt": { const gl = x.team === "H" ? h : a; hit = x.side === "O" ? gl > x.line : gl < x.line; break; }
         case "tc": { const cn = corners(x.team === "H" ? sc.hid : sc.aid); hit = cn == null ? null : x.side === "O" ? cn > x.line : cn < x.line; break; }
+        case "pgoal": { let v = null; for (const r of s.rosters || []) for (const p of r.roster || []) if (p.athlete && String(p.athlete.id) === String(x.aid)) { const st = (p.stats || []).find(z => z.name === "totalGoals"); const ap = (p.stats || []).find(z => z.name === "appearances"); v = ap && !+ap.value && !p.starter ? "dnp" : st ? +st.value : null; }
+          hit = v === "dnp" || v == null ? null : v >= 1; break; }
         case "psot": { let v = null; for (const r of s.rosters || []) for (const p of r.roster || []) if (p.athlete && String(p.athlete.id) === String(x.aid)) { const st = (p.stats || []).find(z => z.name === "shotsOnTarget"); const ap = (p.stats || []).find(z => z.name === "appearances"); v = ap && !+ap.value && !p.starter ? "dnp" : st ? +st.value : null; }
           hit = v === "dnp" || v == null ? null : v >= x.line; break; }
         case "cor": { const ch = corners(sc.hid), ca = corners(sc.aid); hit = ch == null || ca == null ? null : x.side === "O" ? ch + ca > x.line : ch + ca < x.line; break; }
