@@ -167,6 +167,7 @@ function shortSoc(S, g, c) {
       const L0 = g.lines || {}, inv = L0.mlHome && L0.draw && L0.mlAway ? 1 / L0.mlHome + 1 / L0.draw + 1 / L0.mlAway : null;
       if (inv) out.push(`La casa: ${T.abbr} ${pct((1 / (side === "A" ? L0.mlAway : L0.mlHome)) / inv)} · ${O.abbr} ${pct((1 / (side === "A" ? L0.mlHome : L0.mlAway)) / inv)}`);
       if (g.xi) { const m = (g.xi[side === "A" ? "a" : "h"] || {}).miss || []; if (m.length) out.unshift(`⚠️ ${T.abbr} sin ${m.length} titulares`); } } }
+  if (c.k === "1x2" && c.early >= 0.005) out.push(`Con pago anticipado (2 goles arriba = ganado): +${Math.round(c.early * 100)} pts`);
   if (c.k === "psot") out.unshift(`${c.pl} llegó a ${c.line}+ tiros a puerta en ${c.ph[0]} de sus últimos ${c.ph[1]}`);
   if (c.k === "tc") { const mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, ab = c.team === "H" ? g.home.abbr : g.away.abbr, ob = c.team === "H" ? g.away.abbr : g.home.abbr, cr = mine.filter(x => x[6] != null), co = opp.filter(x => x[7] != null);
     if (cr.length && co.length) out.unshift(`${ab} saca ${(cr.reduce((s, x) => s + x[6], 0) / cr.length).toFixed(1)} corners · ${ob} concede ${(co.reduce((s, x) => s + x[7], 0) / co.length).toFixed(1)}`); }
@@ -227,6 +228,7 @@ function players(sp, D, now, hours, started = []) {
     const S0 = [`<b>${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</b> · ${hora(g.date)}`, ""];
     if (m) { const fav = m.margin >= 0 ? g.home.abbr : g.away.abbr, mg = Math.abs(m.margin).toFixed(0), sl = L0.spreadHome != null ? ` (casa: ${g.home.abbr} ${L0.spreadHome})` : "";
       if (m.play) { S0.push(`<b>🎯 ${esc(gameLbl(m.best.lbl))}</b> · ${fx(m.best.price)} · ${pct(m.best.p)}`, `- Proyectamos ${esc(fav)} por ~${mg}${sl}`);
+        if (m.best.early >= 0.005) S0.push(`- Con pago anticipado (${sp === "NBA" ? "20" : "17"} arriba = ganado): +${Math.round(m.best.early * 100)} pts`);
         const big = [[g.away.abbr, m.A.inj], [g.home.abbr, m.H.inj]].filter(x => x[1] >= 3); if (big.length) S0.push(`- Bajas pesan: ${big.map(x => `${x[0]} −${x[1]} pts`).join(" · ")}`); }
       else S0.push("🎯 Sin pick de ML o spread", `- Proyectamos ${esc(fav)} por ~${mg}${sl}: casi lo mismo`);
       if (m.tot) S0.push(m.tot.play ? `<b>📈 Total ${esc(m.tot.best.lbl)}</b> · ${fx(m.tot.best.price)} · ${pct(m.tot.best.p)}\n- Proyectamos ~${m.tot.proj.toFixed(0)} puntos` : `📈 Total ${m.tot.line}: sin pick`); }

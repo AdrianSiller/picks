@@ -149,8 +149,11 @@
     // 50/50 with the market's no-vig probability: simple models overrate teams on last season's results
     const nv = (a, b) => a && b ? (1 / a) / (1 / a + 1 / b) : null;
     const mk = [nv(L.mlHome, L.mlAway), nv(L.mlAway, L.mlHome), nv(L.spreadHomeOdds, L.spreadAwayOdds), nv(L.spreadAwayOdds, L.spreadHomeOdds)];
-    const cal = M.calAdj(`${ctx.sp || ctx.name}|game`);
-    opts.forEach((o, i) => { o.pm = o.p; if (mk[i] != null) o.p = 0.5 * o.p + 0.5 * mk[i]; o.p = clamp(o.p + cal, 0.02, 0.98); o.cal = cal; });
+    const cal = M.calAdj(`${ctx.sp || ctx.name}|game`), spN = ctx.sp || ctx.name, ea = M.EARLY[spN];
+    opts.forEach((o, i) => { o.pm = o.p; if (mk[i] != null) o.p = 0.5 * o.p + 0.5 * mk[i];
+      // Early payout (your books pay the moneyline as won if the lead reaches 20 in NBA / 17 in NFL): the extra chance it adds
+      if (o.kind === "ml" && ea) { const mu = o.side === "H" ? margin : -margin, up = M.winOrLead(mu, ctx.sd, ea) - M.phi(mu / ctx.sd); o.early = +up.toFixed(3); o.p += up; }
+      o.p = clamp(o.p + cal, 0.02, 0.98); o.cal = cal; });
     const opts2 = opts.filter(o => o.price && (o.kind === "ml" || !isNaN(o.line))).map(o => ({...o, imp: 1 / o.price, e: o.p - 1 / o.price}));
     // Solid pick first: the most likely option (55%+) that also pays at least a little more than it should.
     // An underdog that only has value (wins less than 55%) is shown apart as a risky option, never as the pick.
@@ -175,6 +178,22 @@
       dist = nx; }
     return hit;
   };
+  // Moneyline with early payout (soccer: paid as won if the team goes k goals up at any moment): wins at the end OR ever k up
+  M.winOrUp = (lt, lo, k = 2, steps = 180) => {
+    const ph = lt / steps, pa = lo / steps, W = 12; let dist = new Map([[0, 1]]), hit = 0;
+    for (let s = 0; s < steps; s++) { const nx = new Map();
+      for (const [d, m] of dist) { const up = d + 1;
+        if (up >= k) hit += m * ph; else nx.set(up, (nx.get(up) || 0) + m * ph);
+        if (d - 1 > -W) nx.set(d - 1, (nx.get(d - 1) || 0) + m * pa);
+        nx.set(d, (nx.get(d) || 0) + m * (1 - ph - pa)); }
+      dist = nx; }
+    let win = 0; for (const [d, m] of dist) if (d > 0) win += m;
+    return hit + win;
+  };
+  // Same idea for NBA (20 points) / NFL (17 points): the margin as a random walk with drift (μ = expected margin, σ = spread of results);
+  // pays if the team wins OR its lead reaches `a` at some point (reflection principle)
+  M.winOrLead = (mu, sd, a) => { const pw = M.phi(mu / sd), hitAndLose = Math.exp(2 * a * mu / (sd * sd)) * M.phi((-2 * a - mu) / sd); return clamp(pw + hitAndLose, 0, 0.995); };
+  M.EARLY = {SOC: 2, NBA: 20, NFL: 17};
   // Soccer: model weight vs the book (the book is sharper), and max disagreement allowed for a solid pick
   // The book is much sharper than a goals model: it weighs 70% (80% in Champions) and the model only confirms.
   // If model and book disagree by more than 12 points, the model is probably missing something (lineups, rotation): no pick.
@@ -239,11 +258,13 @@
       // Model weight vs the market: lower in Champions, where teams come from leagues of very different level
       const wM = g.lg === "Champions" ? M.SOC.wCL : M.SOC.w;
       const cal = M.calAdj("SOC|soc");
-      const add = o => { const blend = clamp((o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7) + cal, 0.02, 0.98); cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, cal, al: M.socAligned(o, M.socFav(L)) ? 1 : 0, thin: Math.min(H.n, A.n) < 6 ? 1 : 0, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
+      const add = o => { const blend = clamp((o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7) + cal, 0.02, 0.98); cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, cal, ucl: g.lg === "Champions" ? 1 : 0, al: M.socAligned(o, M.socFav(L)) ? 1 : 0, thin: Math.min(H.n, A.n) < 6 ? 1 : 0, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
       const hN = g.home.abbr, aN = g.away.abbr;
-      if (L.mlHome) add({k: "1x2", side: "H", lbl: `Gana ${hN}`, pm: pH, mk: nv3(L.mlHome), p: L.mlHome});
+      // Early payout (2 goals up = won): the extra chance over just winning, from the book-anchored expected goals
+      const upE = (a, b) => mkL ? Math.max(0, M.winOrUp(a, b, M.EARLY.SOC) - M.winOrUp(a, b, 99)) : 0, eH = mkL ? upE(mkL.h, mkL.a) : 0, eA = mkL ? upE(mkL.a, mkL.h) : 0;
+      if (L.mlHome) add({k: "1x2", side: "H", lbl: `Gana ${hN}`, pm: pH + eH, mk: nv3(L.mlHome) + eH, p: L.mlHome, early: +eH.toFixed(3)});
       if (L.draw) add({k: "1x2", side: "D", lbl: "Empate", pm: pD, mk: nv3(L.draw), p: L.draw});
-      if (L.mlAway) add({k: "1x2", side: "A", lbl: `Gana ${aN}`, pm: pA, mk: nv3(L.mlAway), p: L.mlAway});
+      if (L.mlAway) add({k: "1x2", side: "A", lbl: `Gana ${aN}`, pm: pA + eA, mk: nv3(L.mlAway) + eA, p: L.mlAway, early: +eA.toFixed(3)});
       const sh = Number(L.spreadHome), sa = Number(L.spreadAway);
       const mk1 = sumInv ? nv3(L.mlHome) + nv3(L.draw) : null, mk2 = sumInv ? nv3(L.mlAway) + nv3(L.draw) : null;
       // Double chance: the book's price when it offers the +0.5 handicap; otherwise estimated from its 1X2 prices
@@ -324,7 +345,11 @@
     // "Pays what it's worth": the book's commission on this price is the usual one (up to 8% over its own fair price), and our
     // calibrated probability is 60%+ (judging the price against our more conservative number would count the commission twice)
     const okPrice = c => c.mk != null ? c.p * c.mk >= 0.92 : c.e >= -0.07;
-    const fair = cs.filter(c => c.p >= 1.25 && c.pr >= 0.6 && okPrice(c) && (c.gap == null || (c.gap >= -0.05 && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr)[0];
+    // In Champions the goals model underrates favorites (teams from different leagues): for picks ON the favorite it may sit
+    // up to 15 points under the book; everywhere else it must not be under the book
+    const onFav = c => fav && ((["1x2", "hc"].includes(c.k) && c.side === fav.side) || (["dc", "dc1h"].includes(c.k) && c.side === (fav.side === "H" ? "1X" : "X2")) || (c.k === "tt" && c.team === fav.side && c.side === "O"));
+    const lo = c => c.ucl && onFav(c) ? -0.15 : -0.05;
+    const fair = cs.filter(c => c.p >= 1.25 && c.pr >= 0.6 && okPrice(c) && (c.gap == null || (c.gap >= lo(c) && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr)[0];
     const u = gi ? (gi.up1H >= gi.up1A ? {side: "H", pr: gi.up1H} : {side: "A", pr: gi.up1A}) : null;
     // A pick with a price first; 1 Up (no price in the source) only when there is nothing else
     if (fair) return {c: fair, tier: "fair"};
