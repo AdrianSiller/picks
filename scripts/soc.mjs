@@ -18,7 +18,7 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     for (const e of (sb && sb.events) || []) if (e.status.type.state === "pre" && !evs.some(x => x.e.id === e.id)) evs.push({e, slug, lg});
   });
   if (!okBoards) throw new Error("ESPN soccer scoreboards unavailable");
-  const games = [], teamIds = {}, PBT = {}, TTRAW = [], XI = {};
+  const games = [], teamIds = {}, PBT = {}, TTRAW = [], XI = {}, DBG = {};
   await pool(evs, 5, async ({e, slug, lg}) => {
     const c = e.competitions[0], H = c.competitors.find(x => x.homeAway === "home"), A = c.competitors.find(x => x.homeAway === "away");
     const tm = x => ({abbr: x.team.abbreviation, name: x.team.displayName, record: (x.records && x.records[0] && x.records[0].summary) || ""});
@@ -51,6 +51,8 @@ export async function buildSOC(now = new Date(), nDays = 6) {
       if (ls.length) { g.tt = g.tt || {}; g.tt[side] = {lines: ls.sort((a, b) => a - b).map(l => [l, lad[l].over, lad[l].under])}; }
       if (!TTRAW.length && its.length) TTRAW.push({g: e.id, side, its});
     }
+    if (!DBG.sot) { const it = items.find(i => i.type && /Shots on Target Milestones/.test(i.type.name)); if (it) DBG.sot = {ath: it.athlete, cur: it.current, odds: it.odds, team: it.team}; }
+    if (!DBG.tc) { const tcs = items.filter(i => i.type && i.type.name === "Team Total Corners").slice(0, 12); if (tcs.length) DBG.tc = tcs.map(i => ({t: tid(i), l: i.current && i.current.target ? i.current.target.value : null, p: pr(i)})); }
     // Inventory of the side markets the book publishes (to know what else can be priced)
     for (const i of items) { const n = (i.type && i.type.name) || "?"; PBT[n] = PBT[n] || {n: 0, ex: null}; PBT[n].n++; if (!PBT[n].ex) PBT[n].ex = {team: tid(i) === H.team.id ? "H" : tid(i) === A.team.id ? "A" : tid(i) || null, ath: !!i.athlete, t: i.current && i.current.target ? i.current.target.value : null, p: pr(i), u: i.current && i.current.under ? +i.current.under.decimal : null}; }
     games.push(g);
@@ -74,6 +76,7 @@ export async function buildSOC(now = new Date(), nDays = 6) {
       // Who started (to know each team's usual eleven)
       const ros = ((sm && sm.rosters) || []).find(r => r.team && r.team.id === me.team.id);
       const xi = ros ? (ros.roster || []).filter(p => p.starter && p.athlete).map(p => [p.athlete.id, p.athlete.shortName || p.athlete.displayName]) : [];
+      if (ros && !DBG.roster) { const p0 = (ros.roster || []).find(p => p.stats && p.stats.length); if (p0) DBG.roster = {keys: Object.keys(p0), stats: p0.stats.slice(0, 30)}; }
       if (xi.length >= 10) (XI[ab] = XI[ab] || []).push({d: e.date, cls: klass(slug), xi});
       return [dloc(e.date).slice(5), CODE[slug] || ((e.league && e.league.abbreviation) || "?").slice(0, 5), op.team.abbreviation, me.homeAway === "home" ? "h" : "a", sc(me), sc(op), corn(me), corn(op), klass(slug),
         // How it plays: shots, shots on target and possession, for and against (indexes 9-13)
@@ -110,5 +113,5 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     }
     if (rot.h || rot.a) g.rot = rot;
   }
-  return {asOf: now.toISOString(), games, teams, meta};
+  return {asOf: now.toISOString(), games, teams, meta, dbg: DBG};
 }
