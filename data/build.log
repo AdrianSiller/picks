@@ -1,8 +1,8 @@
 [0s] NBA ok
 [0s] NFL ok
-[25s] Soccer ok
-[25s] calibración {"_n":71,"NBA|prop|over":-0.05,"NBA|prop|under":-0.05,"NBA|game":-0.05,"NFL|prop|over":-0.05,"NFL|prop|under":-0.05,"NFL|game":-0.05,"SOC|soc":0.005}
-[25s] latest.json 137 KB NBA 0 games/0 props · NFL 0/0 · soccer 66
-[25s] candidatos guardados 1185
-[26s] bot.json ok
-[26s] done
+[10s] Soccer ok
+[10s] calibración {"_n":71,"NBA|prop|over":-0.05,"NBA|prop|under":-0.05,"NBA|game":-0.05,"NFL|prop|over":-0.05,"NFL|prop|under":-0.05,"NFL|game":-0.05,"SOC|soc":0.005}
+[10s] latest.json 137 KB NBA 0 games/0 props · NFL 0/0 · soccer 66
+[10s] candidatos guardados 1185
+[11s] bot.json ok
+[11s] done
