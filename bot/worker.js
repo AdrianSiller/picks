@@ -1,7 +1,8 @@
 // Telegram bot for Picks del Día (Cloudflare Worker, free plan).
 // v7 · Menus step by step: sport -> (soccer: league) -> top / game picks / everything / one game. You can also write "nba", "premier", "como nos fue".
 // Setup: paste this file in a Worker, add the secret TELEGRAM_TOKEN, deploy, then open https://<your-worker>/setup once.
-const DATA = "https://adriansiller.github.io/picks/data/";
+// Straight from the repo: current the moment a build finishes (GitHub Pages can take a while to republish)
+const DATA = "https://raw.githubusercontent.com/AdrianSiller/picks/main/data/";
 const APP = "https://adriansiller.github.io/picks/";
 const btn = (text, data) => ({text, callback_data: data});
 const rows = (list, n) => { const out = []; for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n)); return out; };
@@ -114,7 +115,7 @@ async function sendLong(env, chat, text) {
 const ESPN = {nba: "basketball/nba", nfl: "football/nfl"};
 const BAD = new Set(["Out", "Doubtful", "Injured Reserve", "Inactive", "Suspended"]);
 const allGames = B => [...((B.nba && B.nba.games) || []), ...((B.nfl && B.nfl.games) || []), ...((B.soc && (B.soc.days || [B.soc])) || []).flatMap(d => (d.leagues || []).flatMap(l => l.games))];
-async function live(B, id) {
+async function live(B, id, env = {}) {
   const g = allGames(B).find(x => x.id === id); if (!g || !g.chk) return "Ese partido ya no está en los picks (puede que ya empezó).";
   const k = g.chk, sport = k.sp === "soc" ? `soccer/${k.slug}` : ESPN[k.sp];
   const s = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/summary?event=${id}`).then(r => r.ok ? r.json() : null).catch(() => null);
@@ -140,7 +141,11 @@ async function live(B, id) {
       }
       if (k.pick && k.pick.team) { const side = k.pick.team === "H" ? "h" : "a", m = (res[side] || []).length;
         L.push("", m >= 3 ? `🚨 Tu pick (${k.pick.lbl}) depende de ${k[side]}, que sale sin ${m} titulares. Yo lo pensaría dos veces.` : m ? `⚠️ Tu pick (${k.pick.lbl}): a ${k[side]} le falta${m > 1 ? "n" : ""} ${m} titular${m > 1 ? "es" : ""}; revisa si son importantes.` : `✅ Tu pick (${k.pick.lbl}) sigue en pie.`); }
-      if (!k.lineups) L.push("", "<i>Los picks se calcularon antes de las alineaciones; el aviso automático antes del partido ya los trae recalculados.</i>");
+      if (!k.lineups) { // The picks above were made before these lineups: start a rebuild so the pick reflects them
+        let go = false; if (env.GH_TOKEN && env.BETS && !(await env.BETS.get("rb:" + k.h + k.a))) {
+          const r = await fetch("https://api.github.com/repos/AdrianSiller/picks/actions/workflows/update.yml/dispatches", {method: "POST", headers: {authorization: `Bearer ${env.GH_TOKEN}`, accept: "application/vnd.github+json", "user-agent": "picks-bot", "content-type": "application/json"}, body: JSON.stringify({ref: "main"})});
+          go = r.status === 204; if (go) await env.BETS.put("rb:" + k.h + k.a, "1", {expirationTtl: 900}); }
+        L.push("", go ? "🔄 <b>El pick de arriba es de antes de estas alineaciones.</b> Ya mandé recalcularlo; abre el partido otra vez en ~5 min y lo verás con las alineaciones." : "<i>El pick de arriba es de antes de estas alineaciones; se recalcula en la siguiente actualización (unos minutos).</i>"); }
     } else L.push("⏳ Todavía no salen las alineaciones (suelen salir entre 1 hora y 30 min antes). Vuelve a revisar más cerca del partido.");
   }
   return L.join("\n");
@@ -292,7 +297,7 @@ async function handle(env, chat, key, editId) {
     await sendLong(env, chat, g ? (g.tl || g.t) : "Ese partido ya no está en la lista.");
     return tg(env, "sendMessage", {chat_id: chat, text: "¿Algo más?", reply_markup: HOME}); }
   if (key && key.startsWith("chk:")) {
-    for (const id of key.slice(4).split(",")) await sendLong(env, chat, await live(B, id));
+    for (const id of key.slice(4).split(",")) await sendLong(env, chat, await live(B, id, env));
     return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: "¿Algo más?", reply_markup: {inline_keyboard: [[btn("🔄 Volver a revisar", key)], ...HOME.inline_keyboard]}}), "el menú");
   }
   const v = view(B, key || "home");
