@@ -227,7 +227,9 @@
     Object.entries(lgTeams).forEach(([lg, set]) => { const rows = [...set].flatMap(rowsOf); lgMu[lg] = mean(rows.map(r => r[4])) || 1.3; lgC[lg] = mean(rows.filter(valC).map(r => r[6])) || 5; });
     const strength = (abbr, lg) => {
       const rows = rowsOf(abbr), n = rows.length, mu = lgMu[lg], cm = lgC[lg], cr = rows.filter(valC), nc = cr.length;
-      return {n, att: (rows.reduce((s, r) => s + r[4], 0) + K * mu) / (n + K), def: (rows.reduce((s, r) => s + r[5], 0) + K * mu) / (n + K),
+      // Season xG (FotMob) is a steadier measure of how a team plays than goals: half the weight when we have 4+ matches of it
+      const X = (D.xg || {})[abbr], gA = (rows.reduce((s, r) => s + r[4], 0) + K * mu) / (n + K), gD = (rows.reduce((s, r) => s + r[5], 0) + K * mu) / (n + K), wx = X && X.p >= 4 ? 0.5 : 0;
+      return {n, x: X || null, att: (1 - wx) * gA + wx * (X ? X.xg : 0), def: (1 - wx) * gD + wx * (X ? X.xga : 0),
         cf: (cr.reduce((s, r) => s + r[6], 0) + K * cm) / (nc + K), ca: (cr.reduce((s, r) => s + r[7], 0) + K * cm) / (nc + K), nc};
     };
     // Domestic league of a team = its most frequent non-continental competition in the last matches
@@ -372,6 +374,7 @@
       const w = r => r.filter(x => x[4] > x[5]).length, l = r => r.filter(x => x[4] < x[5]).length;
       if (TR.length) out.push(`${T.abbr}: ${w(TR)} ganados de ${TR.length}, mete ${avg(TR, x => x[4])} y recibe ${avg(TR, x => x[5])} por partido`);
       if (OR.length) out.push(`${O.abbr}: ${l(OR)} perdidos de ${OR.length}, recibe ${avg(OR, x => x[5])} por partido`);
+      const X = (gi && (sideOf === "A" ? gi.A : gi.H) || {}).x; if (X) out.push(`${T.abbr} genera ${X.xg} xG y concede ${X.xga} por partido${X.gf - X.xg >= 0.4 ? " (anota más de lo que genera: puede bajar)" : X.xg - X.gf >= 0.4 ? " (genera más de lo que anota: puede subir)" : ""}`);
       if (c.k === "up1" && TR.length) out.push(`${T.abbr} anotó en ${cnt(TR, x => x[4] > 0)} de ${TR.length} (para el 1 Up basta ir arriba una vez)`);
       if (g.xi) { const m = (g.xi[sideOf === "A" ? "a" : "h"] || {}).miss || []; if (m.length) out.unshift(`⚠️ ${T.abbr} sin ${m.length} titulares`); } }
     if (c.k === "pgoal") out.unshift(`${c.pl}: ${c.gl} goles en sus últimos ${c.ph[1]} (anotó en ${c.ph[0]})`);
@@ -391,7 +394,7 @@
         back = form ? "form" : "market";
         out.push(form ? `Nuestro modelo de goles ${pc(pm)} · ${src} ${pc(mk)}: el modelo es conservador con favoritos, pero la racha lo respalda`
           : `Nuestro modelo solo ${pc(pm)} · ${src} ${pc(mk)}: se apoya en el mercado, no en nuestras estadísticas`); } }
-    return {lines: out.slice(0, 4), back, pm, mk};
+    return {lines: out.length > 4 ? [...out.slice(0, 3), out[out.length - 1]] : out, back, pm, mk};
   };
   M.socGamePick = (cands, gi) => {
     // Too few matches of either team in the data (e.g. a league ESPN does not cover): no pick

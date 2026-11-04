@@ -1,5 +1,6 @@
 // Soccer: Liga MX, La Liga and Champions for the next days. Lines from DraftKings (via ESPN), team form with corners.
 import {J, pool, dkLines, dloc, ymd} from "./lib.mjs";
+import {fotmobXG} from "./fotmob.mjs";
 
 const SITE = "https://site.api.espn.com/apis/site/v2/sports/soccer";
 const CORE = "https://sports.core.api.espn.com/v2/sports/soccer/leagues";
@@ -132,5 +133,7 @@ export async function buildSOC(now = new Date(), nDays = 6) {
   }
   // Shot logs only for players with a shots-on-target price, last 10 league / continental matches, newest first
   const players = {}; for (const id of WANT) { const q = PL[id]; if (!q) continue; const rows = q.rows.filter(r => r[6] !== "CUP").sort((a, b) => a[0] < b[0] ? 1 : -1).slice(0, 10).map(r => r.slice(0, 6)); if (rows.length >= 5 && rows.filter(r => r[3]).length >= Math.max(4, Math.ceil(rows.length * 0.6))) players[id] = {n: q.n, t: q.t, rows}; }
-  return {asOf: now.toISOString(), games, teams, meta, players, pgRaw: PGN.n, pbt: Object.fromEntries(Object.entries(PBT).map(([k, v]) => [k, v.n]))};
+  // Season xG and xG conceded per match (FotMob); a failure only leaves the model on goals
+  let xg = {}; try { const names = {}; for (const g of games) { names[g.home.abbr] = g.home.name; names[g.away.abbr] = g.away.name; } const r = await fotmobXG(names); xg = r.teams; console.log("fotmob xG:", Object.keys(xg).length, "de", Object.keys(names).length, "equipos"); } catch (e) { console.log("fotmob falló", e.message); }
+  return {asOf: now.toISOString(), games, teams, meta, players, xg, pgRaw: PGN.n, pbt: Object.fromEntries(Object.entries(PBT).map(([k, v]) => [k, v.n]))};
 }
