@@ -228,7 +228,7 @@
     const strength = (abbr, lg) => {
       const rows = rowsOf(abbr), n = rows.length, mu = lgMu[lg], cm = lgC[lg], cr = rows.filter(valC), nc = cr.length;
       // Season xG (FotMob) is a steadier measure of how a team plays than goals: half the weight when we have 4+ matches of it
-      const X = (D.xg || {})[abbr], gA = (rows.reduce((s, r) => s + r[4], 0) + K * mu) / (n + K), gD = (rows.reduce((s, r) => s + r[5], 0) + K * mu) / (n + K), wx = X && X.p >= 4 ? 0.5 : 0;
+      const X = (D.xg || {})[abbr], gA = (rows.reduce((s, r) => s + r[4], 0) + K * mu) / (n + K), gD = (rows.reduce((s, r) => s + r[5], 0) + K * mu) / (n + K), wx = X && X.p >= 4 && lg !== "Champions" ? 0.5 : 0; // Champions: xG from leagues of very different level is not comparable
       return {n, x: X || null, att: (1 - wx) * gA + wx * (X ? X.xg : 0), def: (1 - wx) * gD + wx * (X ? X.xga : 0),
         cf: (cr.reduce((s, r) => s + r[6], 0) + K * cm) / (nc + K), ca: (cr.reduce((s, r) => s + r[7], 0) + K * cm) / (nc + K), nc};
     };
