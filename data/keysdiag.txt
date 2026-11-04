@@ -1,0 +1,12 @@
+odds key: si · apifootball key: si
+[{"key":"americanfootball_cfl","group":"American Football","title":"CFL","description":"Canadian Football League","active":true,"has_outrights":false},{"key":"americanfootball_ncaaf","group":"American Football","title":"NCAAF","description":"US College Football","active":true,"has_outrights":false},{"key":"americanfootball_ncaaf_championship_winner","group":"American Football","title":"NCAAF Champ
+x-requests-remaining: 500
+x-requests-last: 0
+x-requests-used: 0
+[{"id":"f43ef699c987e112e115f7035114854e","sport_key":"soccer_uefa_champs_league","sport_title":"UEFA Champions League","commence_time":"2026-11-04T17:45:00Z","home_team":"AEK Athens","away_team":"Real Madrid","bookmakers":[{"key":"williamhill","title":"William Hill","last_update":"2026-11-04T15:15:02Z","markets":[{"key":"h2h","last_update":"2026-11-04T15:15:02Z","outcomes":[{"name":"AEK Athens","price":10.0},{"name":"Real Madrid","price":1.22},{"name":"Draw","price":6.0}]}]},{"key":"pinnacle","title":"Pinnacle","last_update":"2026-11-04T15:15:03Z","markets":[{"key":"h2h","last_update":"2026-11-04T15:15:03Z","outcomes":[{"name":"AEK Athens","price":11.81},{"name":"Real Madrid","price":1.23},{"name":"Draw","price":7.19}]}]}]},{"id":"e901dbcdd6e2255fb24d84032b9d437a","sport_key":"soccer_uefa_champs_league","sport_title":"UEFA Champions League","commence_time":"2026-11-04T17:45:00Z","home_t
+x-requests-remaining: 499
+x-requests-last: 1
+x-requests-used: 1
+{"get":"status","parameters":[],"errors":[],"results":0,"paging":{"current":1,"total":1},"response":{"account":{"firstname":"Adrian","lastname":"Ramirez Siller","email":"adrian.rmzsiller@gmail.com"},"subscription":{"plan":"Free","end":"2027-11-04T00:00:00+00:00","active":true},"requests":{"current":0,"limit_day":100}}}
+{"get":"injuries","parameters":{"league":"2","season":"2026"},"errors":{"plan":"Free plans do not have access to this season, try from 2022 to 2024."},"results":0,"paging":{"current":1,"total":1},"response":[]}
+{"get":"fixtures","parameters":{"league":"2","season":"2026","last":"2"},"errors":{"plan":"Free plans do not have access to this season, try from 2022 to 2024."},"results":0,"paging":{"current":1,"total":1},"response":[]}
