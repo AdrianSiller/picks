@@ -51,7 +51,8 @@
   M.CFG = {NBA: {sp: "NBA", perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {sp: "NFL", perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6}};
   // Why a prop doesn't qualify (same filters for the top 10 and for each game's list); "" = it qualifies
   M.fails = (c, sport) => { const cfg = M.CFG[sport];
-    return c.out ? "no juega" : !c.p ? "sin momio en la casa" : c.role === 0 ? "fuera de su rol" : c.pr < cfg.minPr ? `probabilidad baja (${Math.round(c.pr * 100)}%)` : c.e < -0.02 ? "momio caro para lo que estimamos" : ""; };
+    // When our model sees much more than the book, the book is usually right (Nov 2: those hit 50%; agreeing ones 66%)
+    return c.out ? "no juega" : !c.p ? "sin momio en la casa" : c.pm != null && c.mkB != null && c.pm - c.mkB > 0.1 ? `el modelo ve mucho más que la casa (${Math.round(c.pm * 100)}% vs ${Math.round(c.mkB * 100)}%): la casa suele tener razón` : c.role === 0 ? "fuera de su rol" : c.pr < cfg.minPr ? `probabilidad baja (${Math.round(c.pr * 100)}%)` : c.e < -0.02 ? "momio caro para lo que estimamos" : ""; };
   M.topPicks = (cands, sport, n = 10) => {
     const cfg = M.CFG[sport], out = [], per = {};
     for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
