@@ -84,6 +84,8 @@ export async function grade(items) {
           hit = v === "dnp" || v == null ? null : v >= 1; break; }
         case "psot": { let v = null; for (const r of s.rosters || []) for (const p of r.roster || []) if (p.athlete && String(p.athlete.id) === String(x.aid)) { const st = (p.stats || []).find(z => z.name === "shotsOnTarget"); const ap = (p.stats || []).find(z => z.name === "appearances"); v = ap && !+ap.value && !p.starter ? "dnp" : st ? +st.value : null; }
           hit = v === "dnp" || v == null ? null : v >= x.line; break; }
+        case "pshot": { let v = null; for (const r of s.rosters || []) for (const p of r.roster || []) if (p.athlete && String(p.athlete.id) === String(x.aid)) { const st = (p.stats || []).find(z => z.name === "totalShots"); const ap = (p.stats || []).find(z => z.name === "appearances"); v = ap && !+ap.value && !p.starter ? "dnp" : st ? +st.value : null; }
+          hit = v === "dnp" || v == null ? null : v >= x.line; break; }
         case "cor": { const ch = corners(sc.hid), ca = corners(sc.aid); hit = ch == null || ca == null ? null : x.side === "O" ? ch + ca > x.line : ch + ca < x.line; break; }
       }
       x.res = {hit: hit == null ? null : hit ? 1 : 0, act: x.k === "tc" ? `${a}-${h}, corners` : `${a}-${h}`};

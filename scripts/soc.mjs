@@ -58,6 +58,10 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     g.psot = of("Shots on Target Milestones").map(i => ({aid: (((i.athlete || {}).$ref || "").match(/athletes\/(\d+)/) || [])[1], t: i.current && i.current.target ? +i.current.target.value : null, p: pr(i)}))
       .filter(x => x.aid && (x.t === 1 || x.t === 2) && x.p && x.p >= 1.05 && x.p <= 5);
     for (const x of g.psot) WANT.add(x.aid);
+    // Players' total shots: "1+" to "4+" prices
+    g.pshot = of("Shots Milestones").map(i => ({aid: (((i.athlete || {}).$ref || "").match(/athletes\/(\d+)/) || [])[1], t: i.current && i.current.target ? +i.current.target.value : null, p: pr(i)}))
+      .filter(x => x.aid && x.t >= 1 && x.t <= 4 && x.p && x.p >= 1.1 && x.p <= 5);
+    for (const x of g.pshot) WANT.add(x.aid);
     // Anytime goalscorer prices
     g.pgoal = of("Anytime Goalscorer").map(i => ({aid: (((i.athlete || {}).$ref || "").match(/athletes\/(\d+)/) || [])[1], p: pr(i)})).filter(x => x.aid && x.p && x.p >= 1.1 && x.p <= 6);
     for (const x of g.pgoal) WANT.add(x.aid);

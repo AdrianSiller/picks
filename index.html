@@ -221,11 +221,11 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
 <footer class="ver">Versión de la app: 4 nov 9:15 a.m.</footer>
-<script src="model.js?v=20261104-0935"></script>
+<script src="model.js?v=20261104-0950"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261104-0935";
+const APP_VERSION = "20261104-0950";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -299,6 +299,7 @@ function socHit(c, r, side) {
     case "tt": { const gl = (c.team === "H") === isH ? gf : ga; return c.side === "O" ? gl > c.line : gl < c.line; }
     case "tc": { const cn = (c.team === "H") === isH ? r[6] : r[7]; if (cn == null) return null; return c.side === "O" ? cn > c.line : cn < c.line; }
     case "psot": return null;
+    case "pshot": return null;
     case "pgoal": return null;
     case "cor": { if (r[6] == null || r[7] == null || r[6] + r[7] === 0) return null; return c.side === "O" ? r[6] + r[7] > c.line : r[6] + r[7] < c.line; }
   }
@@ -312,7 +313,7 @@ function socTeamBlock(c, side) {
   return `<div class="tb"><div class="tb-h"><b>${esc(t.abbr)}</b><span>${n ? `${h} de ${n}` : "—"}</span></div>
     <div class="l5">${last.map(r => { const x = socHit(c, r, side); return `<i class="${x === null ? "nj" : x ? "y" : "n"}" title="${dateLbl(r[0])} ${r[3] === "h" ? "vs" : "@"} ${r[2]} (${r[1]})">${socChipVal(c, r, side)}</i>`; }).join("")}<span class="l5-note">→</span></div></div>`;
 }
-const socWhat = c => ({"1x2": "resultado", "dc": "resultado", "dc1h": "resultado final (no hay medio tiempo en el historial)", "hc": "resultado con handicap", "tot": "goles totales", "btts": "si anotaron ambos", "cor": "corners totales", "tt": "goles a favor del equipo (en el bloque del rival: goles que recibió)", "tc": "corners del equipo (en el bloque del rival: corners que concedió)", "psot": "resultado del partido (los tiros del jugador se ven en el texto)", "pgoal": "resultado del partido (los goles del jugador se ven en el texto)"}[c.k]);
+const socWhat = c => ({"1x2": "resultado", "dc": "resultado", "dc1h": "resultado final (no hay medio tiempo en el historial)", "hc": "resultado con handicap", "tot": "goles totales", "btts": "si anotaron ambos", "cor": "corners totales", "tt": "goles a favor del equipo (en el bloque del rival: goles que recibió)", "tc": "corners del equipo (en el bloque del rival: corners que concedió)", "psot": "resultado del partido (los tiros del jugador se ven en el texto)", "pshot": "resultado del partido (los tiros del jugador se ven en el texto)", "pgoal": "resultado del partido (los goles del jugador se ven en el texto)"}[c.k]);
 function socDetail(c) {
   const g = socGames[c.g], m = socModel[c.g], L = g.lines;
   const row = (lbl, pm, price) => `<tr><td>${lbl}</td><td>${pct(pm)}</td><td>${price ? pct(1 / price) : "—"}</td><td>${fx(price)}</td></tr>`;
@@ -769,7 +770,7 @@ function viewPerf() {
       return `<tr><td>${esc(k)}</td><td>${t.w}/${t.n}</td><td>${bar(t)} ${Math.round(t.pct * 100)}%</td><td class="${t.u >= 0 ? "pos" : "neg"}">${uTxt(t.u)}</td></tr>`; }).join("")}</tbody></table></div>${note ? `<div class="note">${note}</div>` : ""}`; };
   const by = (r, f) => { const g = {}; r.forEach(x => { const k = f(x); if (k != null) (g[k] = g[k] || []).push(x); }); return g; };
   const ALL = T(all), ME = T(rows), mk = sp === "NBA" ? SPORTS.nba.MK : SPORTS.nfl.MK;
-  const SK = {"1x2": "Resultado", dc: "Doble oportunidad", dc1h: "Doble oport. medio tiempo", hc: "Handicap asiático", tot: "Goles over/under", btts: "Ambos anotan", cor: "Corners", tt: "Goles por equipo", tc: "Corners por equipo", psot: "Tiros a puerta (jugador)", pgoal: "Anotador"};
+  const SK = {"1x2": "Resultado", dc: "Doble oportunidad", dc1h: "Doble oport. medio tiempo", hc: "Handicap asiático", tot: "Goles over/under", btts: "Ambos anotan", cor: "Corners", tt: "Goles por equipo", tc: "Corners por equipo", psot: "Tiros a puerta (jugador)", pshot: "Tiros (jugador)", pgoal: "Anotador"};
   const kind = x => x.kind === "prop" ? "Props de jugador" : x.kind === "game" ? (x.bet === "tot" ? "Total (over/under)" : x.bet === "sp" ? "Spread" : "Moneyline") : SK[x.k] || "Soccer";
   const market = x => x.kind === "prop" && x.m ? `${(mk[x.m] || {lbl: x.m}).lbl} · ${x.s}` : x.kind === "soc" && x.k ? `${SK[x.k] || x.k}${x.k === "tot" ? (x.side === "O" ? " · over" : " · under") : x.k === "dc" || x.k === "dc1h" ? (x.side === "1X" ? " · local" : " · visita") : ""}` : null;
   const conf = x => x.pr == null ? null : x.pr >= 0.72 ? "72%+ (muy sólido)" : x.pr >= 0.66 ? "66–71%" : x.pr >= 0.6 ? "60–65%" : "menos de 60%";
