@@ -251,7 +251,7 @@ const up1Price = pr => +(1 / (pr * 1.06)).toFixed(2); // estimated book price fo
 function brief(S, g, c, gi) {
   const w = M.socWhy(S.teams, g, c, gi), rows = ab => (S.teams[ab] || []).filter(r => !r[8]).slice(0, 10);
   let t = "";
-  if (c.k === "pshot" || c.k === "psot") t = `${c.line}+ en ${c.ph[0]} de sus últimos ${c.ph[1]}${c.avg != null ? `, promedia ${c.avg}` : ""}`;
+  if (c.k === "pshot" || c.k === "psot") t = `${c.line}+ en ${c.ph[0]} de sus últimos ${c.ph[1]}${c.md != null ? ` · lo normal en él: ${c.md}` : ""}`;
   else if (c.k === "pgoal") t = `${c.gl} goles en sus últimos ${c.ph[1]}`;
   else { const side = c.k === "up1" || c.k === "1x2" || c.k === "dc" ? (c.side === "1X" || c.side === "H" ? "H" : c.side === "X2" || c.side === "A" ? "A" : null) : null;
     if (side) { const T = side === "H" ? g.home.abbr : g.away.abbr, O = side === "H" ? g.away.abbr : g.home.abbr, TR = rows(T), OR = rows(O);

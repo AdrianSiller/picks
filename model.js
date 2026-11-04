@@ -313,7 +313,7 @@
         const opp = P.t === g.home.abbr ? g.away.abbr : g.home.abbr, oR = (D.teams[opp] || []).filter(r => !r[8] && r[13] != null).slice(0, 10);
         const oA = oR.length ? oR.reduce((s, r) => s + r[13], 0) / oR.length : null, f = oA ? clamp(oA / 4.2, 0.8, 1.25) : 1;
         const pm = clamp(base * (1 + (f - 1) * 0.5), 0.03, 0.97), mk = Math.min(0.95, (1 / x.p) / 1.07);
-        add({k: "psot", side: "O", aid: x.aid, pl: P.n, team: P.t === g.home.abbr ? "H" : "A", line: x.t, lbl: `${P.n} ${x.t}+ tiros a puerta`, pm, mk, p: x.p, ph: [hit, n]}); }
+        add({k: "psot", side: "O", aid: x.aid, pl: P.n, team: P.t === g.home.abbr ? "H" : "A", line: x.t, lbl: `${P.n} ${x.t}+ tiros a puerta`, pm, mk, p: x.p, ph: [hit, n], md: (a => a.length % 2 ? a[a.length >> 1] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2)(P.rows.map(r => r[1] || 0).sort((a, b) => a - b))}); }
       // Players' total shots (1+ to 4+): same idea, his last 10 matches nudged by how many shots the rival allows (~12 a match)
       for (const x of g.pshot || []) { const P0 = (D.players || {})[x.aid]; if (!P0 || P0.rows.length < 5) continue; const st = P0.rows.filter(r => r[3]); if (st.length < Math.max(4, Math.ceil(P0.rows.length * 0.6))) continue; const P = st.length >= 5 ? {...P0, rows: st} : P0;
         const xiMiss = g.xi && g.xi[P.t === g.home.abbr ? "h" : "a"]; if (xiMiss && xiMiss.miss.some(n => n === P.n)) continue;
@@ -321,7 +321,7 @@
         const opp = P.t === g.home.abbr ? g.away.abbr : g.home.abbr, oR = (D.teams[opp] || []).filter(r => !r[8] && r[12] != null).slice(0, 10);
         const oA = oR.length ? oR.reduce((s, r) => s + r[12], 0) / oR.length : null, f = oA ? clamp(oA / 12, 0.8, 1.25) : 1;
         const pm = clamp(base * (1 + (f - 1) * 0.5), 0.03, 0.97), mk = Math.min(0.95, (1 / x.p) / 1.07);
-        add({k: "pshot", side: "O", aid: x.aid, pl: P.n, team: P.t === g.home.abbr ? "H" : "A", line: x.t, lbl: `${P.n} ${x.t}+ tiros`, pm, mk, p: x.p, ph: [hit, n], avg: +(P.rows.reduce((s, r) => s + (r[2] || 0), 0) / n).toFixed(1)}); }
+        add({k: "pshot", side: "O", aid: x.aid, pl: P.n, team: P.t === g.home.abbr ? "H" : "A", line: x.t, lbl: `${P.n} ${x.t}+ tiros`, pm, mk, p: x.p, ph: [hit, n], md: (a => a.length % 2 ? a[a.length >> 1] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2)(P.rows.map(r => r[2] || 0).sort((a, b) => a - b))}); }
       // Anytime goalscorer: his goals per match in the last 10 (regular starters), scaled by how many goals the book expects
       // from his team today vs what it usually scores; goalscorer prices carry a bigger commission (~8%)
       for (const x of g.pgoal || []) { const P = (D.players || {})[x.aid]; if (!P || P.rows.length < 5 || P.rows[0].length < 5) continue; if (P.rows.filter(r => r[3]).length < Math.max(4, Math.ceil(P.rows.length * 0.6))) continue;
@@ -378,7 +378,7 @@
       if (c.k === "up1" && TR.length) out.push(`${T.abbr} anotó en ${cnt(TR, x => x[4] > 0)} de ${TR.length} (para el 1 Up basta ir arriba una vez)`);
       if (g.xi) { const m = (g.xi[sideOf === "A" ? "a" : "h"] || {}).miss || []; if (m.length) out.unshift(`⚠️ ${T.abbr} sin ${m.length} titulares`); } }
     if (c.k === "pgoal") out.unshift(`${c.pl}: ${c.gl} goles en sus últimos ${c.ph[1]} (anotó en ${c.ph[0]})`);
-    if (c.k === "pshot") out.unshift(`${c.pl} llegó a ${c.line}+ tiros en ${c.ph[0]} de sus últimos ${c.ph[1]} (promedia ${c.avg})`);
+    if (c.k === "pshot") out.unshift(`${c.pl} llegó a ${c.line}+ tiros en ${c.ph[0]} de sus últimos ${c.ph[1]}${c.md != null ? ` · lo normal en él: ${c.md}` : ""}`);
     if (c.k === "psot") out.unshift(`${c.pl} llegó a ${c.line}+ tiros a puerta en ${c.ph[0]} de sus últimos ${c.ph[1]}`);
     if (c.k === "tc") { const mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, ab = c.team === "H" ? g.home.abbr : g.away.abbr, ob = c.team === "H" ? g.away.abbr : g.home.abbr, cr = mine.filter(x => x[6] != null), co = opp.filter(x => x[7] != null);
       if (cr.length && co.length) out.unshift(`${ab} saca ${(cr.reduce((s, x) => s + x[6], 0) / cr.length).toFixed(1)} corners · ${ob} concede ${(co.reduce((s, x) => s + x[7], 0) / co.length).toFixed(1)}`); }
@@ -419,7 +419,8 @@
   // coherent with the favorite), never two of the same family (e.g. two team-goal lines) and never forced
   const fam = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal" ? "pl" + c.aid : ["dc", "1x2", "hc", "dc1h"].includes(c.k) ? "res" : c.k === "tt" || c.k === "tc" ? c.k + c.team : c.k;
   M.socBacked = (cands, gi) => { const fav = gi && gi.fav, okPrice = c => c.mk != null ? c.p * c.mk >= 0.92 : c.e >= -0.07;
-    return cands.filter(c => c.p && c.p >= 1.25 && c.pr >= 0.6 && !c.thin && okPrice(c) && M.socAligned(c, fav) && (c.gap == null || (c.gap >= (c.ucl && !M.isPl(c) ? -0.15 : -0.05) && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr); };
+    // Player overs: what is normal for him (median) must reach the line; a hit rate built on a couple of big nights is not a tendency
+    return cands.filter(c => c.p && c.p >= 1.25 && c.pr >= 0.6 && !c.thin && !(M.isPl(c) && c.md != null && c.md < c.line) && okPrice(c) && M.socAligned(c, fav) && (c.gap == null || (c.gap >= (c.ucl && !M.isPl(c) ? -0.15 : -0.05) && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr); };
   // Player markets (shots, shots on target, goalscorer) are only secondary picks: never the pick of the match, at most 2,
   // and after the team markets that also pass
   M.isPl = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal";
