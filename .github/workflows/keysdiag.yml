@@ -1,0 +1,27 @@
+name: Diagnóstico de claves
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar claves
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          APIFOOTBALL_KEY: ${{ secrets.APIFOOTBALL_KEY }}
+        run: |
+          {
+          echo "odds key: $([ -n "$ODDS_API_KEY" ] && echo si || echo no) · apifootball key: $([ -n "$APIFOOTBALL_KEY" ] && echo si || echo no)"
+          curl -s -D /tmp/h "https://api.the-odds-api.com/v4/sports/?apiKey=$ODDS_API_KEY" | head -c 400; echo
+          grep -i "x-requests" /tmp/h
+          curl -s "https://api.the-odds-api.com/v4/sports/soccer_uefa_champs_league/odds/?apiKey=$ODDS_API_KEY&regions=eu&markets=h2h&bookmakers=pinnacle,bet365,williamhill" -D /tmp/h2 | head -c 900; echo
+          grep -i "x-requests" /tmp/h2
+          curl -s -H "x-apisports-key: $APIFOOTBALL_KEY" "https://v3.football.api-sports.io/status" | head -c 600; echo
+          curl -s -H "x-apisports-key: $APIFOOTBALL_KEY" "https://v3.football.api-sports.io/injuries?league=2&season=2026" | head -c 700; echo
+          curl -s -H "x-apisports-key: $APIFOOTBALL_KEY" "https://v3.football.api-sports.io/fixtures?league=2&season=2026&last=2" | head -c 500; echo
+          } | sed "s/$ODDS_API_KEY/KEY/g; s/$APIFOOTBALL_KEY/KEY/g" > data/keysdiag.txt
+          cat data/keysdiag.txt
+          git config user.name github-actions; git config user.email github-actions@users.noreply.github.com
+          git add data/keysdiag.txt; git commit -m "Diagnóstico de claves" || true; git pull --rebase; git push
