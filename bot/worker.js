@@ -342,8 +342,36 @@ export default {
     const u = await req.json(), msg = u.message, cb = u.callback_query;
     const chat = msg ? msg.chat.id : cb && cb.message.chat.id; if (!chat) return new Response("ok");
     // Only the owner's chat (saved by the daily build) gets answers
-    const owner = await getJSON(DATA + "telegram.json");
-    if (owner && owner.chat && String(owner.chat) !== String(chat)) return new Response("ok");
+    const owner = await getJSON(DATA + "telegram.json"), own = owner && owner.chat ? String(owner.chat) : null, isOwner = !own || own === String(chat);
+    // Other people: only with the owner's OK. A newcomer's first message asks the owner (once a day) with ✅ / ❌ buttons
+    if (!isOwner) {
+      const ok = env.BETS && await env.BETS.get(`allow:${chat}`);
+      if (!ok) {
+        if (msg && env.BETS && !(await env.BETS.get(`req:${chat}`))) {
+          const f = msg.from || {}, who = [f.first_name, f.last_name].filter(Boolean).join(" ") + (f.username ? ` (@${f.username})` : "");
+          await env.BETS.put(`req:${chat}`, who || String(chat), {expirationTtl: 86400});
+          await tg(env, "sendMessage", {chat_id: own, text: `🔑 ${who || "Alguien"} quiere usar el bot.`, reply_markup: {inline_keyboard: [[{text: "✅ Dar acceso", callback_data: `acc:${chat}`}, {text: "❌ No", callback_data: `den:${chat}`}]]}});
+          await tg(env, "sendMessage", {chat_id: chat, text: "Este bot es privado. Ya le avisé al dueño; en cuanto te dé acceso te escribo por aquí."});
+        }
+        return new Response("ok");
+      }
+    }
+    // Owner: approve / refuse requests, list and remove people
+    if (isOwner && cb && /^(acc|den|rmu):/.test(cb.data)) {
+      const [op, id] = cb.data.split(":");
+      await tg(env, "answerCallbackQuery", {callback_query_id: cb.id});
+      const who = (await env.BETS.get(`req:${id}`)) || (await env.BETS.get(`allow:${id}`)) || id;
+      if (op === "acc") { await env.BETS.put(`allow:${id}`, who); await tg(env, "sendMessage", {chat_id: id, text: "✅ Ya tienes acceso. Escribe \"picks\" para empezar."}); await tg(env, "sendMessage", {chat_id: chat, text: `Listo: ${who} ya puede usar el bot.`}); }
+      if (op === "den") await tg(env, "sendMessage", {chat_id: chat, text: `${who} no tendrá acceso.`});
+      if (op === "rmu") { await env.BETS.delete(`allow:${id}`); await tg(env, "sendMessage", {chat_id: chat, text: `${who} ya no tiene acceso.`}); }
+      return new Response("ok");
+    }
+    if (isOwner && msg && /^\/?usuarios$/i.test((msg.text || "").trim())) {
+      const r = await env.BETS.list({prefix: "allow:"}), rows = await Promise.all(r.keys.map(async k => [k.name.slice(6), await env.BETS.get(k.name)]));
+      await tg(env, "sendMessage", {chat_id: chat, text: rows.length ? "👥 Tienen acceso (toca para quitarlo):" : "Nadie más tiene acceso todavía. Cuando alguien le escriba al bot, te llega un aviso para aprobarlo.",
+        reply_markup: rows.length ? {inline_keyboard: rows.map(([id, n]) => [{text: `❌ ${n}`, callback_data: `rmu:${id}`}])} : undefined});
+      return new Response("ok");
+    }
     // Answer Telegram right away (if it gets an error it retries the same tap and holds back the next ones); the work runs after
     const work = (async () => {
       try {
