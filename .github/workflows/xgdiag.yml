@@ -15,15 +15,9 @@ jobs:
           W=https://picks-bot.adrian-rmzsiller.workers.dev/fx
           t() { echo "== $1"; curl -s -o /tmp/b -w "status %{http_code} bytes %{size_download}\n" -H "x-key: $K" --get --data-urlencode "u=$2" ${3:+--data-urlencode "x=1"} "$W"; head -c 300 /tmp/b | tr -d '\n'; echo; }
           {
-          t "understat page" "https://understat.com/league/EPL/2026"
-          t "understat page 2025" "https://understat.com/league/EPL/2025"
-          t "understat ajax" "https://understat.com/getLeagueData/EPL/2026" x
-          t "understat ajax 2025" "https://understat.com/getLeagueData/EPL/2025" x
-          t "fotmob league" "https://www.fotmob.com/api/leagues?id=47"
-          t "fotmob data" "https://www.fotmob.com/api/data/leagues?id=47"
-          t "fbref" "https://fbref.com/en/comps/9/Premier-League-Stats"
-          echo "== directo sin worker"; curl -s -o /dev/null -w "understat %{http_code}\n" https://understat.com/league/EPL/2026; curl -s -o /dev/null -w "fotmob %{http_code}\n" "https://www.fotmob.com/api/leagues?id=47"
+          curl -s -H "x-key: $K" --get --data-urlencode "u=https://www.fotmob.com/api/data/leagues?id=47" "$W" > data/fm47.json; echo "fm47 $(wc -c < data/fm47.json)"
+          echo "== directo sin worker"; curl -s -o /tmp/d -w "fotmob data directo %{http_code} %{size_download}\n" "https://www.fotmob.com/api/data/leagues?id=47"
           } > data/xgdiag.txt 2>&1
           cat data/xgdiag.txt
           git config user.name github-actions; git config user.email github-actions@users.noreply.github.com
-          git add data/xgdiag.txt; git commit -m "Diagnóstico xG" || true; git pull --rebase; git push
+          git add data/xgdiag.txt data/fm47.json; git commit -m "Diagnóstico xG" || true; git pull --rebase; git push
