@@ -222,11 +222,11 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
 <footer class="ver">Versión de la app: 4 nov 9:15 a.m.</footer>
-<script src="model.js?v=20261104-1000"></script>
+<script src="model.js?v=20261104-1010"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261104-1000";
+const APP_VERSION = "20261104-1010";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -237,7 +237,7 @@ const TZ = "America/Mexico_City";
 // Reasons under a soccer pick + whether our stats back it or it only leans on the market
 const whyBox = (g, c, m, tier) => { const w = window.M.socWhy(SOC_DATA.teams, g, c, m);
   const tag = w.back === "ok" ? `<div class="bk ok">✅ Respaldado: nuestras estadísticas y el mercado coinciden</div>` : w.back === "form" ? `<div class="bk ok">✅ Respaldado por la racha (el modelo de goles es más conservador que el mercado)</div>` : w.back === "market" ? `<div class="bk mk">⚠️ Sin respaldo propio: lo sostiene el mercado, nuestro modelo lo ve menos probable</div>` : "";
-  const extra = c.est ? "Momio estimado con el 1X2 (la fuente no publica doble oportunidad); revísalo en tu casa." : tier === "up1" ? "Sin momio del 1 Up en la fuente: compáralo en tu casa." : tier === "fair" ? "Paga lo justo: sin valor extra, la casa se queda su comisión normal." : "";
+  const extra = c.est ? "Momio estimado con el 1X2 (la fuente no publica doble oportunidad); revísalo en tu casa." : tier === "up1" ? "Momio estimado (≈): ninguna fuente publica el 1 Up, así que lo calculamos con el margen normal de una casa. Si tu casa paga más, mejor." : tier === "fair" ? "Paga lo justo: sin valor extra, la casa se queda su comisión normal." : "";
   return `${tag}<ul class="why">${w.lines.map(t => `<li>${esc(t)}</li>`).join("")}</ul>${extra ? `<div class="gpick-why">${extra}</div>` : ""}`; };
 const pct = x => Math.round(x * 100) + "%";
 const fx = x => x == null || isNaN(x) ? "—" : (Math.round(x * 100) / 100).toFixed(2);
@@ -404,7 +404,7 @@ function socViewGames() {
           ${whyBox(g, top, m, gp.tier)}
         </div>
         ${others.length ? `<div class="others"><h4>Otras opciones</h4>${others.map(c => `<div class="mini"><span><b>${esc(c.lbl)}</b></span><span class="r"><b>${c.p ? fx(c.p) : "—"}</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</div>` : ""}` : (gp && gp.up1 ? `<div class="gpick"><div class="gpick-h">Pick del partido · 1 Up</div>
-          <div class="gpick-main"><span>1 Up ${esc(gp.up1.side === "H" ? g.home.name : g.away.name)}</span><b>—</b></div>
+          <div class="gpick-main"><span>1 Up ${esc(gp.up1.side === "H" ? g.home.name : g.away.name)}</span><b>≈${fx(1 / (gp.up1.pr * 1.06))}</b></div>
           <div class="probtxt"><span>Probabilidad estimada <b>${pct(gp.up1.pr)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / gp.up1.pr)}</b> o más</span></div>
           ${whyBox(g, {k: "up1", side: gp.up1.side, pr: gp.up1.pr}, m, "up1")}</div>` : "") + `<div class="gpick pass"${gp && gp.up1 ? ' style="display:none"' : ""}>
           <div class="gpick-h">Sin pick con momio</div>
