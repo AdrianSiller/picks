@@ -321,7 +321,10 @@
     const fav = gi && gi.fav, cs = cands.filter(c => c.p && M.socAligned(c, fav)), solid = cs.filter(c => M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))[0];
     if (solid) return {c: solid, tier: "solid"};
     // The model must not see it as less likely than the book (it only confirms; it never rides on the book alone)
-    const fair = cs.filter(c => c.p >= 1.25 && c.pr >= M.SOC.minPr && c.e >= -0.07 && (c.gap == null || (c.gap >= -0.05 && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr)[0];
+    // "Pays what it's worth": the book's commission on this price is the usual one (up to 8% over its own fair price), and our
+    // calibrated probability is 60%+ (judging the price against our more conservative number would count the commission twice)
+    const okPrice = c => c.mk != null ? c.p * c.mk >= 0.92 : c.e >= -0.07;
+    const fair = cs.filter(c => c.p >= 1.25 && c.pr >= 0.6 && okPrice(c) && (c.gap == null || (c.gap >= -0.05 && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr)[0];
     const u = gi ? (gi.up1H >= gi.up1A ? {side: "H", pr: gi.up1H} : {side: "A", pr: gi.up1A}) : null;
     // A pick with a price first; 1 Up (no price in the source) only when there is nothing else
     if (fair) return {c: fair, tier: "fair"};
