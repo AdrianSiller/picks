@@ -79,7 +79,8 @@
     for (const x of done) if (x.sport !== "SOC") add("US", x);
     const all = gap("US"), out = {_n: done.length};
     for (const k of ["NBA|prop|over", "NBA|prop|under", "NBA|game", "NFL|prop|over", "NFL|prop|under", "NFL|game", "SOC|soc"]) {
-      const sp = gap(k.split("|")[0]), g = gap(k), base = k.startsWith("SOC") ? 0 : all.w * all.d, spv = sp.w * sp.d + (1 - sp.w) * base;
+      // Props (new regime since Nov 4) only use their own results; the rest lean on their sport and the overall gap
+      const isProp = k.includes("|prop|"), sp = isProp ? {d: 0, w: 0} : gap(k.split("|")[0]), g = gap(k), base = k.startsWith("SOC") || isProp ? 0 : all.w * all.d, spv = sp.w * sp.d + (1 - sp.w) * base;
       out[k] = +clamp(g.w * g.d + (1 - g.w) * spv, -0.05, 0.05).toFixed(3);
     }
     return out;
