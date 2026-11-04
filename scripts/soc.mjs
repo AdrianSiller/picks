@@ -18,7 +18,7 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     for (const e of (sb && sb.events) || []) if (e.status.type.state === "pre" && !evs.some(x => x.e.id === e.id)) evs.push({e, slug, lg});
   });
   if (!okBoards) throw new Error("ESPN soccer scoreboards unavailable");
-  const games = [], teamIds = {}, PBT = {}, TTRAW = [], XI = {}, PL = {}, WANT = new Set(), PGN = {n: 0}, PLX = {};
+  const games = [], teamIds = {}, PBT = {}, TTRAW = [], XI = {}, PL = {}, WANT = new Set(), PGN = {n: 0};
   await pool(evs, 5, async ({e, slug, lg}) => {
     const c = e.competitions[0], H = c.competitors.find(x => x.homeAway === "home"), A = c.competitors.find(x => x.homeAway === "away");
     const tm = x => ({abbr: x.team.abbreviation, name: x.team.displayName, record: (x.records && x.records[0] && x.records[0].summary) || ""});
@@ -62,9 +62,6 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     g.pgoal = of("Anytime Goalscorer").map(i => ({aid: (((i.athlete || {}).$ref || "").match(/athletes\/(\d+)/) || [])[1], p: pr(i)})).filter(x => x.aid && x.p && x.p >= 1.1 && x.p <= 6);
     for (const x of g.pgoal) WANT.add(x.aid);
     PGN.n += of("Anytime Goalscorer").length;
-    if (/RMA/.test(A.team.abbreviation + H.team.abbreviation)) g.dbg = {ag: of("Anytime Goalscorer").slice(0, 6).map(i => ({ath: i.athlete && i.athlete.$ref, cur: i.current, odds: i.odds, keys: Object.keys(i)})),
-      sot: of("Shots on Target Milestones").filter(i => /athletes\/(\d+)/.test((i.athlete || {}).$ref || "")).slice(0, 40).map(i => [((i.athlete.$ref.match(/athletes\/(\d+)/) || [])[1]), i.current && i.current.target && i.current.target.value, pr(i)]),
-      roster: Object.entries(PLX).filter(([, v]) => v === "RMA").map(([k]) => k).slice(0, 40)};
     // Inventory of the side markets the book publishes (to know what else can be priced)
     for (const i of items) { const n = (i.type && i.type.name) || "?"; PBT[n] = PBT[n] || {n: 0, ex: null}; PBT[n].n++; if (!PBT[n].ex) PBT[n].ex = {team: tid(i) === H.team.id ? "H" : tid(i) === A.team.id ? "A" : tid(i) || null, ath: !!i.athlete, t: i.current && i.current.target ? i.current.target.value : null, p: pr(i), u: i.current && i.current.under ? +i.current.under.decimal : null}; }
     games.push(g);
