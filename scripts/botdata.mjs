@@ -10,6 +10,10 @@ const pct = x => Math.round(x * 100) + "%";
 const hora = d => new Date(d).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ});
 const propLbl = (sp, c) => `${c.s === "over" ? "Over" : "Under"} ${c.l} ${LBL[sp][c.m]}`;
 const gameLbl = l => l.replace(" (moneyline)", " ML").replace(" (spread)", "");
+// Best moneyline price among the books The Odds API covers (Pinnacle included), to know if your book pays less than the market
+const bestLine = g => { const b = g.best; if (!b || !(b.h || b.a)) return null;
+  const it = [["h", g.home.abbr], ["d", "Empate"], ["a", g.away.abbr]].filter(([k]) => b[k]).map(([k, n]) => `${esc(n)} ${b[k].p.toFixed(2)} (${esc(b[k].bk)})`);
+  return `💰 Mejor momio del mercado: ${it.join(" · ")}`; };
 export const LG = {"Liga MX": "mx", "La Liga": "esp", "Premier": "eng", "Bundesliga": "ger", "Serie A": "ita", "Ligue 1": "fra", "Champions": "ucl"};
 
 // Bets you can mark from the bot: each pick gets a short stable ref (same pick = same ref across builds) and the fields grading needs
@@ -234,6 +238,7 @@ function players(sp, D, now, hours, started = []) {
       else S0.push("🎯 Sin pick de ML o spread", `- Proyectamos ${esc(fav)} por ~${mg}${sl}: casi lo mismo`);
       if (m.tot) S0.push(m.tot.play ? `<b>📈 Total ${esc(m.tot.best.lbl)}</b> · ${fx(m.tot.best.price)} · ${pct(m.tot.best.p)}\n- Proyectamos ~${m.tot.proj.toFixed(0)} puntos` : `📈 Total ${m.tot.line}: sin pick`); }
     if (outs.length) S0.push(`Fuera: ${esc(outs.slice(0, 4).join(", "))}${outs.length > 4 ? ` y ${outs.length - 4} más` : ""}`);
+    { const bl = bestLine(g); if (bl) { S0.push(bl); L.push(bl); } }
     S0.push("", props.length ? "<b>Props</b>" : "Sin props que pasen los filtros.", ...props.flatMap(c => [shortPick(sp, c), ...shortProp(sp, c, D, g, 3)]));
     gameList.push({id: g.id, d: g.date, tl: L.join("\n"), solid: !!((m && m.play) || (m && m.tot && m.tot.play) || props.length), b: `${g.away.abbr} @ ${g.home.abbr} · ${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}`, t: S0.join("\n"),
       bets: [...(m && m.play ? [gameBet(sp, g, m.best)] : []), ...(m && m.tot && m.tot.play ? [gameBet(sp, g, m.tot.best)] : []), ...props.map(c => propBet(sp, c, g.date))],
@@ -301,6 +306,7 @@ function soccer(S, now, hours, day, started = []) {
       if (extras.length) S1.push("", "<b>También respaldados</b>", ...extras.flatMap(c => [`<b>${esc(c.lbl)}</b> · ${fx(c.p)} · ${pct(c.pr)}`, ...shortSoc(S, g, c).slice(0, 1)]));
       const others2 = others.filter(c => !extras.includes(c)); if (others2.length) S1.push(`Otras: ${others2.map(c => `${esc(c.lbl)} ${c.p ? fx(c.p) : "s/m"} (${pct(c.pr)})`).join(" · ")}`);
       const sty = styleLine(S, g); if (sty) S1.push(esc(sty));
+      { const bl = bestLine(g); if (bl) { S1.push(bl); L.push(bl); } }
       if (m) S1.push(`1 Up: ${esc(g.home.abbr)} ${pct(m.up1H)} (desde ${fx(1 / m.up1H)}) · ${esc(g.away.abbr)} ${pct(m.up1A)} (desde ${fx(1 / m.up1A)})`);
       if (g.xi) S1.push(`📋 ${["h", "a"].filter(k => g.xi[k]).map(k => { const mm = g.xi[k].miss; return `${g[k === "h" ? "home" : "away"].abbr} ${mm.length ? `sin ${mm.length} titulares` : "once habitual"}`; }).join(" · ")}`);
       else if (g.rot) S1.push("⚠️ Posible rotación por Champions: revisa alineaciones");

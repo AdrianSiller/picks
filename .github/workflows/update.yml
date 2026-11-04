@@ -25,6 +25,7 @@ jobs:
       - name: Bajar datos y calcular picks
         env:
           SGO_API_KEY: ${{ secrets.SGO_API_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           # SportsGameOdds solo en la corrida de la mañana o a mano (el plan gratis tiene límite mensual)
           RUN_SGO: ${{ (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[sgo]')) && '1' || 'auto' }}
         run: |

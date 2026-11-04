@@ -9,6 +9,7 @@ import {priceNFL, priceUCL} from "./sgo.mjs";
 import {snapshot, grade} from "./results.mjs";
 import {dloc} from "./lib.mjs";
 import {botData} from "./botdata.mjs";
+import {oddsApi} from "./oddsapi.mjs";
 import M from "../model.js";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
@@ -47,6 +48,13 @@ if (runSgo && key) {
   for (const g of soc.games) { const o = og.get(g.id); if (o) { if (o.btts) g.btts = o.btts; if (o.corn) g.corn = o.corn; } }
 }
 
+// The Odds API: Pinnacle (sharp book) as the market reference + best price among books. Once per Mexico City day
+// (free plan: 500 credits a month); the other builds carry yesterday's prices onto the same games.
+{ const oKey = process.env.ODDS_API_KEY, runOdds = oKey && (process.env.RUN_ODDS === "1" || dloc(prev.oddsAt || "2000-01-01T00:00:00Z", "America/Mexico_City") !== today0);
+  if (runOdds) { const r = await step("OddsAPI", () => oddsApi(oKey, {nba, nfl, soc}, now), null); if (r) { log("OddsAPI", JSON.stringify(r)); prev.oddsAtNew = now.toISOString(); } }
+  else { for (const [cur, old] of [[nba, prev.nba], [nfl, prev.nfl], [soc, prev.soc]]) { const og = new Map(((old || {}).games || []).map(g => [g.id, g]));
+    for (const g of cur.games) { const o = og.get(g.id); if (o && o.pin) { g.pin = o.pin; g.best = o.best; } } } } }
+
 // Calibration from EVERY graded candidate of the last 30 days (not only the recommended picks: a much bigger, unbiased sample).
 // Only the candidates that are realistic picks count (55%+ and with a price), raw probability vs what really hit.
 const calItems = [];
@@ -84,7 +92,7 @@ for (const g of soc.games) { const L = g.lines || {}; if (!L.mlHome) continue; c
 for (const k of Object.keys(open)) if (!seenK.has(k) && now - new Date(open[k].at) > 2 * 864e5) delete open[k];
 write("open.json", open);
 
-const latest = {generatedAt: now.toISOString(), calib: M.CALIB, learn: learned, sgoAt: runSgo && key ? now.toISOString() : prev.sgoAt, nba, nfl, soc};
+const latest = {generatedAt: now.toISOString(), calib: M.CALIB, learn: learned, sgoAt: runSgo && key ? now.toISOString() : prev.sgoAt, oddsAt: prev.oddsAtNew || prev.oddsAt, nba, nfl, soc};
 write("latest.json", latest);
 log("latest.json", (JSON.stringify(latest).length / 1024).toFixed(0) + " KB", `NBA ${nba.games.length} games/${nba.cands.length} props · NFL ${nfl.games.length}/${nfl.cands.length} · soccer ${soc.games.length}`);
 

@@ -148,7 +148,10 @@
     ];
     // 50/50 with the market's no-vig probability: simple models overrate teams on last season's results
     const nv = (a, b) => a && b ? (1 / a) / (1 / a + 1 / b) : null;
-    const mk = [nv(L.mlHome, L.mlAway), nv(L.mlAway, L.mlHome), nv(L.spreadHomeOdds, L.spreadAwayOdds), nv(L.spreadAwayOdds, L.spreadHomeOdds)];
+    // Pinnacle (the sharpest book) is the market reference when we have it; DraftKings otherwise
+    const pn = g.pin || {}, pinSp = pn.spr && pn.spr.h === sh;
+    const mk = [pn.h && pn.a ? nv(pn.h, pn.a) : nv(L.mlHome, L.mlAway), pn.h && pn.a ? nv(pn.a, pn.h) : nv(L.mlAway, L.mlHome),
+      pinSp ? nv(pn.spr.ph, pn.spr.pa) : nv(L.spreadHomeOdds, L.spreadAwayOdds), pinSp ? nv(pn.spr.pa, pn.spr.ph) : nv(L.spreadAwayOdds, L.spreadHomeOdds)];
     const cal = M.calAdj(`${ctx.sp || ctx.name}|game`), spN = ctx.sp || ctx.name, ea = M.EARLY[spN];
     opts.forEach((o, i) => { o.pm = o.p; if (mk[i] != null) o.p = 0.5 * o.p + 0.5 * mk[i];
       // Early payout (your books pay the moneyline as won if the lead reaches 20 in NBA / 17 in NFL): the extra chance it adds
@@ -247,11 +250,13 @@
       const lc = (H.cf + A.ca) / 2 * 1.05 + (A.cf + H.ca) / 2 * 0.95;
       const pCornOver = line => { let c = 0; for (let k = 0; k <= Math.floor(line); k++) c += pois(k, lc); return 0.5 + ((1 - c) - 0.5) * 0.8; };
       const sumInv = (L.mlHome && L.draw && L.mlAway) ? 1 / L.mlHome + 1 / L.draw + 1 / L.mlAway : null;
-      const nv3 = x => sumInv ? (1 / x) / sumInv : null;
+      // Market reference: Pinnacle's no-vig 1X2 when we have it (sharper than DraftKings); prices to bet stay DraftKings'
+      const pn = g.pin && g.pin.h && g.pin.d && g.pin.a ? g.pin : null, pInv = pn ? 1 / pn.h + 1 / pn.d + 1 / pn.a : null;
+      const nv3 = k => !sumInv ? null : pn ? (1 / pn[k]) / pInv : (1 / L[{h: "mlHome", d: "draw", a: "mlAway"}[k]]) / sumInv;
       const nv2 = (a, b) => a && b ? (1 / a) / (1 / a + 1 / b) : null;
       // 1 Up anchored to the book: the goals each team is expected to score according to its 1X2 and total prices,
       // then the same minute-by-minute walk; mixed with the model's like every other market
-      const wM0 = g.lg === "Champions" ? M.SOC.wCL : M.SOC.w, mkL = M.mktLambdas(L, pois);
+      const wM0 = g.lg === "Champions" ? M.SOC.wCL : M.SOC.w, mkL = M.mktLambdas(pn ? {...L, mlHome: pn.h, draw: pn.d, mlAway: pn.a} : L, pois);
       const up = (a, b) => M.everAhead(a, b, 1), u1H = mkL ? wM0 * up(lh, la) + (1 - wM0) * up(mkL.h, mkL.a) : up(lh, la), u1A = mkL ? wM0 * up(la, lh) + (1 - wM0) * up(mkL.a, mkL.h) : up(la, lh);
       const gi = {id: g.id, fav: M.socFav(L), lh, la, lc, pH, pD, pA, pBTTS: P((i, j) => i > 0 && j > 0), H, A, up1H: u1H, up1A: u1A, mkL};
       games.push(gi);
@@ -262,11 +267,11 @@
       const hN = g.home.abbr, aN = g.away.abbr;
       // Early payout (2 goals up = won): the extra chance over just winning, from the book-anchored expected goals
       const upE = (a, b) => mkL ? Math.max(0, M.winOrUp(a, b, M.EARLY.SOC) - M.winOrUp(a, b, 99)) : 0, eH = mkL ? upE(mkL.h, mkL.a) : 0, eA = mkL ? upE(mkL.a, mkL.h) : 0;
-      if (L.mlHome) add({k: "1x2", side: "H", lbl: `Gana ${hN}`, pm: pH + eH, mk: nv3(L.mlHome) + eH, p: L.mlHome, early: +eH.toFixed(3)});
-      if (L.draw) add({k: "1x2", side: "D", lbl: "Empate", pm: pD, mk: nv3(L.draw), p: L.draw});
-      if (L.mlAway) add({k: "1x2", side: "A", lbl: `Gana ${aN}`, pm: pA + eA, mk: nv3(L.mlAway) + eA, p: L.mlAway, early: +eA.toFixed(3)});
+      if (L.mlHome) add({k: "1x2", side: "H", lbl: `Gana ${hN}`, pm: pH + eH, mk: nv3("h") + eH, p: L.mlHome, early: +eH.toFixed(3)});
+      if (L.draw) add({k: "1x2", side: "D", lbl: "Empate", pm: pD, mk: nv3("d"), p: L.draw});
+      if (L.mlAway) add({k: "1x2", side: "A", lbl: `Gana ${aN}`, pm: pA + eA, mk: nv3("a") + eA, p: L.mlAway, early: +eA.toFixed(3)});
       const sh = Number(L.spreadHome), sa = Number(L.spreadAway);
-      const mk1 = sumInv ? nv3(L.mlHome) + nv3(L.draw) : null, mk2 = sumInv ? nv3(L.mlAway) + nv3(L.draw) : null;
+      const mk1 = sumInv ? nv3("h") + nv3("d") : null, mk2 = sumInv ? nv3("a") + nv3("d") : null;
       // Double chance: the book's price when it offers the +0.5 handicap; otherwise estimated from its 1X2 prices
       // (combining two outcomes keeps the book's margin; 1.5% off to be conservative)
       const dcEst = (a, b) => a && b ? +(0.985 / (1 / a + 1 / b)).toFixed(2) : null;
