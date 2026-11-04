@@ -131,8 +131,6 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     if (rot.h || rot.a) g.rot = rot;
   }
   // Shot logs only for players with a shots-on-target price, last 10 league / continental matches, newest first
-  const players = {}; for (const id of WANT) { const q = PL[id]; if (!q) continue; const rows = q.rows.filter(r => r[6] !== "CUP").sort((a, b) => a[0] < b[0] ? 1 : -1).slice(0, 10).map(r => r.slice(0, 6)); if (rows.length >= 5 && rows.filter(r => r[3]).length >= 6) players[id] = {n: q.n, t: q.t, rows}; }
-  // Priced players we could not model (why): no match log at all, or too few starts / matches
-  const miss = {}; for (const id of WANT) if (!players[id]) { const q = PL[id]; miss[id] = q ? [q.n, q.t, q.rows.length, q.rows.filter(r => r[3]).length, q.rows.filter(r => r[6] !== "CUP").length] : null; }
-  return {asOf: now.toISOString(), games, teams, meta, players, miss, pgRaw: PGN.n, pbt: Object.fromEntries(Object.entries(PBT).map(([k, v]) => [k, v.n]))};
+  const players = {}; for (const id of WANT) { const q = PL[id]; if (!q) continue; const rows = q.rows.filter(r => r[6] !== "CUP").sort((a, b) => a[0] < b[0] ? 1 : -1).slice(0, 10).map(r => r.slice(0, 6)); if (rows.length >= 5 && rows.filter(r => r[3]).length >= Math.max(4, Math.ceil(rows.length * 0.6))) players[id] = {n: q.n, t: q.t, rows}; }
+  return {asOf: now.toISOString(), games, teams, meta, players, pgRaw: PGN.n, pbt: Object.fromEntries(Object.entries(PBT).map(([k, v]) => [k, v.n]))};
 }

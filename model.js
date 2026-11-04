@@ -305,7 +305,7 @@
         add({k: "tc", side: "U", team: sd, lbl: `${nm} menos de ${t.line} corners`, line: t.line, pm: 1 - po, mk: mk != null ? 1 - mk : null, p: t.under}); }
       // Players' shots on target (1+ / 2+): how often he got there in his last 10 matches, as a regular starter (6+ starts of 10),
       // nudged by how many shots on target the rival allows; the book's price has a bigger commission (~7%)
-      for (const x of g.psot || []) { const P = (D.players || {})[x.aid]; if (!P || P.rows.length < 5) continue; const starts = P.rows.filter(r => r[3]).length; if (starts < 6) continue;
+      for (const x of g.psot || []) { const P0 = (D.players || {})[x.aid]; if (!P0 || P0.rows.length < 5) continue; const st = P0.rows.filter(r => r[3]); if (st.length < Math.max(4, Math.ceil(P0.rows.length * 0.6))) continue; const P = st.length >= 5 ? {...P0, rows: st} : P0;
         const xiMiss = g.xi && g.xi[P.t === g.home.abbr ? "h" : "a"]; if (xiMiss && xiMiss.miss.some(n => n === P.n)) continue;
         const hit = P.rows.filter(r => r[1] >= x.t).length, n = P.rows.length, base = (hit + 1) / (n + 2);
         const opp = P.t === g.home.abbr ? g.away.abbr : g.home.abbr, oR = (D.teams[opp] || []).filter(r => !r[8] && r[13] != null).slice(0, 10);
@@ -313,7 +313,7 @@
         const pm = clamp(base * (1 + (f - 1) * 0.5), 0.03, 0.97), mk = Math.min(0.95, (1 / x.p) / 1.07);
         add({k: "psot", side: "O", aid: x.aid, pl: P.n, team: P.t === g.home.abbr ? "H" : "A", line: x.t, lbl: `${P.n} ${x.t}+ tiros a puerta`, pm, mk, p: x.p, ph: [hit, n]}); }
       // Players' total shots (1+ to 4+): same idea, his last 10 matches nudged by how many shots the rival allows (~12 a match)
-      for (const x of g.pshot || []) { const P = (D.players || {})[x.aid]; if (!P || P.rows.length < 5) continue; const starts = P.rows.filter(r => r[3]).length; if (starts < 6) continue;
+      for (const x of g.pshot || []) { const P0 = (D.players || {})[x.aid]; if (!P0 || P0.rows.length < 5) continue; const st = P0.rows.filter(r => r[3]); if (st.length < Math.max(4, Math.ceil(P0.rows.length * 0.6))) continue; const P = st.length >= 5 ? {...P0, rows: st} : P0;
         const xiMiss = g.xi && g.xi[P.t === g.home.abbr ? "h" : "a"]; if (xiMiss && xiMiss.miss.some(n => n === P.n)) continue;
         const hit = P.rows.filter(r => r[2] >= x.t).length, n = P.rows.length, base = (hit + 1) / (n + 2);
         const opp = P.t === g.home.abbr ? g.away.abbr : g.home.abbr, oR = (D.teams[opp] || []).filter(r => !r[8] && r[12] != null).slice(0, 10);
@@ -322,7 +322,7 @@
         add({k: "pshot", side: "O", aid: x.aid, pl: P.n, team: P.t === g.home.abbr ? "H" : "A", line: x.t, lbl: `${P.n} ${x.t}+ tiros`, pm, mk, p: x.p, ph: [hit, n], avg: +(P.rows.reduce((s, r) => s + (r[2] || 0), 0) / n).toFixed(1)}); }
       // Anytime goalscorer: his goals per match in the last 10 (regular starters), scaled by how many goals the book expects
       // from his team today vs what it usually scores; goalscorer prices carry a bigger commission (~8%)
-      for (const x of g.pgoal || []) { const P = (D.players || {})[x.aid]; if (!P || P.rows.length < 5 || P.rows[0].length < 5) continue; if (P.rows.filter(r => r[3]).length < 6) continue;
+      for (const x of g.pgoal || []) { const P = (D.players || {})[x.aid]; if (!P || P.rows.length < 5 || P.rows[0].length < 5) continue; if (P.rows.filter(r => r[3]).length < Math.max(4, Math.ceil(P.rows.length * 0.6))) continue;
         const side = P.t === g.home.abbr ? "H" : "A", tR = (D.teams[P.t] || []).filter(r => !r[8]).slice(0, 10), tAvg = tR.length ? tR.reduce((s, r) => s + r[4], 0) / tR.length : 1.4;
         const lamT = mkL ? (side === "H" ? mkL.h : mkL.a) : (side === "H" ? lh : la), sc = clamp(lamT / Math.max(tAvg, 0.5), 0.6, 1.6);
         const gl = P.rows.reduce((s, r) => s + r[4], 0), n = P.rows.length, rate = (gl + 0.5) / (n + 1), pm = clamp(1 - Math.exp(-rate * sc), 0.03, 0.9);
