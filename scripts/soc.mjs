@@ -123,6 +123,6 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     if (rot.h || rot.a) g.rot = rot;
   }
   // Shot logs only for players with a shots-on-target price, last 10 league / continental matches, newest first
-  const players = {}; for (const id of WANT) { const q = PL[id]; if (!q) continue; const rows = q.rows.filter(r => r[4] !== "CUP").sort((a, b) => a[0] < b[0] ? 1 : -1).slice(0, 10).map(r => r.slice(0, 4)); if (rows.length) players[id] = {n: q.n, t: q.t, rows}; }
+  const players = {}; for (const id of WANT) { const q = PL[id]; if (!q) continue; const rows = q.rows.filter(r => r[4] !== "CUP").sort((a, b) => a[0] < b[0] ? 1 : -1).slice(0, 10).map(r => r.slice(0, 4)); if (rows.length >= 5 && rows.filter(r => r[3]).length >= 6) players[id] = {n: q.n, t: q.t, rows}; }
   return {asOf: now.toISOString(), games, teams, meta, players};
 }
