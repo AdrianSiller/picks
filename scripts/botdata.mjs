@@ -155,29 +155,9 @@ function styleLine(S, g) {
   const h = styleOf(S, g.home.abbr), a = styleOf(S, g.away.abbr); if (!h && !a) return null;
   return `🧭 ${[h && tag(g.home.abbr, h), a && tag(g.away.abbr, a)].filter(Boolean).join(" · ")}`;
 }
-function shortSoc(S, g, c) {
-  const rows = ab => (S.teams[ab] || []).filter(r => !r[8]).slice(0, 10), H = rows(g.home.abbr), A = rows(g.away.abbr), out = [];
-  const cnt = (r, f) => r.filter(f).length, avg = (r, f) => r.length ? (r.reduce((s, x) => s + f(x), 0) / r.length).toFixed(1) : "–";
-  if (c.k === "btts") { const f = x => x[4] > 0 && x[5] > 0; out.push(`Ambos anotaron en ${cnt(H, f)}/${H.length} de ${g.home.abbr} y ${cnt(A, f)}/${A.length} de ${g.away.abbr}`); }
-  else if (c.k === "tot") { const f = x => x[4] + x[5] > c.line; out.push(`Más de ${c.line} en ${cnt(H, f)}/${H.length} de ${g.home.abbr} y ${cnt(A, f)}/${A.length} de ${g.away.abbr}`); }
-  else if (c.k === "tt") { const mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, ab = c.team === "H" ? g.home.abbr : g.away.abbr, ob = c.team === "H" ? g.away.abbr : g.home.abbr;
-    out.push(`${ab} mete ${avg(mine, x => x[4])} por partido · ${ob} recibe ${avg(opp, x => x[5])}`); }
-  else { const side = c.side === "1X" || c.side === "H" ? "H" : c.side === "X2" || c.side === "A" ? "A" : null;
-    if (side) { const T = side === "A" ? g.away : g.home, O = side === "A" ? g.home : g.away, TR = side === "A" ? A : H, OR = side === "A" ? H : A;
-      const tv = TR.filter(x => x[3] === (side === "A" ? "a" : "h")).slice(0, 5), ov = OR.filter(x => x[3] === (side === "A" ? "h" : "a")).slice(0, 5);
-      const l = r => r.filter(x => x[4] < x[5]).length, w = r => r.filter(x => x[4] > x[5]).length;
-      if (ov.length) out.push(`${O.abbr} ${side === "A" ? "de local" : "de visita"}: perdió ${l(ov)} de ${ov.length}`);
-      if (tv.length) out.push(`${T.abbr} ${side === "A" ? "de visita" : "en casa"}: ${w(tv)} ganados, ${l(tv)} perdidos de ${tv.length}`);
-      const L0 = g.lines || {}, inv = L0.mlHome && L0.draw && L0.mlAway ? 1 / L0.mlHome + 1 / L0.draw + 1 / L0.mlAway : null;
-      if (inv) out.push(`La casa: ${T.abbr} ${pct((1 / (side === "A" ? L0.mlAway : L0.mlHome)) / inv)} · ${O.abbr} ${pct((1 / (side === "A" ? L0.mlHome : L0.mlAway)) / inv)}`);
-      if (g.xi) { const m = (g.xi[side === "A" ? "a" : "h"] || {}).miss || []; if (m.length) out.unshift(`⚠️ ${T.abbr} sin ${m.length} titulares`); } } }
-  if (c.k === "1x2" && c.early >= 0.005) out.push(`Con pago anticipado (2 goles arriba = ganado): +${Math.round(c.early * 100)} pts`);
-  if (c.k === "pgoal") out.unshift(`${c.pl}: ${c.gl} goles en sus últimos ${c.ph[1]} (anotó en ${c.ph[0]})`);
-  if (c.k === "psot") out.unshift(`${c.pl} llegó a ${c.line}+ tiros a puerta en ${c.ph[0]} de sus últimos ${c.ph[1]}`);
-  if (c.k === "tc") { const mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, ab = c.team === "H" ? g.home.abbr : g.away.abbr, ob = c.team === "H" ? g.away.abbr : g.home.abbr, cr = mine.filter(x => x[6] != null), co = opp.filter(x => x[7] != null);
-    if (cr.length && co.length) out.unshift(`${ab} saca ${(cr.reduce((s, x) => s + x[6], 0) / cr.length).toFixed(1)} corners · ${ob} concede ${(co.reduce((s, x) => s + x[7], 0) / co.length).toFixed(1)}`); }
-  if (out.length < 2 && c.pm != null && c.mk != null) out.push(Math.abs(c.pm - c.mk) <= 0.05 ? `Modelo y casa coinciden (${pct(c.pm)} y ${pct(c.mk)})` : `Modelo ${pct(c.pm)} · casa ${pct(c.mk)}`);
-  return out.slice(0, 3).map(t => `- ${esc(t)}`);
+function shortSoc(S, g, c, gi) {
+  const w = M.socWhy(S.teams, g, c, gi);
+  return w.lines.slice(-3).map(t => `- ${t.startsWith("Nuestro modelo solo") ? "⚠️ " : ""}${esc(t)}`);
 }
 
 // Game total and "no pick" explanations
@@ -300,10 +280,10 @@ function soccer(S, now, hours, day, started = []) {
       if (g.xi) L.push(`📋 Alineaciones confirmadas: ${["h", "a"].filter(k => g.xi[k]).map(k => { const t = g[k === "h" ? "home" : "away"].abbr, m = g.xi[k].miss; return m.length ? `${t} sin ${m.length} titular${m.length > 1 ? "es" : ""} habitual${m.length > 1 ? "es" : ""} (${esc(m.join(", "))})` : `${t} con su once habitual`; }).join("; ")}. Ya entra en el modelo.`);
       else if (g.rot) L.push(`⚠️ ${["h", "a"].filter(k => g.rot[k]).map(k => `${g[k === "h" ? "home" : "away"].abbr} ${g.rot[k].next != null ? `juega Champions en ${g.rot[k].next} días (posible rotación)` : "viene de jugar Champions"}`).join("; ")}. Revisa alineaciones con ↻ Actualizar en la app antes de apostar.`);
       const S1 = [`<b>${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</b> · ${lg} · ${hora(g.date)}`, ""];
-      if (best) S1.push(`<b>🎯 ${esc(best.lbl)}</b> · ${(best.est ? "≈" : "") + fx(best.p)} · ${pct(best.pr)}${gp.tier === "fair" ? " · 🟡 paga lo justo" : ""}`, ...shortSoc(S, g, best));
-      else if (gp && gp.up1) S1.push(`<b>🎯 ${esc(upTxt.split(" · ")[0])}</b> · ${pct(gp.up1.pr)} · 🟡 conviene desde ${fx(1 / gp.up1.pr)}`, "- Es lo más probable del partido; revisa el momio en tu casa");
+      if (best) S1.push(`<b>🎯 ${esc(best.lbl)}</b> · ${(best.est ? "≈" : "") + fx(best.p)} · ${pct(best.pr)}${gp.tier === "fair" ? " · 🟡 paga lo justo" : ""}`, ...shortSoc(S, g, best, m));
+      else if (gp && gp.up1) S1.push(`<b>🎯 ${esc(upTxt.split(" · ")[0])}</b> · ${pct(gp.up1.pr)} · 🟡 conviene desde ${fx(1 / gp.up1.pr)}`, ...shortSoc(S, g, {k: "up1", side: gp.up1.side, pr: gp.up1.pr}, m), "- Sin momio en la fuente: revísalo en tu casa");
       else S1.push("🎯 Sin pick: nada llega a 62% con un pago decente");
-      if (extras.length) S1.push("", "<b>También respaldados</b>", ...extras.flatMap(c => [`<b>${esc(c.lbl)}</b> · ${fx(c.p)} · ${pct(c.pr)}`, ...shortSoc(S, g, c).slice(0, 2)]));
+      if (extras.length) S1.push("", "<b>También respaldados</b>", ...extras.flatMap(c => [`<b>${esc(c.lbl)}</b> · ${fx(c.p)} · ${pct(c.pr)}`, ...shortSoc(S, g, c, m)]));
       const others2 = others.filter(c => !extras.includes(c)); if (others2.length) S1.push(`Otras: ${others2.map(c => `${esc(c.lbl)} ${c.p ? fx(c.p) : "s/m"} (${pct(c.pr)})`).join(" · ")}`);
       const sty = styleLine(S, g); if (sty) S1.push(esc(sty));
       { const bl = bestLine(g); if (bl) { S1.push(bl); L.push(bl); } }

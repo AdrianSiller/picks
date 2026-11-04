@@ -348,6 +348,42 @@
     if (["1x2", "hc"].includes(c.k) && c.side === dog) return false;
     if (["dc", "dc1h"].includes(c.k) && c.side === (dog === "H" ? "1X" : "X2")) return false;
     return true; };
+  // Why a soccer pick: short reasons from the teams' last matches, and whether our numbers back it or it leans on the market.
+  // Returns {lines: [plain text], back: "ok" | "market" | null, pm, mk}
+  M.socWhy = (teams, g, c, gi) => {
+    const pc = x => Math.round(x * 100) + "%", rows = ab => (teams[ab] || []).filter(r => !r[8]).slice(0, 10), H = rows(g.home.abbr), A = rows(g.away.abbr), out = [];
+    const cnt = (r, f) => r.filter(f).length, avg = (r, f) => r.length ? (r.reduce((s, x) => s + f(x), 0) / r.length).toFixed(1) : "–";
+    let pm = c.pm, mk = c.mk;
+    if (c.k === "up1" && gi) { const hS = c.side === "H"; pm = hS ? M.everAhead(gi.lh, gi.la, 1) : M.everAhead(gi.la, gi.lh, 1); mk = gi.mkL ? (hS ? M.everAhead(gi.mkL.h, gi.mkL.a, 1) : M.everAhead(gi.mkL.a, gi.mkL.h, 1)) : null; }
+    const sideOf = c.k === "up1" || c.k === "1x2" || c.k === "dc" ? (c.side === "1X" || c.side === "H" ? "H" : c.side === "X2" || c.side === "A" ? "A" : null) : null;
+    if (c.k === "btts") { const f = x => x[4] > 0 && x[5] > 0; out.push(`Ambos anotaron en ${cnt(H, f)}/${H.length} de ${g.home.abbr} y ${cnt(A, f)}/${A.length} de ${g.away.abbr}`); }
+    else if (c.k === "tot") { const f = x => x[4] + x[5] > c.line; out.push(`Más de ${c.line} en ${cnt(H, f)}/${H.length} de ${g.home.abbr} y ${cnt(A, f)}/${A.length} de ${g.away.abbr}`); }
+    else if (c.k === "tt") { const mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, ab = c.team === "H" ? g.home.abbr : g.away.abbr, ob = c.team === "H" ? g.away.abbr : g.home.abbr;
+      out.push(`${ab} mete ${avg(mine, x => x[4])} por partido · ${ob} recibe ${avg(opp, x => x[5])}`); }
+    else if (sideOf) { const T = sideOf === "A" ? g.away : g.home, O = sideOf === "A" ? g.home : g.away, TR = sideOf === "A" ? A : H, OR = sideOf === "A" ? H : A;
+      const w = r => r.filter(x => x[4] > x[5]).length, l = r => r.filter(x => x[4] < x[5]).length;
+      if (TR.length) out.push(`${T.abbr}: ${w(TR)} ganados de ${TR.length}, mete ${avg(TR, x => x[4])} y recibe ${avg(TR, x => x[5])} por partido`);
+      if (OR.length) out.push(`${O.abbr}: ${l(OR)} perdidos de ${OR.length}, recibe ${avg(OR, x => x[5])} por partido`);
+      if (c.k === "up1" && TR.length) out.push(`${T.abbr} anotó en ${cnt(TR, x => x[4] > 0)} de ${TR.length} (para el 1 Up basta ir arriba una vez)`);
+      if (g.xi) { const m = (g.xi[sideOf === "A" ? "a" : "h"] || {}).miss || []; if (m.length) out.unshift(`⚠️ ${T.abbr} sin ${m.length} titulares`); } }
+    if (c.k === "pgoal") out.unshift(`${c.pl}: ${c.gl} goles en sus últimos ${c.ph[1]} (anotó en ${c.ph[0]})`);
+    if (c.k === "psot") out.unshift(`${c.pl} llegó a ${c.line}+ tiros a puerta en ${c.ph[0]} de sus últimos ${c.ph[1]}`);
+    if (c.k === "tc") { const mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, ab = c.team === "H" ? g.home.abbr : g.away.abbr, ob = c.team === "H" ? g.away.abbr : g.home.abbr, cr = mine.filter(x => x[6] != null), co = opp.filter(x => x[7] != null);
+      if (cr.length && co.length) out.unshift(`${ab} saca ${(cr.reduce((s, x) => s + x[6], 0) / cr.length).toFixed(1)} corners · ${ob} concede ${(co.reduce((s, x) => s + x[7], 0) / co.length).toFixed(1)}`); }
+    if (c.k === "1x2" && c.early >= 0.005) out.push(`Con pago anticipado (2 goles arriba = ganado): +${Math.round(c.early * 100)} pts`);
+    // Our numbers vs the market (Pinnacle when we have it): the honest part
+    let back = null;
+    if (pm != null && mk != null) { const d = pm - mk, src = g.pin ? "mercado (Pinnacle)" : "casa";
+      if (d >= -0.05) { back = "ok"; out.push(`Nuestro modelo ${pc(pm)} · ${src} ${pc(mk)}: coinciden`); }
+      else { // Model lower: does the raw form still back it? (our goals model is known to be conservative with big favorites)
+        const TR = sideOf === "A" ? A : H, OR = sideOf === "A" ? H : A, wr = TR.length ? TR.filter(x => x[4] > x[5]).length / TR.length : 0,
+          lr = OR.length ? OR.filter(x => x[4] < x[5]).length / OR.length : 0, sc = TR.length ? TR.filter(x => x[4] > 0).length / TR.length : 0;
+        const form = sideOf && TR.length >= 6 && (c.k === "dc" ? wr + (TR.filter(x => x[4] === x[5]).length / TR.length) >= 0.75 : wr >= 0.7 && (lr >= 0.3 || wr >= 0.85) && (c.k !== "up1" || sc >= 0.8));
+        back = form ? "form" : "market";
+        out.push(form ? `Nuestro modelo de goles ${pc(pm)} · ${src} ${pc(mk)}: el modelo es conservador con favoritos, pero la racha lo respalda`
+          : `Nuestro modelo solo ${pc(pm)} · ${src} ${pc(mk)}: se apoya en el mercado, no en nuestras estadísticas`); } }
+    return {lines: out.slice(0, 4), back, pm, mk};
+  };
   M.socGamePick = (cands, gi) => {
     // Too few matches of either team in the data (e.g. a league ESPN does not cover): no pick
     if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return null;
