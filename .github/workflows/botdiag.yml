@@ -17,7 +17,7 @@ jobs:
           SEC=$(printf "picks:%s" "$TELEGRAM_TOKEN" | sha256sum | cut -c1-32)
           echo; echo "hook (chat ajeno, debe decir 200 ok):" >> data/botdiag.json
           curl -s -w " %{http_code}" -X POST -H "X-Telegram-Bot-Api-Secret-Token: $SEC" -H "content-type: application/json" -d '{"message":{"chat":{"id":1},"text":"premier"}}' https://picks-bot.adrian-rmzsiller.workers.dev/hook >> data/botdiag.json
-          echo; for u in "https://understat.com/league/EPL/2026" "https://understat.com/league/EPL/2025" "https://fbref.com/en/comps/9/Premier-League-Stats"; do echo "$u: $(curl -s -o /tmp/p.html -w '%{http_code}' -A 'Mozilla/5.0' "$u") $(wc -c </tmp/p.html) bytes $(grep -o 'teamsData\|datesData\|playersData' /tmp/p.html | sort -u | tr '\n' ' ')" >> data/botdiag.json; done
+          echo; for u in "https://understat.com/getLeagueData/EPL/2025" "https://understat.com/getLeagueData/EPL/2026" "https://understat.com/getLeagueData/La_liga/2025"; do echo "$u: $(curl -s -o /tmp/p.json -w '%{http_code}' -A 'Mozilla/5.0' -H 'X-Requested-With: XMLHttpRequest' -H 'Referer: https://understat.com/league/EPL' "$u") $(wc -c </tmp/p.json) bytes $(head -c 300 /tmp/p.json | tr -d '\n')" >> data/botdiag.json; done
           cat data/botdiag.json
           git config user.name github-actions; git config user.email github-actions@users.noreply.github.com
           git add data/botdiag.json; git commit -m "Diagnóstico bot" || true; git pull --rebase; git push
