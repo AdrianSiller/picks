@@ -396,7 +396,7 @@
   M.socGamePick = (cands, gi) => {
     // Too few matches of either team in the data (e.g. a league ESPN does not cover): no pick
     if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return null;
-    const fav = gi && gi.fav, cs = cands.filter(c => c.p && M.socAligned(c, fav)), solid = cs.filter(c => M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))[0];
+    const fav = gi && gi.fav, cs = cands.filter(c => c.p && M.socAligned(c, fav) && !M.isPl(c)), solid = cs.filter(c => M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))[0];
     if (solid) return {c: solid, tier: "solid"};
     // The model must not see it as less likely than the book (it only confirms; it never rides on the book alone)
     // "Pays what it's worth": the book's commission on this price is the usual one (up to 8% over its own fair price), and our
@@ -417,10 +417,15 @@
   const fam = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal" ? "pl" + c.aid : ["dc", "1x2", "hc", "dc1h"].includes(c.k) ? "res" : c.k === "tt" || c.k === "tc" ? c.k + c.team : c.k;
   M.socBacked = (cands, gi) => { const fav = gi && gi.fav, okPrice = c => c.mk != null ? c.p * c.mk >= 0.92 : c.e >= -0.07;
     return cands.filter(c => c.p && c.p >= 1.25 && c.pr >= 0.6 && !c.thin && okPrice(c) && M.socAligned(c, fav) && (c.gap == null || (c.gap >= (c.ucl ? -0.15 : -0.05) && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr); };
+  // Player markets (shots, shots on target, goalscorer) are only secondary picks: never the pick of the match, at most 2,
+  // and after the team markets that also pass
+  M.isPl = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal";
   M.socGamePicks = (cands, gi, max = 3) => {
     const main = M.socGamePick(cands, gi); if (!main) return [];
-    const out = [main], seen = new Set(main.c ? [fam(main.c)] : ["up1"]);
-    for (const c of M.socBacked(cands, gi)) { if (out.length >= max) break; if (main.c === c || seen.has(fam(c))) continue; seen.add(fam(c)); out.push({c, tier: M.socOk(c) ? "solid" : "fair"}); }
+    const out = [main], seen = new Set(main.c ? [fam(main.c)] : ["up1"]), B = M.socBacked(cands, gi);
+    let npl = 0;
+    for (const c of [...B.filter(c => !M.isPl(c)), ...B.filter(M.isPl)]) { if (out.length >= max) break; if (main.c === c || seen.has(fam(c))) continue;
+      if (M.isPl(c) && npl >= 2) continue; if (M.isPl(c)) npl++; seen.add(fam(c)); out.push({c, tier: M.socOk(c) ? "solid" : "fair"}); }
     return out; };
   M.socTop = (cands, gamesById, lg, n = 10) => { const out = [], per = {};
     for (const c of cands.filter(c => c.p && M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))) { if (lg && gamesById[c.g].lg !== lg) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === n) break; }
