@@ -18,7 +18,7 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     for (const e of (sb && sb.events) || []) if (e.status.type.state === "pre" && !evs.some(x => x.e.id === e.id)) evs.push({e, slug, lg});
   });
   if (!okBoards) throw new Error("ESPN soccer scoreboards unavailable");
-  const games = [], teamIds = {}, PBT = {}, TTRAW = [], XI = {}, PL = {}, WANT = new Set();
+  const games = [], teamIds = {}, PBT = {}, TTRAW = [], XI = {}, PL = {}, WANT = new Set(), PGN = {n: 0};
   await pool(evs, 5, async ({e, slug, lg}) => {
     const c = e.competitions[0], H = c.competitors.find(x => x.homeAway === "home"), A = c.competitors.find(x => x.homeAway === "away");
     const tm = x => ({abbr: x.team.abbreviation, name: x.team.displayName, record: (x.records && x.records[0] && x.records[0].summary) || ""});
@@ -56,11 +56,12 @@ export async function buildSOC(now = new Date(), nDays = 6) {
       if (it.length >= 2 && pr(it[0]) && pr(it[1]) && it[0].current.target.value === it[1].current.target.value) (g.tc = g.tc || {})[side] = {line: +it[0].current.target.value, over: pr(it[0]), under: pr(it[1])}; }
     // Players' shots on target: "1+" and "2+" prices
     g.psot = of("Shots on Target Milestones").map(i => ({aid: (((i.athlete || {}).$ref || "").match(/athletes\/(\d+)/) || [])[1], t: i.current && i.current.target ? +i.current.target.value : null, p: pr(i)}))
-      .filter(x => x.aid && (x.t === 1 || x.t === 2) && x.p && x.p >= 1.3 && x.p <= 4);
+      .filter(x => x.aid && (x.t === 1 || x.t === 2) && x.p && x.p >= 1.05 && x.p <= 5);
     for (const x of g.psot) WANT.add(x.aid);
     // Anytime goalscorer prices
-    g.pgoal = of("Anytime Goalscorer").map(i => ({aid: (((i.athlete || {}).$ref || "").match(/athletes\/(\d+)/) || [])[1], p: pr(i)})).filter(x => x.aid && x.p && x.p >= 1.3 && x.p <= 4);
+    g.pgoal = of("Anytime Goalscorer").map(i => ({aid: (((i.athlete || {}).$ref || "").match(/athletes\/(\d+)/) || [])[1], p: pr(i)})).filter(x => x.aid && x.p && x.p >= 1.1 && x.p <= 6);
     for (const x of g.pgoal) WANT.add(x.aid);
+    PGN.n += of("Anytime Goalscorer").length;
     // Inventory of the side markets the book publishes (to know what else can be priced)
     for (const i of items) { const n = (i.type && i.type.name) || "?"; PBT[n] = PBT[n] || {n: 0, ex: null}; PBT[n].n++; if (!PBT[n].ex) PBT[n].ex = {team: tid(i) === H.team.id ? "H" : tid(i) === A.team.id ? "A" : tid(i) || null, ath: !!i.athlete, t: i.current && i.current.target ? i.current.target.value : null, p: pr(i), u: i.current && i.current.under ? +i.current.under.decimal : null}; }
     games.push(g);
@@ -127,5 +128,5 @@ export async function buildSOC(now = new Date(), nDays = 6) {
   }
   // Shot logs only for players with a shots-on-target price, last 10 league / continental matches, newest first
   const players = {}; for (const id of WANT) { const q = PL[id]; if (!q) continue; const rows = q.rows.filter(r => r[6] !== "CUP").sort((a, b) => a[0] < b[0] ? 1 : -1).slice(0, 10).map(r => r.slice(0, 6)); if (rows.length >= 5 && rows.filter(r => r[3]).length >= 6) players[id] = {n: q.n, t: q.t, rows}; }
-  return {asOf: now.toISOString(), games, teams, meta, players};
+  return {asOf: now.toISOString(), games, teams, meta, players, pgRaw: PGN.n};
 }
