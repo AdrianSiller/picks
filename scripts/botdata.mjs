@@ -303,7 +303,7 @@ function soccer(S, now, hours, day, started = []) {
       if (best) S1.push(`<b>🎯 ${esc(best.lbl)}</b> · ${(best.est ? "≈" : "") + fx(best.p)} · ${pct(best.pr)}${gp.tier === "fair" ? " · 🟡 paga lo justo" : ""}`, ...shortSoc(S, g, best));
       else if (gp && gp.up1) S1.push(`<b>🎯 ${esc(upTxt.split(" · ")[0])}</b> · ${pct(gp.up1.pr)} · 🟡 conviene desde ${fx(1 / gp.up1.pr)}`, "- Es lo más probable del partido; revisa el momio en tu casa");
       else S1.push("🎯 Sin pick: nada llega a 62% con un pago decente");
-      if (extras.length) S1.push("", "<b>También respaldados</b>", ...extras.flatMap(c => [`<b>${esc(c.lbl)}</b> · ${fx(c.p)} · ${pct(c.pr)}`, ...shortSoc(S, g, c).slice(0, 1)]));
+      if (extras.length) S1.push("", "<b>También respaldados</b>", ...extras.flatMap(c => [`<b>${esc(c.lbl)}</b> · ${fx(c.p)} · ${pct(c.pr)}`, ...shortSoc(S, g, c).slice(0, 2)]));
       const others2 = others.filter(c => !extras.includes(c)); if (others2.length) S1.push(`Otras: ${others2.map(c => `${esc(c.lbl)} ${c.p ? fx(c.p) : "s/m"} (${pct(c.pr)})`).join(" · ")}`);
       const sty = styleLine(S, g); if (sty) S1.push(esc(sty));
       { const bl = bestLine(g); if (bl) { S1.push(bl); L.push(bl); } }
