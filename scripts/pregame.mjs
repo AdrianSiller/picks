@@ -13,7 +13,7 @@ const now = new Date(), token = process.env.TELEGRAM_TOKEN;
 const MIN = +(process.env.PRE_MIN || 12), MAX = +(process.env.PRE_MAX || 60);
 
 const gamesOf = B => [...((B.nba && B.nba.games) || []).map(g => ({...g, sp: "🏀 NBA", k: "nba"})), ...((B.nfl && B.nfl.games) || []).map(g => ({...g, sp: "🏈 NFL", k: "nfl"})),
-  ...((B.soc && B.soc.leagues) || []).flatMap(l => l.games.map(g => ({...g, sp: `⚽ ${l.lg}`, k: "soc"})))];
+  ...((B.soc && (B.soc.days || [B.soc])) || []).flatMap(d => (d.leagues || []).flatMap(l => l.games.map(g => ({...g, sp: `⚽ ${l.lg}`, k: "soc"}))))];
 const mins = g => (new Date(g.d) - now) / 6e4;
 
 const alerted = read("alerted.json", {ids: {}});

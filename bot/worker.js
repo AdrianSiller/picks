@@ -72,19 +72,23 @@ function view(B, key) {
     if (b === "g" && !c) return {text: `${name}: elige el partido`, kb: {inline_keyboard: [...rows(D.games.map(g => btn(g.b, `${a}:g:${g.id}`)), 2), back(a)]}};
     const g = D.games.find(x => x.id === c); return g ? {send: g.t, after: `${a}:g`, live: g.id, bets: g.bets, cmp: g.bets} : {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME};
   }
-  if (a === "soc") {
-    const S = B.soc; if (!S) return {text: "⚽ No hay partidos de soccer en los próximos 3 días.", kb: HOME};
-    if (!b) return {text: "⚽ ¿Qué liga?", kb: {inline_keyboard: [[btn("🔥 Top de todas", "soc:top")], ...rows(S.leagues.map(l => btn(`${LGN[l.code] || l.lg} (${l.games.length})`, `soc:${l.code}`)), 2), [btn("🏠 Inicio", "home")]]}};
-    if (b === "top") return {send: S.top, after: "soc", bets: S.topBets, cmp: S.topBets};
-    if (b === "g") { for (const l of S.leagues) { const g = l.games.find(x => x.id === c); if (g) return {send: g.t, after: `soc:${l.code}:g`, live: g.id, bets: g.bets, cmp: g.cmp || g.bets}; } return {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME}; }
-    const L = S.leagues.find(l => l.code === b); if (!L) return {text: `${LGN[b] || "Esa liga"}: no tiene partidos en los próximos 3 días.`, kb: {inline_keyboard: [back("soc")]}};
-    if (!c) return {text: `${LGN[b]} · ${L.games.length} partido${L.games.length > 1 ? "s" : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Mejores picks", `soc:${b}:top`), btn("🔎 Un partido", `soc:${b}:g`)], ...(L.games.length > 1 ? [[btn("☑️ Varios partidos", `soc:${b}:m:0:${ver(B)}`)]] : []), back("soc")]}};
-    if (c === "top") return {send: L.top, after: `soc:${b}`, bets: L.topBets, cmp: L.topBets};
+  if (a === "soc" || a.startsWith("soc@")) {
+    // Soccer by day: "soc" = today (or the first day with matches), "soc@N" = another day; only when asked
+    const SD = B.soc; if (!SD) return {text: "⚽ No hay partidos de soccer en los próximos días.", kb: HOME};
+    const days = SD.days || [{...SD, lbl: "Próximos días"}], di = Math.min(+(a.split("@")[1] || 0), days.length - 1), S = days[di], base = di ? `soc@${di}` : "soc";
+    const dayRow = days.length > 1 ? [days.map((d, k) => k === di ? null : btn(`📅 ${d.lbl}`, k ? `soc@${k}` : "soc")).filter(Boolean)] : [];
+    if (b === "g") { for (const d of days) for (const l of d.leagues) { const g = l.games.find(x => x.id === c); if (g) return {send: g.t, after: `${base}:${l.code}:g`, live: g.id, bets: g.bets, cmp: g.cmp || g.bets}; } return {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME}; }
+    if (!b) return {text: `⚽ ${S.lbl}: ¿qué liga?`, kb: {inline_keyboard: [[btn(`🔥 Top de ${S.lbl.toLowerCase()}`, `${base}:top`)], ...rows(S.leagues.map(l => btn(`${LGN[l.code] || l.lg} (${l.games.length}${l.started ? ` + ${l.started} jugados` : ""})`, `${base}:${l.code}`)), 2), ...dayRow, [btn("🏠 Inicio", "home")]]}};
+    if (b === "top") return {send: S.top, after: base, bets: S.topBets, cmp: S.topBets};
+    const L = S.leagues.find(l => l.code === b); if (!L) return {text: `${LGN[b] || "Esa liga"}: no tiene partidos ${S.lbl.toLowerCase()}.`, kb: {inline_keyboard: [...dayRow, back(base)]}};
+    if (!c) return {text: `${LGN[b]} · ${S.lbl} · ${L.games.length} por jugar${L.started ? `, ${L.started} ya empezaron` : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Picks", `${base}:${b}:top`), ...(L.games.length ? [btn("🔎 Un partido", `${base}:${b}:g`)] : [])], ...(L.games.length > 1 ? [[btn("☑️ Varios partidos", `${base}:${b}:m:0:${ver(B)}`)]] : []),
+      ...(days.length > 1 ? [days.map((dd, k) => k !== di && dd.leagues.some(l => l.code === b) ? btn(`📅 ${dd.lbl}`, `${k ? `soc@${k}` : "soc"}:${b}`) : null).filter(Boolean)].filter(r => r.length) : []), back(base)]}};
+    if (c === "top") return {send: L.top, after: `${base}:${b}`, bets: L.topBets, cmp: L.topBets};
     const [, , , d, e] = key.split(":");
-    if (c === "m") return multi(B, L.games, `soc:${b}`, `soc:${b}`, d, LGN[b] || L.lg);
-    if (c === "mv") { const sel = picked(B, L.games, d, e); if (!sel) return {text: "La lista de partidos se actualizó; elige otra vez.", kb: {inline_keyboard: [[btn("☑️ Varios partidos", `soc:${b}:m:0:${ver(B)}`)], back("soc")]}};
-      return {sendMany: sel.map(g => g.t), after: `soc:${b}`, liveMany: sel.map(g => g.id), bets: sel.flatMap(g => g.bets || []), cmp: sel.flatMap(g => g.cmp || g.bets || [])}; }
-    if (c === "g") return {text: `${LGN[b]}: elige el partido`, kb: {inline_keyboard: [...rows(L.games.map(g => btn(g.b, `soc:g:${g.id}`)), 2), back(`soc:${b}`)]}};
+    if (c === "m") return multi(B, L.games, `${base}:${b}`, `${base}:${b}`, d, LGN[b] || L.lg);
+    if (c === "mv") { const sel = picked(B, L.games, d, e); if (!sel) return {text: "La lista de partidos se actualizó; elige otra vez.", kb: {inline_keyboard: [[btn("☑️ Varios partidos", `${base}:${b}:m:0:${ver(B)}`)], back(base)]}};
+      return {sendMany: sel.map(g => g.t), after: `${base}:${b}`, liveMany: sel.map(g => g.id), bets: sel.flatMap(g => g.bets || []), cmp: sel.flatMap(g => g.cmp || g.bets || [])}; }
+    if (c === "g") return {text: `${LGN[b]} · ${S.lbl}: elige el partido`, kb: {inline_keyboard: [...rows(L.games.map(g => btn(g.b, `soc:g:${g.id}`)), 2), back(`${base}:${b}`)]}};
   }
   return {text: "¿De qué quieres los picks?", kb: HOME};
 }
@@ -109,7 +113,7 @@ async function sendLong(env, chat, text) {
 // Live check of one game straight from ESPN: injuries of the pick players, new absences, soccer lineups vs the usual eleven
 const ESPN = {nba: "basketball/nba", nfl: "football/nfl"};
 const BAD = new Set(["Out", "Doubtful", "Injured Reserve", "Inactive", "Suspended"]);
-const allGames = B => [...((B.nba && B.nba.games) || []), ...((B.nfl && B.nfl.games) || []), ...((B.soc && B.soc.leagues) || []).flatMap(l => l.games)];
+const allGames = B => [...((B.nba && B.nba.games) || []), ...((B.nfl && B.nfl.games) || []), ...((B.soc && (B.soc.days || [B.soc])) || []).flatMap(d => (d.leagues || []).flatMap(l => l.games))];
 async function live(B, id) {
   const g = allGames(B).find(x => x.id === id); if (!g || !g.chk) return "Ese partido ya no está en los picks (puede que ya empezó).";
   const k = g.chk, sport = k.sp === "soc" ? `soccer/${k.slug}` : ESPN[k.sp];

@@ -174,10 +174,10 @@ function totLine(g, t) {
 const propLine = (sp, c, i, brief) => brief ? `${i != null ? `${i + 1}. ` : "• "}<b>${esc(c.n)}</b> (${esc(c.t)}) · ${propLbl(sp, c)} · <b>${fx(c.p)}</b> · ${pct(c.pr)}${c.q ? " ⚠️ en duda" : ""}` : `${i != null ? `${i + 1}. ` : "• "}<b>${esc(c.n)}</b> (${esc(c.t)}) · ${propLbl(sp, c)} · <b>${fx(c.p)}</b> · ${pct(c.pr)}${c.q ? " ⚠️ en duda" : ""}` +
   (c.mv === -1 ? `\n   📉 <i>la línea se movió en contra (abrió en ${c.ol})</i>` : c.mv === 1 ? `\n   📈 <i>la línea se movió a favor (abrió en ${c.ol})</i>` : "") + (c.h10 ? `\n   <i>cumplió ${c.h10[0]} de ${c.h10[1]}${c.hc && c.hc[1] ? `, esta temporada ${c.hc[0]} de ${c.hc[1]}` : ""}</i>` : "");
 
-function players(sp, D, now, hours) {
+function players(sp, D, now, hours, started = []) {
   const G = Object.fromEntries(D.games.map(g => [g.id, g])), soon = g => g && new Date(g.date) > now && new Date(g.date) - now < hours * 36e5;
   const games = D.games.filter(soon), icon = sp === "NBA" ? "🏀 NBA" : "🏈 NFL";
-  if (!games.length) return null;
+  if (!games.length && !started.length) return null;
   const cands = D.cands.filter(c => soon(G[c.g])), top = M.topPicks(cands, sp), cfg = M.CFG[sp];
   const model = g => D.teams[g.home.abbr] && D.teams[g.away.abbr] ? M.gameModel(g, {...cfg, teams: D.teams, outs: D.outs || {}}) : null;
   const topTxt = [`<b>${icon} · Top ${top.length}</b>`, "", ...top.flatMap((c, i) => [`${i + 1}. ${shortPick(sp, c)}`, ...shortProp(sp, c, D, G[c.g], 2), ""])];
@@ -224,23 +224,29 @@ function players(sp, D, now, hours) {
     return {n: c0.n, t: c0.t, sp: sp.toLowerCase(), aid: c0.aid, txt: L.join("\n"), refs: sorted.filter(c => c.p).map(c => propBet(sp, c, g.date))};
   });
   const teams = games.map(g => ({names: [g.home.abbr, g.home.name, g.away.abbr, g.away.name], key: `${sp.toLowerCase()}:g:${g.id}`, b: `${g.away.abbr} @ ${g.home.abbr}`}));
-  const mlTxt = [`<b>${icon} · Picks de partido (ML, spread y total)</b>`, "", ...(mlRows.length ? mlRows : ["Hoy ningún partido tiene un pick sólido de ML, spread o total."])];
+  const mlTxt = [`<b>${icon} · Picks de partido (ML, spread y total)</b>`, "", ...(mlRows.length ? mlRows : [games.length ? "Ningún partido por jugar tiene un pick sólido de ML, spread o total." : "No quedan partidos por empezar."]), ...startedLines(started.filter(x => x.kind === "game"), now)];
+  topTxt.push(...startedLines(started.filter(x => x.kind === "prop"), now));
   return {top: topTxt.join("\n"), ml: mlTxt.join("\n"), all: [topTxt.join("\n"), mlTxt.join("\n")].join("\n\n"), games: gameList, bets: {top: topBets, ml: mlBets, all: [...topBets, ...mlBets]}, find, teams};
 }
 
-function soccer(S, now, hours) {
-  const soon = g => new Date(g.date) > now && new Date(g.date) - now < hours * 36e5, games = S.games.filter(soon);
-  if (!games.length) return null;
+// One day of soccer: the matches still to play that day, plus (today) the picks already started with their status
+const dlocMx = iso => new Date(iso).toLocaleDateString("en-CA", {timeZone: TZ});
+const stIcon = (x, now) => x.res ? (x.res.hit === 1 ? "✅" : x.res.hit === 0 ? "❌" : "➖") : now - new Date(x.d) < 2.5 * 36e5 ? "⏳" : "🕓";
+const startedLines = (list, now) => list.length ? ["", "<b>Ya empezaron</b>", ...list.map(x => `${stIcon(x, now)} ${esc(x.n)} · ${esc(x.lbl)}${x.res && x.res.act != null ? ` (${esc(x.res.act)})` : ""} · ${x.p ? fx(x.p) : "—"}`)] : [];
+function soccer(S, now, hours, day, started = []) {
+  const games = S.games.filter(g => new Date(g.date) > now && dlocMx(g.date) === day);
+  if (!games.length && !started.length) return null;
   const B = M.buildSoccer(S), G = Object.fromEntries(S.games.map(g => [g.id, g])), GM = Object.fromEntries(B.games.map(x => [x.id, x]));
   const FLAG = {"Liga MX": "🇲🇽", "La Liga": "🇪🇸", Premier: "🏴", Bundesliga: "🇩🇪", "Serie A": "🇮🇹", "Ligue 1": "🇫🇷", Champions: "⭐"};
   const row = c => { const g = G[c.g]; return [`${FLAG[g.lg] || "⚽"} <b>${esc(c.lbl)}</b> · ${c.p ? (c.est ? "≈" : "") + fx(c.p) : "sin momio"} · ${pct(c.pr)}`, `<i>${esc(g.away.abbr)} @ ${esc(g.home.abbr)}, ${hora(g.date)}</i>`, ...shortSoc(S, g, c).slice(0, 2), ""].join("\n"); };
   const out = {top: null, leagues: []};
-  const top = M.socTop(B.cands.filter(c => soon(G[c.g])), G, null, 10);
+  const inDay = c => G[c.g] && games.includes(G[c.g]);
+  const top = M.socTop(B.cands.filter(inDay), G, null, 10);
   out.topBets = top.map(c => socBet(G[c.g], c));
-  out.top = [`<b>⚽ Soccer · Top ${top.length}</b> (próximas ${hours} h)`, "", ...(top.length ? top.map(row) : ["Ningún partido tiene un pick sólido con momio."])].join("\n");
+  out.top = [`<b>⚽ Soccer · Top ${top.length}</b>`, "", ...(top.length ? top.map(row) : games.length ? ["Ningún partido por jugar tiene un pick sólido con momio."] : ["No quedan partidos por empezar."]), ...startedLines(started, now)].join("\n");
   for (const [lg, code] of Object.entries(LG)) {
-    const gs = games.filter(g => g.lg === lg); if (!gs.length) continue;
-    const lt = M.socTop(B.cands.filter(c => soon(G[c.g]) && G[c.g].lg === lg), G, lg, 10);
+    const gs = games.filter(g => g.lg === lg), st = started.filter(x => x.lg === lg); if (!gs.length && !st.length) continue;
+    const lt = M.socTop(B.cands.filter(c => inDay(c) && G[c.g].lg === lg), G, lg, 10);
     const gameList = gs.map(g => {
       const m = GM[g.id], ok = B.cands.filter(c => c.g === g.id && M.socOk(c)).sort((a, b) => (!!b.p - !!a.p) || M.socScore(b) - M.socScore(a)).slice(0, 5);
       const L = [`<b>${esc(g.away.name)} @ ${esc(g.home.name)}</b>`, `${lg} · ${hora(g.date)}`, ""];
@@ -269,7 +275,7 @@ function soccer(S, now, hours) {
       return {id: g.id, d: g.date, solid: !!gp, tl: L.join("\n"), bets: sb, cmp: [...sb, ...(m ? [up1Bet(g, "H", m.up1H), up1Bet(g, "A", m.up1A)] : [])], b: `${g.away.abbr} @ ${g.home.abbr} · ${new Date(g.date).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ})}`, t: S1.join("\n"),
         chk: {sp: "soc", slug: g.slug, h: g.home.abbr, a: g.away.abbr, pick: best ? {lbl: best.lbl, team: best.team || (best.side === "H" || best.side === "1X" ? "H" : best.side === "A" || best.side === "X2" ? "A" : null)} : null, xi: {h: reg(g.home.abbr), a: reg(g.away.abbr)}, lineups: !!g.xi}};
     });
-    out.leagues.push({code, lg, topBets: lt.map(c => socBet(G[c.g], c)), top: [`<b>⚽ ${lg} · mejores picks</b>`, "", ...(lt.length ? lt.map(row) : ["Ningún partido de esta liga tiene un pick sólido con momio."])].join("\n"), games: gameList});
+    out.leagues.push({code, lg, topBets: lt.map(c => socBet(G[c.g], c)), top: [`<b>⚽ ${lg} · mejores picks</b>`, "", ...(lt.length ? lt.map(row) : gs.length ? ["Ningún partido por jugar tiene un pick sólido con momio."] : ["No quedan partidos por empezar."]), ...startedLines(st, now)].join("\n"), games: gameList, started: st.length});
   }
   out.teams = games.map(g => ({names: [g.home.abbr, g.home.name, g.away.abbr, g.away.name], key: `soc:g:${g.id}`, b: `${g.away.abbr} @ ${g.home.abbr}`}));
   return out;
@@ -354,6 +360,16 @@ function results(R) {
   return L.join("\n");
 }
 
+// Soccer split by day (today first); today's lists keep the picks already started, with their status
+function socDays(S, now, snap) {
+  const d0 = dlocMx(now.toISOString()), keys = [...new Set(S.games.filter(g => new Date(g.date) > now && new Date(g.date) - now < 4 * 864e5).map(g => dlocMx(g.date)))].sort();
+  if (!keys.includes(d0)) keys.unshift(d0);
+  const started = ((snap && snap.items) || []).filter(x => x.sport === "SOC" && new Date(x.d) <= now);
+  const lbl = k => { const n = Math.round((new Date(k + "T12:00:00Z") - new Date(d0 + "T12:00:00Z")) / 864e5); return n === 0 ? "Hoy" : n === 1 ? "Mañana" : new Date(k + "T12:00:00Z").toLocaleDateString("es-MX", {weekday: "long", day: "numeric", timeZone: "UTC"}); };
+  const days = keys.map(k => { const s = soccer(S, now, 96, k, k === d0 ? started : []); return s ? {key: k, lbl: lbl(k), ...s} : null; }).filter(Boolean);
+  return days.length ? {days, teams: days.flatMap(d => d.teams || [])} : null;
+}
+
 // Today's picks including the ones already started, with their status
 function today(snap, now) {
   const it = (snap && snap.items) || []; if (!it.length) return "Todavía no hay picks de hoy.";
@@ -368,8 +384,9 @@ function today(snap, now) {
 export function botData(latest, R, now, snap) {
   const at = new Date(latest.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
   BETS = {};
+  const startedOf = sp => ((snap && snap.items) || []).filter(x => x.sport === sp && new Date(x.d) <= now);
   const out = {v: 3, generatedAt: latest.generatedAt, foot: `<i>Datos de las ${at} · antes de apostar dale ↻ Actualizar en la app</i>`,
-    nba: players("NBA", latest.nba, now, 30), nfl: players("NFL", latest.nfl, now, 24 * 6), soc: soccer(latest.soc, now, 72), res: record(R), resd: results(R), resSoc: recordSoc(R), hoy: today(snap, now)};
+    nba: players("NBA", latest.nba, now, 30, startedOf("NBA")), nfl: players("NFL", latest.nfl, now, 24 * 6, startedOf("NFL")), soc: socDays(latest.soc, now, snap), res: record(R), resd: results(R), resSoc: recordSoc(R), hoy: today(snap, now)};
   out.bets = BETS;
   return out;
 }
