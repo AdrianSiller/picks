@@ -12,28 +12,38 @@
   const sh = ([h, n]) => (h + 2.5) / (n + 5);
   const hitOf = (side, line, v) => side === "atd" ? v >= 1 : side === "over" ? v > line : v < line;
   // vc: this season's values (newest first), vp: last season's, vo: values against this opponent
-  M.hitStats = (vc, vp, vo, line, side) => {
+  M.hitStats = (vc, vp, vo, line, side, vx) => {
     const cnt = a => [a.filter(v => hitOf(side, line, v)).length, a.length];
     const hc = cnt(vc), h10 = cnt(vc.concat(vp).slice(0, 10)), hp = cnt(vp), hh = cnt(vo || []);
     // Role change: if this season's average is 20%+ away from last season's (4+ games), this season and the recent
     // games weigh much more and last season much less (e.g. a guard rebounding more since the starting center went down)
     const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0, mc = mean(vc), mp = mean(vp);
     const changed = vc.length >= 4 && vp.length >= 10 && mp > 0 && Math.abs(mc - mp) / mp >= 0.2;
-    const raw = !hp[1] ? 0.55 * sh(hc) + 0.45 * sh(h10) : changed ? 0.6 * sh(hc) + 0.25 * sh(h10) + 0.15 * sh(hp) : 0.4 * sh(hc) + 0.3 * sh(h10) + 0.3 * sh(hp);
+    const raw0 = !hp[1] ? 0.55 * sh(hc) + 0.45 * sh(h10) : changed ? 0.6 * sh(hc) + 0.25 * sh(h10) + 0.15 * sh(hp) : 0.4 * sh(hc) + 0.3 * sh(h10) + 0.3 * sh(hp);
+    // Today's context: his games this season without the same teammates who are out today weigh 35% when there are 3+
+    const hx = vx && vx.length >= 3 ? cnt(vx) : null, raw = hx ? 0.65 * raw0 + 0.35 * sh(hx) : raw0;
     // Calibration: the first graded days showed hit rates about 20% too optimistic (picks at ~68% hit ~60%)
     const pr = 0.5 + (raw - 0.5) * M.CAL;
-    return {hc, h10, hp, hh, pr0: pr, chg: changed ? +(mc / mp - 1).toFixed(2) : 0};
+    return {hc, h10, hp, hh, hx, pr0: pr, chg: changed ? +(mc / mp - 1).toFixed(2) : 0};
   };
   // Opponent-by-position factor f (1 = average) moves the probability up to 6 points
   M.withDef = (pr0, side, f) => clamp(pr0 + (side === "under" ? -1 : 1) * ((f || 1) - 1) * 0.3, 0.05, 0.95);
   M.defFactor = (raw, n, k) => raw == null ? 1 : clamp(1 + (raw - 1) * n / (n + k), 0.8, 1.2);
   // Recompute a prop at a new line (used by the Refresh button)
-  M.repricePr = (c, line) => { const s = M.hitStats(c.vc || [], c.vp || [], c.vo || [], line, c.s), pm = clamp(M.withDef(s.pr0, c.s, c.f) + (c.envAdj || 0) + (c.wadj || 0), 0.05, 0.95);
-    return {...s, pm, pr: clamp((c.mkB != null ? (1 - M.PROP_W) * pm + M.PROP_W * c.mkB : pm) + (c.mvAdj || 0) + (c.calAdj || 0), 0.05, 0.95)}; };
+  M.repricePr = (c, line) => { const s = M.hitStats(c.vc || [], c.vp || [], c.vo || [], line, c.s, c.vx), pm = clamp(M.withDef(s.pr0, c.s, c.f) + (c.envAdj || 0) + (c.wadj || 0), 0.05, 0.95);
+    return {...s, pm, pr: clamp((c.mkB != null ? M.blendProp(pm, c.mkB, c.sp) : pm) + (c.mvAdj || 0) + (c.calAdj || 0), 0.05, 0.95)}; };
   // Props lean on the book too: 50% our model, 50% the book's probability without its commission (it holds back the model's
   // extremes: the most "certain" props were the ones that failed most when the model went alone)
-  M.PROP_W = 0.5;
-  M.blendProp = (pm, mk) => mk == null ? pm : clamp((1 - M.PROP_W) * pm + M.PROP_W * mk, 0.05, 0.95);
+  // How much to trust the book vs our model is learned from graded props (see M.learnW); 0.5 until there is data
+  M.PROP_W = {NBA: 0.5, NFL: 0.5};
+  const pw = sp => typeof M.PROP_W === "number" ? M.PROP_W : (M.PROP_W[sp] != null ? M.PROP_W[sp] : 0.5);
+  M.blendProp = (pm, mk, sp) => mk == null ? pm : clamp((1 - pw(sp)) * pm + pw(sp) * mk, 0.05, 0.95);
+  // The weight that best predicted the graded props (lowest squared error), leaning to 0.5 with little data (half weight at 300 props)
+  M.learnW = items => { const out = {};
+    for (const sp of ["NBA", "NFL"]) { const P = items.filter(x => x.sport === sp && x.pm != null && x.mk != null && (x.hit === 0 || x.hit === 1)); if (P.length < 20) { out[sp] = {w: 0.5, n: P.length}; continue; }
+      let best = null; for (let w = 0.1; w <= 0.95; w += 0.05) { const b = P.reduce((s, x) => s + ((1 - w) * x.pm + w * x.mk - x.hit) ** 2, 0) / P.length; if (!best || b < best.b) best = {w, b}; }
+      const k = P.length / (P.length + 300); out[sp] = {w: +(0.5 + (best.w - 0.5) * k).toFixed(2), raw: +best.w.toFixed(2), n: P.length}; }
+    return out; };
   // Line movement since we first saw the prop: harder line (or our price drifting 3+ points) = the book knows something
   M.lineMove = (c, ol, op) => { const dl = (c.l - ol) * (c.s === "over" ? 1 : -1), dimp = op && c.p ? 1 / op - 1 / c.p : 0;
     return dl > 0 || (dl === 0 && dimp >= 0.03) ? -1 : dl < 0 || (dl === 0 && dimp <= -0.03) ? 1 : 0; };
@@ -51,8 +61,7 @@
   M.CFG = {NBA: {sp: "NBA", perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {sp: "NFL", perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6}};
   // Why a prop doesn't qualify (same filters for the top 10 and for each game's list); "" = it qualifies
   M.fails = (c, sport) => { const cfg = M.CFG[sport];
-    // When our model sees much more than the book, the book is usually right (Nov 2: those hit 50%; agreeing ones 66%)
-    return c.out ? "no juega" : !c.p ? "sin momio en la casa" : c.pm != null && c.mkB != null && c.pm - c.mkB > 0.1 ? `el modelo ve mucho más que la casa (${Math.round(c.pm * 100)}% vs ${Math.round(c.mkB * 100)}%): la casa suele tener razón` : c.role === 0 ? "fuera de su rol" : c.pr < cfg.minPr ? `probabilidad baja (${Math.round(c.pr * 100)}%)` : c.e < -0.02 ? "momio caro para lo que estimamos" : ""; };
+    return c.out ? "no juega" : !c.p ? "sin momio en la casa" : c.role === 0 ? "fuera de su rol" : c.pr < cfg.minPr ? `probabilidad baja (${Math.round(c.pr * 100)}%)` : c.e < -0.02 ? "momio caro para lo que estimamos" : ""; };
   M.topPicks = (cands, sport, n = 10) => {
     const cfg = M.CFG[sport], out = [], per = {};
     for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
@@ -63,6 +72,13 @@
     }
     return out;
   };
+
+  // Second level: probable props that only pay what they are worth (58%+, at most 6 points under fair), so the top never goes empty
+  M.probables = (cands, sport, n = 6, skip = []) => { const out = [], per = new Set(skip.map(c => c.aid));
+    for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
+      if (c.out || !c.p || c.role === 0 || c.pr < 0.58 || c.e < -0.06 || per.has(c.aid) || !M.fails(c, sport)) continue;
+      per.add(c.aid); out.push(c); if (out.length === n) break; }
+    return out; };
 
   /* ---------- calibration with real results ---------- */
   // Each group (sport × kind of pick) is corrected by how much it missed: hit rate minus the raw probability we gave.

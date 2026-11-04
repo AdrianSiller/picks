@@ -13,7 +13,8 @@ export function snapshot(data, now, hours = 30) {
   for (const sport of ["NBA", "NFL"]) {
     const D = data[sport.toLowerCase()]; if (!D || !D.games.length) continue;
     const G = Object.fromEntries(D.games.map(g => [g.id, g])), cfg = M.CFG[sport];
-    for (const c of M.topPicks(D.cands, sport)) if (soon(G[c.g])) items.push({sport, kind: "prop", d: G[c.g].date, g: c.g, aid: c.aid, n: c.n, t: c.t, pos: c.pos, m: c.m, l: c.l, s: c.s, p: c.p || null, pr: c.pr, e: c.e, role: c.role, min: c.min, tg: c.tg, cr: c.cr, mv: c.mv || 0, cal: c.calAdj || 0, lbl: propLbl(sport, c)});
+    const top0 = M.topPicks(D.cands, sport), prob = M.probables(D.cands, sport, 6, top0);
+    for (const c of top0.concat(prob)) if (soon(G[c.g])) items.push({sport, kind: "prop", why: top0.includes(c) ? "top" : "fair", d: G[c.g].date, g: c.g, aid: c.aid, n: c.n, t: c.t, pos: c.pos, m: c.m, l: c.l, s: c.s, p: c.p || null, pr: c.pr, e: c.e, role: c.role, min: c.min, tg: c.tg, cr: c.cr, mv: c.mv || 0, cal: c.calAdj || 0, lbl: propLbl(sport, c)});
     for (const g of D.games) { if (!soon(g) || !D.teams[g.home.abbr] || !D.teams[g.away.abbr]) continue;
       const gm = M.gameModel(g, {...cfg, teams: D.teams, outs: D.outs || {}});
       if (gm.tot && gm.tot.play) items.push({sport, kind: "game", d: g.date, pr: gm.tot.best.p, cal: gm.tot.best.cal || 0, e: gm.tot.best.e, g: g.id, side: gm.tot.best.side, bet: "tot", line: gm.tot.best.line, p: gm.tot.best.price, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: `Total ${gm.tot.best.lbl}`});

@@ -218,12 +218,12 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 4 nov 8:40 a.m.</footer>
-<script src="model.js?v=20261104-0840"></script>
+<footer class="ver">Versión de la app: 4 nov 9:30 a.m.</footer>
+<script src="model.js?v=20261104-0930"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261104-0840";
+const APP_VERSION = "20261104-0930";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -242,6 +242,7 @@ const dateLbl = d => (d.length > 5 ? d.slice(5) : d).replace("-", "/");
 const getJSON = u => fetch(u + (u.includes("?") ? "&" : "?") + "t=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
 const LATEST = await getJSON("data/latest.json");
 window.M.CALIB = LATEST.calib || {};
+if (LATEST.learn) window.M.PROP_W = {NBA: (LATEST.learn.NBA || {}).w ?? 0.5, NFL: (LATEST.learn.NFL || {}).w ?? 0.5};
 const RESULTS = (await getJSON("data/results.json")) || {days: []};
 // Today's picks as they were before each game started (so they stay visible after kickoff, with their result)
 const SNAP_TODAY = (await getJSON(`data/snap/${new Date().toLocaleDateString("en-CA", {timeZone: "America/Mexico_City"})}.json`)) || {items: []};
@@ -601,6 +602,7 @@ function reasons(c) {
   else if (un.length) R.push({w: 1, ok: null, t: `Cambios en ${esc(c.t)}: ${un.map(esc).join("; ")}. A él casi no le mueve el volumen`});
   if (c.mv) R.push({w: 3, ok: c.mv > 0, t: c.mv < 0 ? `Movimiento de línea: abrió en ${c.ol}${c.ol === c.l ? ` a ${fx(c.op)} y ahora paga ${fx(c.p)}` : ` y ahora está en ${c.l}`}. Cuando la casa mueve así, casi siempre sabe algo (lesión, rol, dinero fuerte): le bajamos 3 puntos` : `Movimiento de línea: abrió en ${c.ol}${c.ol === c.l ? ` a ${fx(c.op)}` : ""} y se movió a favor (ahora ${c.l} a ${fx(c.p)}): el mercado coincide con el pick`});
   if (c.us && c.us > 1) R.push({w: 3, ok: over, t: `${{PTS: "Más tiros", "3PM": "Más triples intentados", AST: "Más balón para repartir"}[c.m] || "Más volumen"}: ${un.length ? un.filter(x => /^Sin /.test(x)).map(esc).join("; ") : "baja nueva en su equipo"}; además de los minutos, se le reparten ~${Math.round((c.us - 1) * 100)}% más ${st}`});
+  if (c.ctx && c.hx) R.push({w: 3, ok: c.hx[0] / c.hx[1] >= 0.5, t: `Con las bajas de hoy (${c.ctx.who.map(esc).join(", ")}): en sus ${c.ctx.n} juegos de este año sin ellos cumplió ${c.hx[0]} de ${c.hx[1]} y promedia ${c.ctx.avg} ${st} (en general ${c.ctx.all}). Esos juegos pesan 35% en la probabilidad`});
   if (c.sf && c.sf !== 1) R.push({w: 2, ok: (c.sf > 1) === over, t: `Marcador esperado: ${esc(c.t)} ${c.spr < 0 ? "favorito" : "underdog"} por ${Math.abs(c.spr)}. ${c.spr < 0 ? "El que va ganando corre más para gastar reloj" : "El que va perdiendo pasa más para alcanzar"}: su volumen ${c.sf > 1 ? "sube" : "baja"} ~${Math.abs(Math.round((c.sf - 1) * 100))}%`});
   if (c.pace && c.pace !== 1) R.push({w: 1, ok: (c.pace > 1) === over, t: `Ritmo: partido ${c.pace > 1 ? "más rápido" : "más lento"} de lo que suele jugar su equipo (${c.pace > 1 ? "+" : "−"}${Math.abs(Math.round((c.pace - 1) * 100))}% posesiones): ${c.pace > 1 ? "más" : "menos"} oportunidades para todos`});
   if (c.ven && c.ven !== 1) R.push({w: 1, ok: (c.ven > 1) === over, t: `Rinde ${Math.abs(Math.round((c.ven - 1) * 100))}% ${c.ven > 1 ? "más" : "menos"} ${c.h ? "de local" : "de visitante"} que en general`});
@@ -929,7 +931,8 @@ function gameLinesHtml() {
 function viewPicks() {
   if (filt.game) { const list = onePer(DATA.cands.filter(c => c.g === filt.game).sort((a, b) => score(b) - score(a))).slice(0, 10); const g = games[filt.game];
     return `<p class="lead">Picks de ${esc(g.away.name)} @ ${esc(g.home.name)}, ordenados por solidez.</p>` + (list.length ? list.map(pickCard).join("") : `<div class="card meta" style="cursor:default">Sin props con sustento suficiente en este partido.</div>`); }
-  return resultsHtml() + `<p class="lead">Ordenados por solidez: qué tanto se ha cumplido la línea en la temporada, los últimos 10 y la temporada pasada, más el margen del promedio sobre la línea.${S.name === "NFL" ? " Si un pick no trae momio es porque las casas tienen otra línea; revísalo en tu casa." : ""} Toca un pick para ver sus últimos juegos.</p>` + gameLinesHtml() + topNow().map(pickCard).join("") + startedHtml(S.name);
+  return resultsHtml() + `<p class="lead">Ordenados por solidez: qué tanto se ha cumplido la línea en la temporada, los últimos 10 y la temporada pasada, más el margen del promedio sobre la línea.${S.name === "NFL" ? " Si un pick no trae momio es porque las casas tienen otra línea; revísalo en tu casa." : ""} Toca un pick para ver sus últimos juegos.</p>` + gameLinesHtml() + (() => { const t = topNow(), pb = window.M.probables(DATA.cands.filter(c => games[c.g] && inDay(games[c.g])), S.name, Math.max(4, 8 - t.length), t);
+    return (t.length ? `<h3 class="sub">✅ Sólidos</h3>` + t.map(pickCard).join("") : `<div class="card meta" style="cursor:default">Hoy ningún prop llega a sólido.</div>`) + (pb.length ? `<h3 class="sub">🟡 También probables <span class="meta">(pagan lo justo)</span></h3>` + pb.map((c, i) => pickCard(c, t.length + i)).join("") : ""); })() + startedHtml(S.name);
 }
 function viewGames() {
   return DATA.games.filter(g => (!filt.game || g.id === filt.game) && inDay(g)).map(g => {

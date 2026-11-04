@@ -46,6 +46,7 @@ function whyProp(sp, c, D, g, max) {
   if (c.vm && c.vm !== 1) { const up = c.vm > 1, un = g && g.usage ? (c.h ? g.usage.h : g.usage.a) || [] : [];
     R.push({w: 3, t: `${ok(up === over)} ${sp === "NBA" ? `Minutos: se esperan ~${c.minExp} (normalmente ${c.min})` : `Volumen: ${up ? "sube" : "baja"} ~${Math.round(Math.abs(c.vm - 1) * 100)}%`}${un.length ? ` por ${un.join("; ")}` : ""}`}); }
   if (c.us && c.us > 1) R.push({w: 3, t: `${ok(over)} Más tiros por las bajas de su equipo: ~${Math.round((c.us - 1) * 100)}% más ${st}`});
+  if (c.ctx && c.hx) R.push({w: 3, t: `${ok(c.hx[0] / c.hx[1] >= 0.5)} Con las bajas de hoy (${c.ctx.who.join(", ")}): en ${c.ctx.n} juegos así cumplió ${c.hx[0]} de ${c.hx[1]} y promedia ${c.ctx.avg} ${st} (en general ${c.ctx.all})`});
   if (c.sf && c.sf !== 1) R.push({w: 2, t: `${ok((c.sf > 1) === over)} Marcador esperado: ${c.t} ${c.spr < 0 ? "favorito" : "underdog"} por ${Math.abs(c.spr)}, su volumen ${c.sf > 1 ? "sube" : "baja"} ~${Math.abs(Math.round((c.sf - 1) * 100))}%`});
   if (c.envAdj >= 0.015 || c.envAdj <= -0.015) { const good = c.envAdj > 0, env = g && g.env;
     R.push({w: 2, t: `${ok(good)} ${c.blow && !good ? "Spread grande: riesgo de paliza y menos minutos al final" : `Tipo de partido: ${env ? (sp === "NBA" ? `total ${env.total} contra ${env.avg} de promedio` : `su equipo espera ${c.h ? env.h : env.a} puntos`) : ""} (${good === over ? "a favor" : "en contra"})`}`.replace(" ()", "")}); }
@@ -119,6 +120,8 @@ function shortProp(sp, c, D, g, n) {
   if (c.vm && c.vm !== 1) { const un = g && g.usage ? (c.h ? g.usage.h : g.usage.a) || [] : [], who = un.map(x => x.replace(/^Sin /, "").replace(/ \(.*$/, "")).slice(0, 2).join(" y ");
     add(3, (c.vm > 1) === over, `${c.vm > 1 ? "Más" : "Menos"} ${sp === "NBA" ? "minutos" : "volumen"}${who ? (c.vm > 1 ? `: no juega ${who}` : `: ${who}`) : ""}`); }
   if (c.us && c.us > 1) add(2, over, "Más tiros por las bajas de su equipo");
+  if (c.ctx && c.hx) { const who = c.ctx.who.slice(0, 2).map(n => n.split(" ").slice(-1)[0]).join(" y "), ok = c.hx[0] / c.hx[1] >= 0.5;
+    add(3, ok, `Sin ${who} (como hoy): ${c.hx[0]} de ${c.hx[1]} y promedia ${c.ctx.avg} (normal ${c.ctx.all})`); }
   if (c.sf && c.sf !== 1) { const run = ["CAR", "RUSHYDS"].includes(c.m) || (c.m === "RRY" && c.pos === "RB"), fav = c.spr < 0;
     add(2, (c.sf > 1) === over, `${c.t} ${fav ? "favorito" : "underdog"} por ${Math.abs(c.spr)}: ${run ? (fav ? "correrá más" : "correrá menos") : (fav ? "pasará menos" : "pasará más")}`); }
   if (c.pace && c.pace !== 1) add(1, (c.pace > 1) === over, `Partido ${c.pace > 1 ? "rápido" : "lento"} (${c.pace > 1 ? "+" : "−"}${Math.abs(Math.round((c.pace - 1) * 100))}% posesiones)`);
@@ -195,10 +198,12 @@ function players(sp, D, now, hours, started = []) {
   if (!games.length && !started.length) return null;
   const cands = D.cands.filter(c => soon(G[c.g])), top = M.topPicks(cands, sp), cfg = M.CFG[sp];
   const model = g => D.teams[g.home.abbr] && D.teams[g.away.abbr] ? M.gameModel(g, {...cfg, teams: D.teams, outs: D.outs || {}}) : null;
-  const topTxt = [`<b>${icon} · Top ${top.length}</b>`, "", ...top.flatMap((c, i) => [`${i + 1}. ${shortPick(sp, c)}`, ...shortProp(sp, c, D, G[c.g], 2), ""])];
+  const prob = M.probables(cands, sp, Math.max(4, 8 - top.length), top);
+  const topTxt = [`<b>${icon} · ✅ Sólidos (${top.length})</b>`, "", ...(top.length ? top.flatMap((c, i) => [`${i + 1}. ${shortPick(sp, c)}`, ...shortProp(sp, c, D, G[c.g], 2), ""]) : ["Hoy ninguno llega a sólido.", ""]),
+    ...(prob.length ? [`<b>🟡 También probables</b> <i>(pagan lo justo)</i>`, "", ...prob.flatMap(c => [shortPick(sp, c), ...shortProp(sp, c, D, G[c.g], 2), ""])] : [])];
   const pl = parlay(top);
   if (pl) topTxt.push("", `<b>Parlay más sólido</b>: ${pl.legs.map(c => `${esc(c.n)} ${propLbl(sp, c)}`).join(" + ")} · ${fx(pl.legs[0].p * pl.legs[1].p)} · ${pct(pl.p)}`);
-  const mlRows = [], gameList = [], mlBets = [], topBets = top.map(c => propBet(sp, c, G[c.g].date));
+  const mlRows = [], gameList = [], mlBets = [], topBets = top.concat(prob).map(c => propBet(sp, c, G[c.g].date));
   for (const g of games) {
     const m = model(g), tag = `${g.away.abbr} @ ${g.home.abbr}`;
     if (m && m.play) mlBets.push(gameBet(sp, g, m.best));

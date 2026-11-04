@@ -53,10 +53,17 @@ for (let i = 1; i <= 30; i++) { const d = dloc(new Date(now.getTime() - i * 864e
   if (s) for (const x of s.items) if (x.res) calItems.push({date: d, sport: x.sport, kind: x.kind, s: x.s, pr: x.pr, cal: x.cal, hit: x.res.hit}); }
 M.CALIB = M.calibrate(calItems);
 log("calibración", JSON.stringify(M.CALIB));
-// Props: 50% model, 50% the book's probability (both sides' prices when we have them; otherwise the side's price minus ~4.5% commission)
+// Learn how much to trust the book vs our model from every graded prop of the last 14 days (all candidates, not only picks).
+// Before Nov 4 the stored probability was the model's own (minus calibration); since then pm / mkB are stored explicitly.
+const learnItems = [];
+for (let i = 1; i <= 14; i++) { const d = dloc(new Date(now.getTime() - i * 864e5).toISOString(), "America/Mexico_City"), s = read(`cands/${d}.json`, null);
+  if (s) for (const x of s.items) if (x.kind === "prop" && x.res && x.p) learnItems.push({sport: x.sport, hit: x.res.hit, pm: x.pm != null ? x.pm : x.pr - (x.cal || 0), mk: x.mkB != null ? x.mkB : Math.min(0.95, (1 / x.p) / 1.045)}); }
+const learned = M.learnW(learnItems); M.PROP_W = {NBA: learned.NBA.w, NFL: learned.NFL.w};
+log("peso de la casa aprendido", JSON.stringify(learned));
+// Props: model and the book's probability (both sides' prices when we have them; otherwise the side's price minus ~4.5% commission)
 for (const [sp, D] of [["NBA", nba], ["NFL", nfl]]) for (const c of D.cands) {
-  if (!c.p) continue; c.pm = c.pr; c.mkB = c.mk != null ? c.mk : +Math.min(0.95, (1 / c.p) / 1.045).toFixed(3);
-  c.pr = +M.blendProp(c.pm, c.mkB).toFixed(3); c.e = +(c.pr - 1 / c.p).toFixed(3);
+  if (!c.p) continue; c.sp = sp; c.pm = c.pr; c.mkB = c.mk != null ? c.mk : +Math.min(0.95, (1 / c.p) / 1.045).toFixed(3);
+  c.pr = +M.blendProp(c.pm, c.mkB, sp).toFixed(3); c.e = +(c.pr - 1 / c.p).toFixed(3);
 }
 for (const [sp, D] of [["NBA", nba], ["NFL", nfl]]) for (const c of D.cands) {
   const a = M.calAdj(`${sp}|prop|${c.s}`); c.calAdj = a; c.pr = +Math.min(0.95, Math.max(0.05, c.pr + a)).toFixed(3); if (c.p) c.e = +(c.pr - 1 / c.p).toFixed(3);
@@ -76,7 +83,7 @@ for (const g of soc.games) { const L = g.lines || {}; if (!L.mlHome) continue; c
 for (const k of Object.keys(open)) if (!seenK.has(k) && now - new Date(open[k].at) > 2 * 864e5) delete open[k];
 write("open.json", open);
 
-const latest = {generatedAt: now.toISOString(), calib: M.CALIB, sgoAt: runSgo && key ? now.toISOString() : prev.sgoAt, nba, nfl, soc};
+const latest = {generatedAt: now.toISOString(), calib: M.CALIB, learn: learned, sgoAt: runSgo && key ? now.toISOString() : prev.sgoAt, nba, nfl, soc};
 write("latest.json", latest);
 log("latest.json", (JSON.stringify(latest).length / 1024).toFixed(0) + " KB", `NBA ${nba.games.length} games/${nba.cands.length} props · NFL ${nfl.games.length}/${nfl.cands.length} · soccer ${soc.games.length}`);
 

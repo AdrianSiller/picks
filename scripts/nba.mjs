@@ -148,6 +148,10 @@ export async function buildNBA(now = new Date()) {
     act.forEach(x => { const a = M.clamp(add[x.id], -6, 6), nm = Math.min(38, x.min + a); MV[x.id] = x.min ? nm / x.min : 1; });
   }
   games.forEach(g => { const nh = minNotes[g.home.abbr], na = minNotes[g.away.abbr]; if (nh || na) g.usage = {h: nh || [], a: na || []}; });
+  // Context of today's absences: the dates each regular who is out today did play this season. A teammate's games without
+  // all of them show his role in today's situation (e.g. a center who passes more without the team's other creators)
+  const outCtx = {}; for (const x of known) { if ((inj[x.id] || x.R.inj) !== "Out" || x.min < 15) continue; const L = logs[x.id]; if (!L || !L.c.length) continue;
+    (outCtx[x.R.t] = outCtx[x.R.t] || []).push({n: x.R.n, dates: new Set(L.c.map(r => r[0]))}); }
   const G = Object.fromEntries(games.map(g => [g.id, g])), all = [];
   for (const p of props) {
     const R = roster[p.aid], L = logs[p.aid]; if (!R || !L) continue;
@@ -162,7 +166,9 @@ export async function buildNBA(now = new Date()) {
     const here = both.filter(r => r[2] === (h ? "vs" : "@")).slice(0, 20), all20 = both.slice(0, 40), iS = IDX[p.m];
     const mAll = all20.length ? all20.reduce((s, r) => s + r[iS], 0) / all20.length : 0, mHere = here.length ? here.reduce((s, r) => s + r[iS], 0) / here.length : 0;
     const venRaw = mAll > 0 && here.length >= 4 ? mHere / mAll : 1, ven = M.clamp(1 + (venRaw - 1) * here.length / (here.length + 10), 0.92, 1.08), venF = Math.abs(ven - 1) < 0.02 ? 1 : ven;
-    const k = vm * us * pcF * venF, i = IDX[p.m], vc = cur.map(r => r[i] * k), vp = prev.map(r => r[i] * k), oppRows = both.filter(r => r[1] === o), vo = oppRows.map(r => r[i] * k);
+    // Games this season without the same teammates who are out today count double (at least 3 such games, and not all of them)
+    const ko = outCtx[R.t] || [], ctxRows = ko.length ? cur.filter(r => ko.every(o => !o.dates.has(r[0]))) : [], useCtx = ctxRows.length >= 3 && ctxRows.length < cur.length;
+    const k = vm * us * pcF * venF, i = IDX[p.m], vx = useCtx ? ctxRows.map(r => r[i] * k) : null, vc = cur.map(r => r[i] * k), vp = prev.map(r => r[i] * k), oppRows = both.filter(r => r[1] === o), vo = oppRows.map(r => r[i] * k);
     const min = avg(cur.map(r => r[3])), d = def[o], fPos = M.defFactor(d && d.f[R.pos + p.m], d ? d.n : 0, 15);
     // Style matchup: where his points come from (threes / inside the arc / free throws, last 10) against what this defense allows from each
     let f = fPos, styInfo = null;
@@ -185,14 +191,14 @@ export async function buildNBA(now = new Date()) {
     let best = null;
     for (const s of ["over", "under"]) {
       const price = s === "over" ? p.po : p.pu; if (!price || price < 1.25) continue; if (s === "over" && min < 20) continue;
-      const hs = M.hitStats(vc, vp, vo, p.l, s);
+      const hs = M.hitStats(vc, vp, vo, p.l, s, vx);
       // Explosive / defensive game, and blowout risk (starters sit late when the spread is 11+)
       const big = Math.abs(Number(g.lines.spreadHome) || 0) >= 11 && min >= 30;
       const envAdj = +((g.env ? M.envAdj(g.env.env, s, pace[myT] && pace[o] ? 0.3 : 0.6) : 0) + (big ? (s === "over" ? -0.03 : 0.02) : 0)).toFixed(3);
       const pr = M.clamp(M.withDef(hs.pr0, s, f) + envAdj, 0.05, 0.95);
       const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, s, p: price, bk: "DraftKings", mk: p.po && p.pu ? +((1 / price) / (1 / p.po + 1 / p.pu)).toFixed(3) : null, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: 1, chg: hs.chg, nC: vc.length,
         imp: +(1 / price).toFixed(3), e: +(pr - 1 / price).toFixed(3), hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh,
-        aC: avg(cur.map(r => r[i])), a10: avg(both.slice(0, 10).map(r => r[i])), md10: med(both.slice(0, 10).map(r => r[i])), sty: styInfo, pace: +pcF.toFixed(3), ven: +venF.toFixed(3), aP: avg(prev.map(r => r[i])), aH: avg(oppRows.map(r => r[i])), vm: +vm.toFixed(2), us: +us.toFixed(2), minExp: +(min * vm).toFixed(1), envAdj, blow: big ? 1 : 0, min, msd: Math.round(msd * 10) / 10, role: roleOf(s), cv: +cv.toFixed(2), sm: hs.hc[1] + hs.hp[1] < 15, vc, vp, vo};
+        aC: avg(cur.map(r => r[i])), a10: avg(both.slice(0, 10).map(r => r[i])), md10: med(both.slice(0, 10).map(r => r[i])), sty: styInfo, pace: +pcF.toFixed(3), ven: +venF.toFixed(3), vx, hx: hs.hx, ctx: useCtx ? {n: ctxRows.length, of: cur.length, who: ko.map(o => o.n), avg: avg(ctxRows.map(r => r[i])), all: avg(cur.map(r => r[i]))} : null, aP: avg(prev.map(r => r[i])), aH: avg(oppRows.map(r => r[i])), vm: +vm.toFixed(2), us: +us.toFixed(2), minExp: +(min * vm).toFixed(1), envAdj, blow: big ? 1 : 0, min, msd: Math.round(msd * 10) / 10, role: roleOf(s), cv: +cv.toFixed(2), sm: hs.hc[1] + hs.hp[1] < 15, vc, vp, vo};
       if (st && st !== "Active") c.q = 1;
       if ((h ? g.rest.h : g.rest.a) === 1) c.b2b = 1;
       if (!best || c.pr > best.pr) best = c;
