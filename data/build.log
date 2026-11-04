@@ -1,10 +1,10 @@
-[9s] NBA ok
-[16s] NFL ok
-[38s] Soccer ok
-[38s] calibración {"_n":103,"NBA|prop|over":0,"NBA|prop|under":0,"NBA|game":-0.014,"NFL|prop|over":0,"NFL|prop|under":0,"NFL|game":-0.05,"SOC|soc":-0.039}
-[38s] peso de la casa aprendido {"NBA":{"w":0.5,"raw":0.5,"n":178},"NFL":{"w":0.5,"n":7}}
-[38s] latest.json 1000 KB NBA 14 games/153 props · NFL 15/149 · soccer 66
-[39s] candidatos guardados 4013
-[40s] grade 2026-11-04 ok
-[41s] bot.json ok
-[41s] done
+[7s] NBA ok
+[13s] NFL ok
+[25s] Soccer ok
+[25s] calibración {"_n":103,"NBA|prop|over":0,"NBA|prop|under":0,"NBA|game":-0.014,"NFL|prop|over":0,"NFL|prop|under":0,"NFL|game":-0.05,"SOC|soc":-0.039}
+[25s] peso de la casa aprendido {"NBA":{"w":0.5,"raw":0.5,"n":178},"NFL":{"w":0.5,"n":7}}
+[25s] latest.json 1000 KB NBA 14 games/153 props · NFL 15/149 · soccer 66
+[27s] candidatos guardados 4013
+[27s] grade 2026-11-04 ok
+[28s] bot.json ok
+[28s] done
