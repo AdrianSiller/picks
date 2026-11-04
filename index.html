@@ -135,7 +135,8 @@ svg text{font-family:var(--f-mono)}
 .gpick-main span{font-family:var(--f-display);font-weight:600;font-size:21px;text-transform:uppercase}
 .gpick-main b{font-family:var(--f-mono);font-weight:600;font-size:21px;color:var(--accent)}
 .gpick-why{font-size:12.5px;margin-top:6px}
-.gpick .why{margin:8px 0 0;padding-left:18px;font-size:13px;line-height:1.45}.gpick .why li{margin:2px 0}
+.gpick .why{font-family:var(--f-body);margin:8px 0 0;padding-left:18px;font-size:13px;line-height:1.45}.gpick .why li{margin:2px 0}
+.gpick.extra{border-style:dashed;background:transparent}.gpick.extra .gpick-main span{font-size:17px}
 .gpick .bk{font-size:12.5px;font-weight:600;margin-top:8px}.gpick .bk.ok{color:#4ade80}.gpick .bk.mk{color:#fbbf24}
 .results summary{display:flex;justify-content:space-between;gap:10px;font:600 13px var(--f-body);cursor:pointer;list-style:none}
 .results summary::-webkit-details-marker{display:none}
@@ -221,11 +222,11 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
 <footer class="ver">Versión de la app: 4 nov 9:15 a.m.</footer>
-<script src="model.js?v=20261104-0950"></script>
+<script src="model.js?v=20261104-1000"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261104-0950";
+const APP_VERSION = "20261104-1000";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -387,7 +388,7 @@ function socViewGames() {
     return `<h3 class="sub" style="margin:4px 0 -2px">${lg}</h3>` + gs.map(g => {
       const m = socModel[g.id], L = g.lines || {};
       const props = SOC.cands.filter(c => c.g === g.id && socOk(c)).sort((a, b) => (!!b.p - !!a.p) || socScore(b) - socScore(a)).slice(0, 5);
-      const gp = M.socGamePick(SOC.cands.filter(c => c.g === g.id), m), top = gp && gp.c, others = props.filter(c => c !== top);
+      const gp = M.socGamePick(SOC.cands.filter(c => c.g === g.id), m), top = gp && gp.c, extras = M.socGamePicks(SOC.cands.filter(c => c.g === g.id), m).slice(1).map(x => x.c).filter(Boolean), others = props.filter(c => c !== top && !extras.includes(c));
       const form = t => { const rows = SOC.rowsOf(t.abbr).slice(0, 5).reverse(); return rows.map(r => `<i class="${r[4] > r[5] ? "w" : "l"}" title="${dateLbl(r[0])} ${r[3] === "h" ? "vs" : "@"} ${r[2]} ${r[4]}-${r[5]}">${r[4] > r[5] ? "G" : r[4] < r[5] ? "P" : "E"}</i>`).join(""); };
       const cl = g.cl && g.cl.length ? g.cl[Math.floor(g.cl.length / 2)] : null;
       return `<div class="card game" style="cursor:default">
@@ -410,6 +411,8 @@ function socViewGames() {
           <div class="gpick-why" style="margin-top:4px">${others.length ? "Ninguna opción sólida trae momio en la fuente. Abajo van las que sí tienen sustento; compáralas en tu casa." : "Nuestra estimación queda muy cerca de la casa en todos los mercados; mejor pasar este partido."}</div>
         </div>
         ${others.length ? `<div class="others"><h4>Opciones sin momio</h4>${others.map(c => `<div class="mini"><span><b>${esc(c.lbl)}</b><br><span class="meta">Conviene si tu casa paga ${fx(1 / c.pr)} o más</span></span><span class="r"><b>—</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</div>` : ""}`}
+        ${extras.length ? `<div class="gpick extra"><div class="gpick-h">También respaldados</div>${extras.map(c => { const w = window.M.socWhy(SOC_DATA.teams, g, c, m);
+          return `<div class="gpick-main" style="margin-top:8px"><span>${esc(c.lbl)}</span><b>${fx(c.p)}</b></div><div class="meta">${pct(c.pr)} · conviene desde ${fx(1 / c.pr)}${w.back === "market" ? " · ⚠️ lo sostiene el mercado" : ""}</div><ul class="why">${w.lines.slice(0, 2).map(t => `<li>${esc(t)}</li>`).join("")}</ul>`; }).join("")}</div>` : ""}
         <details class="gmore"${filt.game ? " open" : ""}><summary>Ver detalle del partido</summary>
         ${g.rot ? `<div class="inj">${[["a", g.away.abbr], ["h", g.home.abbr]].filter(([k]) => g.rot[k]).map(([k, t]) => g.rot[k].next != null ? `<b>${t}</b> juega Champions en ${g.rot[k].next} día${g.rot[k].next === 1 ? "" : "s"}: posible rotación` : `<b>${t}</b> viene de jugar Champions hace ${g.rot[k].prev} día${g.rot[k].prev === 1 ? "" : "s"}: posible cansancio`).join("<br>")}. No lo damos por hecho: el modelo solo lo toma en cuenta cuando salen las alineaciones (como 1 hora antes, dale ↻ Actualizar).</div>` : ""}
         ${g.xi ? `<div class="inj"><b>Alineaciones confirmadas:</b> ${[["a", g.away.abbr], ["h", g.home.abbr]].filter(([k]) => g.xi[k]).map(([k, t]) => g.xi[k].miss.length ? `${t} sin ${g.xi[k].miss.map(esc).join(", ")}` : `${t} con su once habitual`).join(" · ")}.</div>` : ""}

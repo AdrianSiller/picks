@@ -382,8 +382,8 @@
     if (c.k === "1x2" && c.early >= 0.005) out.push(`Con pago anticipado (2 goles arriba = ganado): +${Math.round(c.early * 100)} pts`);
     // Our numbers vs the market (Pinnacle when we have it): the honest part
     let back = null;
-    if (pm != null && mk != null) { const d = pm - mk, src = g.pin ? "mercado (Pinnacle)" : "casa";
-      if (d >= -0.05) { back = "ok"; out.push(`Nuestro modelo ${pc(pm)} · ${src} ${pc(mk)}: coinciden`); }
+    if (pm != null && mk != null) { const d = pm - mk, src = g.pin && ["1x2", "dc", "up1"].includes(c.k) ? "mercado (Pinnacle)" : "casa";
+      if (d >= -0.05) { back = "ok"; out.push(`Nuestro modelo ${pc(pm)} · ${src} ${pc(mk)}: ${d > 0.05 ? "lo vemos aún más probable" : "coinciden"}`); }
       else { // Model lower: does the raw form still back it? (our goals model is known to be conservative with big favorites)
         const TR = sideOf === "A" ? A : H, OR = sideOf === "A" ? H : A, wr = TR.length ? TR.filter(x => x[4] > x[5]).length / TR.length : 0,
           lr = OR.length ? OR.filter(x => x[4] < x[5]).length / OR.length : 0, sc = TR.length ? TR.filter(x => x[4] > 0).length / TR.length : 0;
@@ -416,7 +416,7 @@
   // coherent with the favorite), never two of the same family (e.g. two team-goal lines) and never forced
   const fam = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal" ? "pl" + c.aid : ["dc", "1x2", "hc", "dc1h"].includes(c.k) ? "res" : c.k === "tt" || c.k === "tc" ? c.k + c.team : c.k;
   M.socBacked = (cands, gi) => { const fav = gi && gi.fav, okPrice = c => c.mk != null ? c.p * c.mk >= 0.92 : c.e >= -0.07;
-    return cands.filter(c => c.p && c.p >= 1.25 && c.pr >= 0.6 && !c.thin && okPrice(c) && M.socAligned(c, fav) && (c.gap == null || (c.gap >= (c.ucl ? -0.15 : -0.05) && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr); };
+    return cands.filter(c => c.p && c.p >= 1.25 && c.pr >= 0.6 && !c.thin && okPrice(c) && M.socAligned(c, fav) && (c.gap == null || (c.gap >= (c.ucl && !M.isPl(c) ? -0.15 : -0.05) && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr); };
   // Player markets (shots, shots on target, goalscorer) are only secondary picks: never the pick of the match, at most 2,
   // and after the team markets that also pass
   M.isPl = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal";
