@@ -1,0 +1,29 @@
+name: Diagnóstico xG
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar fuentes de xG
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        run: |
+          K=$(printf "picks:%s" "$TELEGRAM_TOKEN" | sha256sum | cut -c1-32)
+          W=https://picks-bot.adrian-rmzsiller.workers.dev/fx
+          t() { echo "== $1"; curl -s -o /tmp/b -w "status %{http_code} bytes %{size_download}\n" -H "x-key: $K" --get --data-urlencode "u=$2" ${3:+--data-urlencode "x=1"} "$W"; head -c 300 /tmp/b | tr -d '\n'; echo; }
+          {
+          t "understat page" "https://understat.com/league/EPL/2026"
+          t "understat page 2025" "https://understat.com/league/EPL/2025"
+          t "understat ajax" "https://understat.com/getLeagueData/EPL/2026" x
+          t "understat ajax 2025" "https://understat.com/getLeagueData/EPL/2025" x
+          t "fotmob league" "https://www.fotmob.com/api/leagues?id=47"
+          t "fotmob data" "https://www.fotmob.com/api/data/leagues?id=47"
+          t "fbref" "https://fbref.com/en/comps/9/Premier-League-Stats"
+          echo "== directo sin worker"; curl -s -o /dev/null -w "understat %{http_code}\n" https://understat.com/league/EPL/2026; curl -s -o /dev/null -w "fotmob %{http_code}\n" "https://www.fotmob.com/api/leagues?id=47"
+          } > data/xgdiag.txt 2>&1
+          cat data/xgdiag.txt
+          git config user.name github-actions; git config user.email github-actions@users.noreply.github.com
+          git add data/xgdiag.txt; git commit -m "Diagnóstico xG" || true; git pull --rebase; git push

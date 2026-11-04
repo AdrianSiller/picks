@@ -329,6 +329,14 @@ export default {
       const j = await r.json();
       return new Response(j.ok ? "Listo: el bot ya contesta. Escríbele \"dame los picks\" en Telegram." : "Error: " + JSON.stringify(j), {headers: {"content-type": "text/plain; charset=utf-8"}});
     }
+    // Data relay for the daily build (some stats sites block GitHub's servers): only these hosts, only with the build's key
+    if (url.pathname === "/fx") {
+      if (req.headers.get("x-key") !== secret) return new Response("no", {status: 403});
+      const t = new URL(url.searchParams.get("u") || "");
+      if (!["understat.com", "www.fotmob.com", "fbref.com"].includes(t.hostname)) return new Response("host", {status: 400});
+      const r = await fetch(t.toString(), {headers: {"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36", "accept": "text/html,application/json,*/*", "x-requested-with": url.searchParams.get("x") ? "XMLHttpRequest" : ""}});
+      return new Response(r.body, {status: r.status, headers: {"content-type": r.headers.get("content-type") || "text/plain"}});
+    }
     if (url.pathname !== "/hook" || req.method !== "POST") return new Response("Picks bot");
     if (req.headers.get("X-Telegram-Bot-Api-Secret-Token") !== secret) return new Response("no", {status: 403});
     const u = await req.json(), msg = u.message, cb = u.callback_query;
