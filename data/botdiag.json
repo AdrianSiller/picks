@@ -1,3 +1,5 @@
-{"ok":true,"result":{"url":"https://picks-bot.adrian-rmzsiller.workers.dev/hook","has_custom_certificate":false,"pending_update_count":0,"max_connections":40,"ip_address":"188.114.97.0","allowed_updates":["message","callback_query"]}}worker GET: 200
+{"ok":true,"result":{"url":"https://picks-bot.adrian-rmzsiller.workers.dev/hook","has_custom_certificate":false,"pending_update_count":0,"max_connections":40,"ip_address":"188.114.96.0","allowed_updates":["message","callback_query"]}}worker GET: 200
 Picks bothook (chat ajeno, debe decir 200 ok):
-ok 200
+ok 200https://understat.com/league/EPL/2026: 200 26719 bytes 
+https://understat.com/league/EPL/2025: 200 26719 bytes 
+https://fbref.com/en/comps/9/Premier-League-Stats: 403 5486 bytes 
