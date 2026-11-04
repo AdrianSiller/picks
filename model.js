@@ -28,7 +28,12 @@
   M.withDef = (pr0, side, f) => clamp(pr0 + (side === "under" ? -1 : 1) * ((f || 1) - 1) * 0.3, 0.05, 0.95);
   M.defFactor = (raw, n, k) => raw == null ? 1 : clamp(1 + (raw - 1) * n / (n + k), 0.8, 1.2);
   // Recompute a prop at a new line (used by the Refresh button)
-  M.repricePr = (c, line) => { const s = M.hitStats(c.vc || [], c.vp || [], c.vo || [], line, c.s); return {...s, pr: clamp(M.withDef(s.pr0, c.s, c.f) + (c.envAdj || 0) + (c.wadj || 0) + (c.mvAdj || 0) + (c.calAdj || 0), 0.05, 0.95)}; };
+  M.repricePr = (c, line) => { const s = M.hitStats(c.vc || [], c.vp || [], c.vo || [], line, c.s), pm = clamp(M.withDef(s.pr0, c.s, c.f) + (c.envAdj || 0) + (c.wadj || 0), 0.05, 0.95);
+    return {...s, pm, pr: clamp((c.mkB != null ? (1 - M.PROP_W) * pm + M.PROP_W * c.mkB : pm) + (c.mvAdj || 0) + (c.calAdj || 0), 0.05, 0.95)}; };
+  // Props lean on the book too: 50% our model, 50% the book's probability without its commission (it holds back the model's
+  // extremes: the most "certain" props were the ones that failed most when the model went alone)
+  M.PROP_W = 0.5;
+  M.blendProp = (pm, mk) => mk == null ? pm : clamp((1 - M.PROP_W) * pm + M.PROP_W * mk, 0.05, 0.95);
   // Line movement since we first saw the prop: harder line (or our price drifting 3+ points) = the book knows something
   M.lineMove = (c, ol, op) => { const dl = (c.l - ol) * (c.s === "over" ? 1 : -1), dimp = op && c.p ? 1 / op - 1 / c.p : 0;
     return dl > 0 || (dl === 0 && dimp >= 0.03) ? -1 : dl < 0 || (dl === 0 && dimp <= -0.03) ? 1 : 0; };
@@ -66,7 +71,7 @@
   M.calGroup = x => `${x.sport}|${x.kind === "prop" ? "prop|" + x.s : x.kind === "game" ? "game" : "soc"}`;
   M.calibrate = items => {
     // Soccer only counts picks from the current model (book-weighted since Nov 2); the old ones came from a different model
-    const done = items.filter(x => (x.hit === 0 || x.hit === 1) && x.pr != null && (x.sport !== "SOC" || x.date >= "2026-11-02")), st = {}, K = 50;
+    const done = items.filter(x => (x.hit === 0 || x.hit === 1) && x.pr != null && (x.sport !== "SOC" || x.date >= "2026-11-02") && (x.sport === "SOC" || x.kind !== "prop" || x.date >= "2026-11-04")), st = {}, K = 50;
     const add = (k, x) => { const s = st[k] = st[k] || {n: 0, w: 0, p: 0}; s.n++; s.w += x.hit; s.p += x.pr - (x.cal || 0); };
     for (const x of done) { add("ALL", x); add(x.sport, x); add(M.calGroup(x), x); }
     const gap = k => st[k] ? {d: (st[k].w - st[k].p) / st[k].n, w: st[k].n / (st[k].n + K)} : {d: 0, w: 0};

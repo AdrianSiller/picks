@@ -190,7 +190,7 @@ export async function buildNBA(now = new Date()) {
       const big = Math.abs(Number(g.lines.spreadHome) || 0) >= 11 && min >= 30;
       const envAdj = +((g.env ? M.envAdj(g.env.env, s, pace[myT] && pace[o] ? 0.3 : 0.6) : 0) + (big ? (s === "over" ? -0.03 : 0.02) : 0)).toFixed(3);
       const pr = M.clamp(M.withDef(hs.pr0, s, f) + envAdj, 0.05, 0.95);
-      const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, s, p: price, bk: "DraftKings", pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: 1, chg: hs.chg, nC: vc.length,
+      const c = {g: p.g, aid: p.aid, n: R.n, pos: R.pos, t: R.t, o, h, m: p.m, l: p.l, s, p: price, bk: "DraftKings", mk: p.po && p.pu ? +((1 / price) / (1 / p.po + 1 / p.pu)).toFixed(3) : null, pr: +pr.toFixed(3), pr0: +hs.pr0.toFixed(3), f: +f.toFixed(3), hd: 1, chg: hs.chg, nC: vc.length,
         imp: +(1 / price).toFixed(3), e: +(pr - 1 / price).toFixed(3), hc: hs.hc, h10: hs.h10, hp: hs.hp, hh: hs.hh,
         aC: avg(cur.map(r => r[i])), a10: avg(both.slice(0, 10).map(r => r[i])), md10: med(both.slice(0, 10).map(r => r[i])), sty: styInfo, pace: +pcF.toFixed(3), ven: +venF.toFixed(3), aP: avg(prev.map(r => r[i])), aH: avg(oppRows.map(r => r[i])), vm: +vm.toFixed(2), us: +us.toFixed(2), minExp: +(min * vm).toFixed(1), envAdj, blow: big ? 1 : 0, min, msd: Math.round(msd * 10) / 10, role: roleOf(s), cv: +cv.toFixed(2), sm: hs.hc[1] + hs.hp[1] < 15, vc, vp, vo};
       if (st && st !== "Active") c.q = 1;

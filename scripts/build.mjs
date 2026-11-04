@@ -53,6 +53,11 @@ for (let i = 1; i <= 30; i++) { const d = dloc(new Date(now.getTime() - i * 864e
   if (s) for (const x of s.items) if (x.res) calItems.push({date: d, sport: x.sport, kind: x.kind, s: x.s, pr: x.pr, cal: x.cal, hit: x.res.hit}); }
 M.CALIB = M.calibrate(calItems);
 log("calibración", JSON.stringify(M.CALIB));
+// Props: 50% model, 50% the book's probability (both sides' prices when we have them; otherwise the side's price minus ~4.5% commission)
+for (const [sp, D] of [["NBA", nba], ["NFL", nfl]]) for (const c of D.cands) {
+  if (!c.p) continue; c.pm = c.pr; c.mkB = c.mk != null ? c.mk : +Math.min(0.95, (1 / c.p) / 1.045).toFixed(3);
+  c.pr = +M.blendProp(c.pm, c.mkB).toFixed(3); c.e = +(c.pr - 1 / c.p).toFixed(3);
+}
 for (const [sp, D] of [["NBA", nba], ["NFL", nfl]]) for (const c of D.cands) {
   const a = M.calAdj(`${sp}|prop|${c.s}`); c.calAdj = a; c.pr = +Math.min(0.95, Math.max(0.05, c.pr + a)).toFixed(3); if (c.p) c.e = +(c.pr - 1 / c.p).toFixed(3);
 }
@@ -91,7 +96,7 @@ const allItems = [], dayOf = iso => dloc(iso || now.toISOString(), "America/Mexi
 for (const [sp, D] of [["NBA", nba], ["NFL", nfl]]) {
   const G = Object.fromEntries(D.games.map(g => [g.id, g]));
   for (const c of D.cands) { const g = G[c.g]; if (!c.p || !g || new Date(g.date) < now) continue;
-    allItems.push({sport: sp, kind: "prop", d: g.date, g: c.g, aid: c.aid, n: c.n, pos: c.pos, m: c.m, l: c.l, s: c.s, p: c.p, pr: c.pr, pr0: c.pr0, f: c.f, env: c.envAdj, vm: c.vm, us: c.us, mv: c.mv || 0, chg: c.chg || 0,
+    allItems.push({sport: sp, kind: "prop", d: g.date, g: c.g, aid: c.aid, n: c.n, pos: c.pos, m: c.m, l: c.l, s: c.s, p: c.p, pr: c.pr, pm: c.pm, mkB: c.mkB, pr0: c.pr0, f: c.f, env: c.envAdj, vm: c.vm, us: c.us, mv: c.mv || 0, chg: c.chg || 0,
       role: c.role, hc: c.hc, h10: c.h10, hp: c.hp, a10: c.a10, min: c.min, cal: c.calAdj || 0, pass: M.fails(c, sp) ? 0 : 1}); }
   for (const g of D.games) { if (new Date(g.date) < now || !D.teams[g.home.abbr] || !D.teams[g.away.abbr]) continue;
     const m = M.gameModel(g, {...M.CFG[sp], teams: D.teams, outs: D.outs || {}});
