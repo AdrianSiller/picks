@@ -1,12 +1,13 @@
 [2s] NBA ok
-[9s] NFL ok
-fotmob historial: 6 de 6 equipos con poco historial: LECH=Lech Poznań, HBE=Hapoel Beer Sheva, NKC=NK Celje, DZG=Dinamo Zagreb, TORR=Torreense, ARA=Ararat Armenia
+[6s] NFL ok
+fotmob historial: 6 de 6 equipos con poco historial: HBE=Hapoel Beer Sheva, NKC=NK Celje, LECH=Lech Poznań, TORR=Torreense, ARA=Ararat Armenia, DZG=Dinamo Zagreb
 fotmob xG: 118 de 127 equipos
-[45s] Soccer ok
-[45s] calibración {"_n":428,"NBA|prop|over":-0.004,"NBA|prop|under":0.05,"NBA|game":0.004,"NFL|prop|over":0,"NFL|prop|under":0,"NFL|game":-0.02,"SOC|soc":0.011,"SOC|1x2":0.032,"SOC|dc":0.003,"SOC|hc":0.028,"SOC|dc1h":0.03,"SOC|tt":0.022,"SOC|tc":0.034,"SOC|psot":0.024,"SOC|pshot":-0.025,"SOC|btts":-0.028,"SOC|tot":0.008,"SOC|cor":0.021}
-[45s] peso de la casa aprendido {"NBA":{"w":0.42,"raw":0.35,"n":342},"NFL":{"w":0.5,"n":7}}
-[45s] latest.json 882 KB NBA 2 games/21 props · NFL 15/202 · soccer 66
-[46s] candidatos guardados 4466
-[46s] grade 2026-11-05 ok
-[47s] bot.json ok
-[47s] done
+fotmob caché no disponible: ENOENT: no such file or directory, open '/home/runner/work/picks/picks/data/fm/cache.json'
+[42s] Soccer ok
+[42s] calibración {"_n":428,"NBA|prop|over":-0.004,"NBA|prop|under":0.05,"NBA|game":0.004,"NFL|prop|over":0,"NFL|prop|under":0,"NFL|game":-0.02,"SOC|soc":0.011,"SOC|1x2":0.032,"SOC|dc":0.003,"SOC|hc":0.028,"SOC|dc1h":0.03,"SOC|tt":0.022,"SOC|tc":0.034,"SOC|psot":0.024,"SOC|pshot":-0.025,"SOC|btts":-0.028,"SOC|tot":0.008,"SOC|cor":0.021}
+[42s] peso de la casa aprendido {"NBA":{"w":0.42,"raw":0.35,"n":342},"NFL":{"w":0.5,"n":7}}
+[42s] latest.json 882 KB NBA 2 games/21 props · NFL 15/202 · soccer 66
+[44s] candidatos guardados 4465
+[44s] grade 2026-11-05 ok
+[45s] bot.json ok
+[45s] done
