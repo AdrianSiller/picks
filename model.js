@@ -398,7 +398,9 @@
       else { // Model lower: does the raw form still back it? (our goals model is known to be conservative with big favorites)
         const TR = sideOf === "A" ? A : H, OR = sideOf === "A" ? H : A, wr = TR.length ? TR.filter(x => x[4] > x[5]).length / TR.length : 0,
           lr = OR.length ? OR.filter(x => x[4] < x[5]).length / OR.length : 0, sc = TR.length ? TR.filter(x => x[4] > 0).length / TR.length : 0;
-        const form = sideOf && TR.length >= 6 && (c.k === "dc" ? wr + (TR.filter(x => x[4] === x[5]).length / TR.length) >= 0.75 : wr >= 0.7 && (lr >= 0.3 || wr >= 0.85) && (c.k !== "up1" || sc >= 0.8));
+        // The streak does not count if today's team is not that team: 3+ real substitutes (not regular rotation) in the lineup
+        const xq = g.xi && g.xi[sideOf === "A" ? "a" : "h"], subs = xq ? xq.miss.length - (xq.depth || 0) : 0;
+        const form = subs < 3 && sideOf && TR.length >= 6 && (c.k === "dc" ? wr + (TR.filter(x => x[4] === x[5]).length / TR.length) >= 0.75 : wr >= 0.7 && (lr >= 0.3 || wr >= 0.85) && (c.k !== "up1" || sc >= 0.8));
         back = form ? "form" : "market";
         out.push(form ? `Nuestro modelo de goles ${pc(pm)} · ${src} ${pc(mk)}: el modelo es conservador con favoritos, pero la racha lo respalda`
           : `Nuestro modelo solo ${pc(pm)} · ${src} ${pc(mk)}: se apoya en el mercado, no en nuestras estadísticas`); } }
