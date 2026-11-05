@@ -48,6 +48,18 @@ function multi(B, list, base, back, mask, title) {
   kb.push([btn("⬅️ Atrás", back), btn("🏠 Inicio", "home")]);
   return {text: `${title}: toca los partidos que quieras (se marcan con ✅) y luego "Ver".`, kb: {inline_keyboard: kb.filter(r => r.length)}};
 }
+// Games grouped by kick-off time (Mexico City): one button per time slot, all games of that slot together
+const hhmm = d => new Date(d).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: "America/Mexico_City"});
+function slots(list) { const m = new Map(); for (const g of list) { if (!g.d) continue; const k = new Date(g.d).toISOString().slice(11, 16).replace(":", ""); if (!m.has(k)) m.set(k, {k, lbl: hhmm(g.d), games: []}); m.get(k).games.push(g); }
+  return [...m.values()].sort((a, b) => new Date(a.games[0].d) - new Date(b.games[0].d)); }
+function slotMenu(list, base, back, title) { const S = slots(list);
+  return {text: `🕐 ${title}: ¿de qué horario?`, kb: {inline_keyboard: [...rows(S.map(x => btn(`${x.lbl} · ${x.games.filter(g => g.solid).length} con pick`, `${base}:h:${x.k}`)), 2), [btn("⬅️ Atrás", back), btn("🏠 Inicio", "home")]]}}; }
+function slotSend(list, k, after) { const x = slots(list).find(s => s.k === k); if (!x) return {text: "Ese horario ya no tiene partidos por jugar.", kb: HOME};
+  // Games with picks in full; the rest in one line (no wall of "no pick" messages)
+  const yes = x.games.filter(g => g.solid), no = x.games.filter(g => !g.solid), ng = yes.length ? yes : x.games;
+  const msgs = [`🕐 <b>${x.lbl}</b> · ${x.games.length} partido${x.games.length > 1 ? "s" : ""}${yes.length ? `, ${yes.length} con pick` : ""}`, ...ng.map(g => g.t)];
+  if (yes.length && no.length) msgs.push(`<i>Sin pick a esta hora: ${no.map(g => g.b.split(" · ")[0]).join(", ")}</i>`);
+  return {sendMany: msgs, after, liveMany: ng.map(g => g.id), bets: ng.flatMap(g => g.bets || []), cmp: ng.flatMap(g => g.cmp || g.bets || [])}; }
 function picked(B, list, mask, tag) {
   if (tag !== ver(B)) return null;
   const m = parseInt(mask || "0", 36) || 0; return list.filter((g, i) => m & (1 << i));
@@ -68,7 +80,8 @@ function view(B, key) {
   if (a === "nba" || a === "nfl") {
     const D = B[a], name = a === "nba" ? "🏀 NBA" : "🏈 NFL";
     if (!D) return {text: `${name}: no hay partidos próximos con picks.`, kb: HOME};
-    if (!b) return {text: `${name} · ${D.games.length} partido${D.games.length > 1 ? "s" : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Top 10", `${a}:top`), btn("🎯 ML / spread", `${a}:ml`)], [btn("📋 Todo", `${a}:all`), btn("🔎 Un partido", `${a}:g`)], [btn("☑️ Varios partidos", `${a}:m:0:${ver(B)}`)], [btn("🏠 Inicio", "home")]]}};
+    if (!b) return {text: `${name} · ${D.games.length} partido${D.games.length > 1 ? "s" : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Top 10", `${a}:top`), btn("🎯 ML / spread", `${a}:ml`)], [btn("📋 Todo", `${a}:all`), btn("🔎 Un partido", `${a}:g`)], [btn("☑️ Varios partidos", `${a}:m:0:${ver(B)}`), ...(slots(D.games).length > 1 ? [btn("🕐 Por horario", `${a}:h`)] : [])], [btn("🏠 Inicio", "home")]]}};
+    if (b === "h") return c ? slotSend(D.games, c, a) : slotMenu(D.games, a, a, name);
     if (b === "top" || b === "ml" || b === "all") return {send: D[b], after: a, bets: (D.bets || {})[b], cmp: (D.bets || {})[b]};
     if (b === "m") return multi(B, D.games, a, a, c, name);
     if (b === "mv") { const sel = picked(B, D.games, c, key.split(":")[3]); if (!sel) return {text: "La lista de partidos se actualizó; elige otra vez.", kb: {inline_keyboard: [[btn("☑️ Varios partidos", `${a}:m:0:${ver(B)}`)], [btn("🏠 Inicio", "home")]]}};
@@ -82,12 +95,15 @@ function view(B, key) {
     const days = SD.days || [{...SD, lbl: "Próximos días"}], di = Math.min(+(a.split("@")[1] || 0), days.length - 1), S = days[di], base = di ? `soc@${di}` : "soc";
     const dayRow = days.length > 1 ? [days.map((d, k) => k === di ? null : btn(`📅 ${d.lbl}`, k ? `soc@${k}` : "soc")).filter(Boolean)] : [];
     if (b === "g") { for (const d of days) for (const l of d.leagues) { const g = l.games.find(x => x.id === c); if (g) return {send: g.t, after: `${base}:${l.code}:g`, live: g.id, bets: g.bets, cmp: g.cmp || g.bets}; } return {text: "Ese partido ya no está (puede que ya empezó).", kb: HOME}; }
-    if (!b) return {text: `⚽ ${S.lbl}: ¿qué liga?`, kb: {inline_keyboard: [[btn(`🔥 Top de ${S.lbl.toLowerCase()}`, `${base}:top`)], ...rows(S.leagues.map(l => btn(`${LGN[l.code] || l.lg} (${l.games.length}${l.started ? ` + ${l.started} jugados` : ""})`, `${base}:${l.code}`)), 2), ...dayRow, [btn("🏠 Inicio", "home")]]}};
+    const dayGames = S.leagues.flatMap(l => l.games);
+    if (b === "h") return c ? slotSend(dayGames, c, base) : slotMenu(dayGames, base, base, `⚽ ${S.lbl}`);
+    if (!b) return {text: `⚽ ${S.lbl}: ¿qué liga?`, kb: {inline_keyboard: [[btn(`🔥 Top de ${S.lbl.toLowerCase()}`, `${base}:top`), ...(slots(dayGames).length > 1 ? [btn("🕐 Por horario", `${base}:h`)] : [])], ...rows(S.leagues.map(l => btn(`${LGN[l.code] || l.lg} (${l.games.length}${l.started ? ` + ${l.started} jugados` : ""})`, `${base}:${l.code}`)), 2), ...dayRow, [btn("🏠 Inicio", "home")]]}};
     if (b === "top") return {send: S.top, after: base, bets: S.topBets, cmp: S.topBets};
     const L = S.leagues.find(l => l.code === b); if (!L) return {text: `${LGN[b] || "Esa liga"}: no tiene partidos ${S.lbl.toLowerCase()}.`, kb: {inline_keyboard: [...dayRow, back(base)]}};
-    if (!c) return {text: `${LGN[b]} · ${S.lbl} · ${L.games.length} por jugar${L.started ? `, ${L.started} ya empezaron` : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Picks", `${base}:${b}:top`), ...(L.games.length ? [btn("🔎 Un partido", `${base}:${b}:g`)] : [])], ...(L.games.length > 1 ? [[btn("☑️ Varios partidos", `${base}:${b}:m:0:${ver(B)}`)]] : []),
+    if (!c) return {text: `${LGN[b]} · ${S.lbl} · ${L.games.length} por jugar${L.started ? `, ${L.started} ya empezaron` : ""}. ¿Qué quieres ver?`, kb: {inline_keyboard: [[btn("🔥 Picks", `${base}:${b}:top`), ...(L.games.length ? [btn("🔎 Un partido", `${base}:${b}:g`)] : [])], ...(L.games.length > 1 ? [[btn("☑️ Varios partidos", `${base}:${b}:m:0:${ver(B)}`), ...(slots(L.games).length > 1 ? [btn("🕐 Por horario", `${base}:${b}:h`)] : [])]] : []),
       ...(days.length > 1 ? [days.map((dd, k) => k !== di && dd.leagues.some(l => l.code === b) ? btn(`📅 ${dd.lbl}`, `${k ? `soc@${k}` : "soc"}:${b}`) : null).filter(Boolean)].filter(r => r.length) : []), back(base)]}};
     if (c === "top") return {send: L.top, after: `${base}:${b}`, bets: L.topBets, cmp: L.topBets};
+    if (c === "h") { const k = key.split(":")[3]; return k ? slotSend(L.games, k, `${base}:${b}`) : slotMenu(L.games, `${base}:${b}`, `${base}:${b}`, LGN[b] || L.lg); }
     const [, , , d, e] = key.split(":");
     if (c === "m") return multi(B, L.games, `${base}:${b}`, `${base}:${b}`, d, LGN[b] || L.lg);
     if (c === "mv") { const sel = picked(B, L.games, d, e); if (!sel) return {text: "La lista de partidos se actualizó; elige otra vez.", kb: {inline_keyboard: [[btn("☑️ Varios partidos", `${base}:${b}:m:0:${ver(B)}`)], back(base)]}};
