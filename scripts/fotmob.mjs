@@ -2,10 +2,10 @@
 // One request per league. Matched to ESPN teams by name.
 import {J} from "./lib.mjs";
 // Our 7 leagues plus the domestic leagues of usual Champions teams
-const LEAGUES = {196: "POL", 136: "CYP", 127: "ISR", 252: "CRO", 182: "SRB", 189: "ROU", 212: "HUN", 270: "BUL", 441: "UKR", 176: "SVK", 173: "SVN", 67: "SWE", 185: "POR2", 118: "ARM", 47: "PL", 87: "LL", 54: "BUN", 55: "SA", 53: "L1", 230: "LMX", 61: "POR", 57: "ERE", 40: "BEL", 71: "TUR", 135: "GRE", 64: "SCO", 38: "AUT", 69: "SUI", 46: "DEN", 122: "CZE", 59: "NOR"};
-const norm = s => String(s || "").replace(/['’`]/g, "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\b(fc|cf|ac|sc|afc|ssc|sv|vfb|vfl|rc|cd|ud|sl|as|og|club|de|the|sk|fk|bk|if|1\.)\b/g, " ").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+export const LEAGUES = {196: "POL", 136: "CYP", 127: "ISR", 252: "CRO", 182: "SRB", 189: "ROU", 212: "HUN", 270: "BUL", 441: "UKR", 176: "SVK", 173: "SVN", 67: "SWE", 185: "POR2", 118: "ARM", 47: "PL", 87: "LL", 54: "BUN", 55: "SA", 53: "L1", 230: "LMX", 61: "POR", 57: "ERE", 40: "BEL", 71: "TUR", 135: "GRE", 64: "SCO", 38: "AUT", 69: "SUI", 46: "DEN", 122: "CZE", 59: "NOR"};
+export const norm = s => String(s || "").replace(/['’`]/g, "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\b(fc|cf|ac|sc|afc|ssc|sv|vfb|vfl|rc|cd|ud|sl|as|og|club|de|the|sk|fk|bk|if|1\.)\b/g, " ").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
 const words = s => norm(s).split(" ").filter(w => w.length > 2);
-const sim = (a, b) => { const A = words(a), B = words(b); if (!A.length || !B.length) return 0; let n = 0; for (const w of A) if (B.some(x => x === w || (w.length > 3 && (x.startsWith(w) || w.startsWith(x))))) n++; return n / Math.min(A.length, B.length); };
+export const sim = (a, b) => { const A = words(a), B = words(b); if (!A.length || !B.length) return 0; let n = 0; for (const w of A) if (B.some(x => x === w || (w.length > 3 && (x.startsWith(w) || w.startsWith(x))))) n++; return n / Math.min(A.length, B.length); };
 
 export async function fotmobXG(teamNames) {
   const rows = [];

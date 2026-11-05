@@ -1,3 +1,4 @@
+import fs from "node:fs";
 // Soccer: Liga MX, La Liga and Champions for the next days. Lines from DraftKings (via ESPN), team form with corners.
 import {J, pool, dkLines, dloc, ymd} from "./lib.mjs";
 import {fotmobXG, fotmobRows} from "./fotmob.mjs";
@@ -146,5 +147,12 @@ export async function buildSOC(now = new Date(), nDays = 6) {
       console.log("fotmob historial:", Object.keys(fm).length, "de", Object.keys(thin).length, "equipos con poco historial:", Object.entries(fm).map(([a, v]) => a + "=" + v.n).join(", ")); } } catch (e) { console.log("fotmob historial falló", e.message); }
   // Season xG and xG conceded per match (FotMob); a failure only leaves the model on goals
   let xg = {}; try { const names = {}; for (const g of games) { names[g.home.abbr] = g.home.name; names[g.away.abbr] = g.away.name; } const r = await fotmobXG(names); xg = r.teams; console.log("fotmob xG:", Object.keys(xg).length, "de", Object.keys(names).length, "equipos"); } catch (e) { console.log("fotmob falló", e.message); }
+  // FotMob match-by-match (data/fm, filled by its own hourly job): xG of the last 10 league / continental matches replaces the season one
+  try { const rd = f => JSON.parse(fs.readFileSync(new URL(`../data/fm/${f}`, import.meta.url), "utf8")), C = rd("cache.json").m, MP = rd("teams.json"); let n = 0;
+    for (const [ab, t] of Object.entries(MP)) { const ms = (t.ms || []).map(id => C[id]).filter(m => m && m.xg && m.xg[0] != null && !/cup|pokal|copa|coupe|coppa|beker|ta[cç]a|kupa|puchar/i.test(m.comp)).slice(0, 10); if (ms.length < 4) continue;
+      const side = m => m.h === t.id ? 0 : 1, av = f => +(ms.reduce((s, m) => s + f(m), 0) / ms.length).toFixed(2);
+      xg[ab] = {...(xg[ab] || {}), n: t.n, p: ms.length, src: "10", xg: av(m => m.xg[side(m)]), xga: av(m => m.xg[1 - side(m)]), gf: av(m => m.sc[side(m)]), ga: av(m => m.sc[1 - side(m)]),
+        sh: av(m => m.sh[side(m)] || 0), sot: av(m => m.sot[side(m)] || 0), pos: av(m => m.pos[side(m)] || 50), bc: av(m => m.bc[side(m)] || 0)}; n++; }
+    console.log("fotmob partido a partido:", n, "equipos con xG de sus últimos partidos"); } catch (e) { console.log("fotmob caché no disponible:", e.message); }
   return {asOf: now.toISOString(), games, teams, meta, players, xg, pgRaw: PGN.n, pbt: Object.fromEntries(Object.entries(PBT).map(([k, v]) => [k, v.n]))};
 }
