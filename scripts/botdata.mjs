@@ -253,13 +253,13 @@ function brief(S, g, c, gi) {
   let t = "";
   if (c.k === "pshot" || c.k === "psot") t = `${c.ph[0]} de sus últimos ${c.ph[1]}${c.md != null ? ` · normal: ${c.md}` : ""}`;
   else if (c.k === "pgoal") t = `${c.gl} goles en sus últimos ${c.ph[1]}`;
-  else { const side = c.k === "up1" || c.k === "1x2" || c.k === "dc" ? (c.side === "1X" || c.side === "H" ? "H" : c.side === "X2" || c.side === "A" ? "A" : null) : null;
+  else { const side = c.k === "up1" || c.k === "1x2" || c.k === "dc" || c.k === "dc1h" ? (c.side === "1X" || c.side === "H" ? "H" : c.side === "X2" || c.side === "A" ? "A" : null) : null;
     if (side) { const T = side === "H" ? g.home.abbr : g.away.abbr, O = side === "H" ? g.away.abbr : g.home.abbr, TR = rows(T), OR = rows(O);
       const w2 = TR.filter(x => x[4] > x[5]).length, l2 = OR.filter(x => x[4] < x[5]).length, nl = TR.filter(x => x[4] < x[5]).length;
-      t = c.k === "dc" ? `${T} sin perder en ${TR.length - nl} de ${TR.length}` : `${T} ganó ${w2} de ${TR.length}`; 
+      t = c.k === "dc" || c.k === "dc1h" ? `${T} sin perder en ${TR.length - nl} de ${TR.length}` : `${T} ganó ${w2} de ${TR.length}`; 
       if (c.k === "up1") t += ` · anotó en ${TR.filter(x => x[4] > 0).length}`; }
     else if (c.k === "btts") { const f = x => x[4] > 0 && x[5] > 0, a = rows(g.home.abbr), b = rows(g.away.abbr); t = `anotaron ambos: ${a.filter(f).length}/${a.length} ${g.home.abbr} · ${b.filter(f).length}/${b.length} ${g.away.abbr}`; }
-    else t = (w.lines.find(x => !x.startsWith("Nuestro modelo") && !x.startsWith("Con pago")) || "").replace(/ por partido/g, ""); }
+    else t = (w.lines.find(x => !x.startsWith("Nuestro modelo") && !x.startsWith("Con pago")) || w.lines[0] || "").replace(/ por partido/g, ""); }
   if (c.early >= 0.005) t += ` · anticipado +${Math.round(c.early * 100)}`;
   if (w.back === "market") t += " · lo sostiene el mercado";
   return {t, b: BADGE[w.back] || "•", back: w.back};
@@ -273,7 +273,8 @@ function soccer(S, now, hours, day, started = []) {
   const row = c => { const g = G[c.g], br = brief(S, g, c, GM[g.id]); return [`${br.b} <b>${esc(short(c.lbl))}</b> · ${c.p ? (c.est ? "≈" : "") + fx(c.p) : "sin momio"} · ${pct(c.pr)}`, `   ↳ ${esc(br.t)}`].join("\n"); };
   // Picks grouped by match (best match first), each match with its header
   const byGame = (list, flag) => { const ord = [], m = {}; for (const c of list) { if (!m[c.g]) { m[c.g] = []; ord.push(c.g); } m[c.g].push(c); }
-    return ord.flatMap((id, i) => { const g = G[id]; return [...(i ? [""] : []), `${flag ? (FLAG[g.lg] || "⚽") + " " : "🕐 "}<b>${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</b> · ${hora(g.date).replace(/^\S+ /, "")}`, ...m[id].map(row)]; }); };
+    ord.sort((x, y) => new Date(G[x].date) - new Date(G[y].date)); // by kick-off time
+    return ord.flatMap((id, i) => { const g = G[id]; return [...(i ? [""] : []), `${flag ? (FLAG[g.lg] || "⚽") + " " : "🕐 "}<b>${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</b> · ${hora(g.date).replace(/^\S+ /, "")}`, ...m[id].sort((x, y) => (M.isPl(x) - M.isPl(y)) || y.pr - x.pr).map(row)]; }); };
   const backed = c => brief(S, G[c.g], c, GM[c.g]).back !== "market";
   const out = {top: null, leagues: []};
   const inDay = c => G[c.g] && games.includes(G[c.g]);
