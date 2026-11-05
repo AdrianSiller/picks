@@ -7,16 +7,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
       - run: |
-          mkdir -p data/fm
-          curl -s "https://www.fotmob.com/api/search/suggest?term=Jagiellonia&lang=en" > data/fm/search.json
-          ID=$(node -e 'const j=require("./data/fm/search.json");const s=JSON.stringify(j);const m=s.match(/"type":"team"[^}]*?"id":"?(\d+)/)||s.match(/"id":"?(\d+)"?[^}]*?"type":"team"/);console.log(m?m[1]:"")')
-          echo "team id $ID"
-          curl -s "https://www.fotmob.com/api/data/teams?id=$ID" > data/fm/team.json
-          echo "team bytes $(wc -c < data/fm/team.json)"
-          MID=$(node -e 'const j=require("./data/fm/team.json");const s=JSON.stringify(j);const m=s.match(/"finished":true[^]*?"id":(\d{6,})/)||s.match(/matchId[^0-9]*(\d{6,})/);console.log(m?m[1]:"")')
-          echo "match id $MID"
-          curl -s "https://www.fotmob.com/api/data/matchDetails?matchId=$MID" > data/fm/match.json
-          echo "match bytes $(wc -c < data/fm/match.json)"
+          node scripts/diag/fm.mjs
           git config user.name github-actions; git config user.email github-actions@users.noreply.github.com
           git add data/fm; git commit -m "diag fotmob" || true; git pull --rebase; git push
