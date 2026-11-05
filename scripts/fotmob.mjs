@@ -4,8 +4,14 @@ import {J} from "./lib.mjs";
 // Our 7 leagues plus the domestic leagues of usual Champions teams
 export const LEAGUES = {196: "POL", 136: "CYP", 127: "ISR", 252: "CRO", 182: "SRB", 189: "ROU", 212: "HUN", 270: "BUL", 441: "UKR", 176: "SVK", 173: "SVN", 67: "SWE", 185: "POR2", 118: "ARM", 47: "PL", 87: "LL", 54: "BUN", 55: "SA", 53: "L1", 230: "LMX", 61: "POR", 57: "ERE", 40: "BEL", 71: "TUR", 135: "GRE", 64: "SCO", 38: "AUT", 69: "SUI", 46: "DEN", 122: "CZE", 59: "NOR"};
 export const norm = s => String(s || "").replace(/['’`]/g, "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\b(fc|cf|ac|sc|afc|ssc|sv|vfb|vfl|rc|cd|ud|sl|as|og|club|de|the|sk|fk|bk|if|1\.)\b/g, " ").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-const words = s => norm(s).split(" ").filter(w => w.length > 2);
-export const sim = (a, b) => { const A = words(a), B = words(b); if (!A.length || !B.length) return 0; let n = 0; for (const w of A) if (B.some(x => x === w || (w.length > 3 && (x.startsWith(w) || w.startsWith(x))))) n++; return n / Math.min(A.length, B.length); };
+// English / Spanish names vs the local ones FotMob uses
+const ALIAS = {munich: "munchen", cologne: "koln", rennais: "rennes", turin: "torino", seville: "sevilla", lisbon: "lisboa", prague: "praha"};
+const words = s => norm(s).split(" ").filter(w => w.length > 2).map(w => ALIAS[w] || w);
+// Name match: share of words found (exact, or a long prefix: "atl" never matches "atlante", "villa" never "villarreal"),
+// plus a small bonus for covering the longer name too, so "Paris FC" picks Paris FC and not Paris Saint-Germain
+export const sim = (a, b) => { const A = words(a), B = words(b); if (!A.length || !B.length) return 0; let n = 0;
+  const pre = (x, y) => { const [s1, l1] = x.length <= y.length ? [x, y] : [y, x]; return s1.length >= 5 && s1.length / l1.length >= 0.7 && l1.startsWith(s1); };
+  for (const w of A) if (B.some(x => x === w || pre(w, x))) n++; return n / Math.min(A.length, B.length) + 0.01 * n / Math.max(A.length, B.length); };
 
 export async function fotmobXG(teamNames) {
   const rows = [];

@@ -22,8 +22,8 @@ const val = (stats, key) => { for (const grp of stats || []) for (const x of grp
 const pst = (p, key) => { for (const grp of p.stats || []) for (const v of Object.values(grp.stats || {})) if (v.key === key) return v.stat && v.stat.value; return null; };
 let fetched = 0;
 await pool(Object.entries(names), 4, async ([ab, name]) => {
-  let id = map[ab] && map[ab].id;
-  if (!id) { const best = idx.map(r => ({r, s: Math.max(sim(name, r.n), sim(name, r.sn || ""))})).sort((a, b) => b.s - a.s)[0]; if (!best || best.s < 1) return; id = best.r.id; map[ab] = {id, n: best.r.n}; }
+  let id = map[ab] && map[ab].v === 2 && map[ab].id; // v2 = matched with the stricter name rule
+  if (!id) { const best = idx.map(r => ({r, s: Math.max(sim(name, r.n), sim(name, r.sn || ""))})).sort((a, b) => b.s - a.s)[0]; if (!best || best.s < 1) return; id = best.r.id; map[ab] = {id, n: best.r.n, v: 2}; }
   const tj = await J(`https://www.fotmob.com/api/data/teams?id=${id}`).catch(() => null); const fx = (tj && tj.fixtures && tj.fixtures.allFixtures && tj.fixtures.allFixtures.fixtures) || [];
   const done = fx.filter(f => f.status && f.status.finished && !/friendl/i.test((f.tournament && f.tournament.name) || "")).sort((a, b) => a.status.utcTime < b.status.utcTime ? 1 : -1).slice(0, 12);
   map[ab].ms = done.map(f => String(f.id));
