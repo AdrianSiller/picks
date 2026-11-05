@@ -1,13 +1,13 @@
 [2s] NBA ok
-[6s] NFL ok
-fotmob historial: 6 de 6 equipos con poco historial: LECH=Lech Poznań, HBE=Hapoel Beer Sheva, DZG=Dinamo Zagreb, NKC=NK Celje, TORR=Torreense, ARA=Ararat Armenia
+[7s] NFL ok
+fotmob historial: 6 de 6 equipos con poco historial: LECH=Lech Poznań, HBE=Hapoel Beer Sheva, NKC=NK Celje, DZG=Dinamo Zagreb, TORR=Torreense, ARA=Ararat Armenia
 fotmob xG: 120 de 127 equipos
 fotmob partido a partido: 119 equipos con xG de sus últimos partidos
-[33s] Soccer ok
-[33s] calibración {"_n":428,"NBA|prop|over":-0.004,"NBA|prop|under":0.05,"NBA|game":0.004,"NFL|prop|over":0,"NFL|prop|under":0,"NFL|game":-0.02,"SOC|soc":0.011,"SOC|1x2":0.032,"SOC|dc":0.003,"SOC|hc":0.028,"SOC|dc1h":0.03,"SOC|tt":0.022,"SOC|tc":0.034,"SOC|psot":0.024,"SOC|pshot":-0.025,"SOC|btts":-0.028,"SOC|tot":0.008,"SOC|cor":0.021}
-[33s] peso de la casa aprendido {"NBA":{"w":0.42,"raw":0.35,"n":342},"NFL":{"w":0.5,"n":7}}
-[33s] latest.json 889 KB NBA 2 games/21 props · NFL 15/202 · soccer 66
-[35s] candidatos guardados 4466
-[35s] grade 2026-11-05 ok
-[36s] bot.json ok
-[36s] done
+[45s] Soccer ok
+[45s] calibración {"_n":428,"NBA|prop|over":-0.004,"NBA|prop|under":0.05,"NBA|game":0.004,"NFL|prop|over":0,"NFL|prop|under":0,"NFL|game":-0.02,"SOC|soc":0.011,"SOC|1x2":0.032,"SOC|dc":0.003,"SOC|hc":0.028,"SOC|dc1h":0.03,"SOC|tt":0.022,"SOC|tc":0.034,"SOC|psot":0.024,"SOC|pshot":-0.025,"SOC|btts":-0.028,"SOC|tot":0.008,"SOC|cor":0.021}
+[45s] peso de la casa aprendido {"NBA":{"w":0.42,"raw":0.35,"n":342},"NFL":{"w":0.5,"n":7}}
+[45s] latest.json 890 KB NBA 2 games/21 props · NFL 15/203 · soccer 66
+[46s] candidatos guardados 4460
+[46s] grade 2026-11-05 ok
+[47s] bot.json ok
+[47s] done
