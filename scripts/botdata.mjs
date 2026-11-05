@@ -246,7 +246,7 @@ const dlocMx = iso => new Date(iso).toLocaleDateString("en-CA", {timeZone: TZ});
 const stIcon = (x, now) => x.res ? (x.res.hit === 1 ? "✅" : x.res.hit === 0 ? "❌" : "➖") : now - new Date(x.d) < 2.5 * 36e5 ? "⏳" : "🕓";
 const startedLines = (list, now) => list.length ? ["", "<b>Ya empezaron</b>", ...list.map(x => `${stIcon(x, now)} ${esc(x.n)} · ${esc(x.lbl)}${x.res && x.res.act != null ? ` (${esc(x.res.act)})` : ""} · ${x.p ? fx(x.p) : "—"}`)] : [];
 // Soccer compact: badge (how it is backed) + pick in bold, and one short reason
-const BADGE = {ok: "✅", form: "📈", market: "⚠️"};
+const BADGE = {ok: "✅", form: "📈", market: "⚠️", far: "⚠️"};
 const up1Price = pr => +(1 / (pr * 1.06)).toFixed(2); // estimated book price for a 1 Up (usual ~6% margin)
 function brief(S, g, c, gi) {
   const w = M.socWhy(S.teams, g, c, gi), rows = ab => (S.teams[ab] || []).filter(r => !r[8]).slice(0, 10);
@@ -261,7 +261,7 @@ function brief(S, g, c, gi) {
     else if (c.k === "btts") { const f = x => x[4] > 0 && x[5] > 0, a = rows(g.home.abbr), b = rows(g.away.abbr); t = `anotaron ambos: ${a.filter(f).length}/${a.length} ${g.home.abbr} · ${b.filter(f).length}/${b.length} ${g.away.abbr}`; }
     else t = (w.lines.find(x => !x.startsWith("Nuestro modelo") && !x.startsWith("Con pago")) || w.lines[0] || "").replace(/ por partido/g, ""); }
   if (c.early >= 0.005) t += ` · anticipado +${Math.round(c.early * 100)}`;
-  if (w.back === "market") t += " · lo sostiene el mercado";
+  if (w.back === "market") t += " · lo sostiene el mercado"; if (w.back === "far") t += " · el modelo ve de más";
   return {t, b: BADGE[w.back] || "•", back: w.back};
 }
 function soccer(S, now, hours, day, started = []) {
@@ -275,7 +275,7 @@ function soccer(S, now, hours, day, started = []) {
   const byGame = (list, flag) => { const ord = [], m = {}; for (const c of list) { if (!m[c.g]) { m[c.g] = []; ord.push(c.g); } m[c.g].push(c); }
     ord.sort((x, y) => new Date(G[x].date) - new Date(G[y].date)); // by kick-off time
     return ord.flatMap((id, i) => { const g = G[id]; return [...(i ? [""] : []), `${flag ? (FLAG[g.lg] || "⚽") + " " : "🕐 "}<b>${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</b> · ${hora(g.date).replace(/^\S+ /, "")}`, ...m[id].sort((x, y) => (M.isPl(x) - M.isPl(y)) || y.pr - x.pr).map(row)]; }); };
-  const backed = c => brief(S, G[c.g], c, GM[c.g]).back !== "market";
+  const backed = c => !["market", "far"].includes(brief(S, G[c.g], c, GM[c.g]).back);
   const out = {top: null, leagues: []};
   const inDay = c => G[c.g] && games.includes(G[c.g]);
   // Probables: the backed picks of every match (up to 2 per match) that are not already solid

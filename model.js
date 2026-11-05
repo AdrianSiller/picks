@@ -206,7 +206,7 @@
   // Soccer: model weight vs the book (the book is sharper), and max disagreement allowed for a solid pick
   // The book is much sharper than a goals model: it weighs 70% (80% in Champions) and the model only confirms.
   // If model and book disagree by more than 12 points, the model is probably missing something (lineups, rotation): no pick.
-  M.SOC = {w: 0.3, wCL: 0.2, gap: 0.12, minPr: 0.62, eMin: -0.03, minP: 1.2, alpha: 1};
+  M.SOC = {w: 0.3, wCL: 0.2, gap: 0.12, hi: 0.08, minPr: 0.62, eMin: -0.03, minP: 1.2, alpha: 1};
   // Level of each domestic league (Champions: goals against a weak league count less). 1 = Premier League.
   M.SOC_LVL = {PL: 1, LL: 0.95, SA: 0.93, BUN: 0.92, L1: 0.88, POR: 0.82, ERE: 0.8, BEL: 0.78, TUR: 0.76, AUT: 0.74, SUI: 0.73, GRE: 0.72, SCO: 0.72, CZE: 0.72, DEN: 0.72, UKR: 0.72, NOR: 0.7, SRB: 0.7, CRO: 0.7, CYP: 0.68, LMX: 0.75};
   M.SOC_INTL = new Set(["UCL", "UEL", "UECL", "UEFA "]);
@@ -347,7 +347,8 @@
     return {games, cands, lgMu, lgC, rowsOf};
   };
   // Soccer picks need support too: priced ones must hit at least 52% (value alone is not enough)
-  M.socOk = c => !c.thin && c.al !== 0 && (c.gap == null || Math.abs(c.gap) <= M.SOC.gap) && (c.p ? (c.p >= M.SOC.minP && c.e >= M.SOC.eMin && c.pr >= M.SOC.minPr) : (c.pr >= 0.62 && c.pr <= 0.75));
+  // Our model far ABOVE the book (8+ points) is a warning, not support: the book usually knows something we do not
+  M.socOk = c => !c.thin && c.al !== 0 && (c.gap == null || (c.gap >= -M.SOC.gap && c.gap <= M.SOC.hi)) && (c.p ? (c.p >= M.SOC.minP && c.e >= M.SOC.eMin && c.pr >= M.SOC.minPr) : (c.pr >= 0.62 && c.pr <= 0.75));
   // Ranked by probability; value adds at most 5 points, and picks without a price start a bit lower
   M.socScore = c => c.pr + (c.p ? 0 : -0.03);
   // Top lists only take picks with a price in hand (real or estimated)
@@ -392,7 +393,8 @@
     // Our numbers vs the market (Pinnacle when we have it): the honest part
     let back = null;
     if (pm != null && mk != null) { const d = pm - mk, src = g.pin && ["1x2", "dc", "up1"].includes(c.k) ? "mercado (Pinnacle)" : "casa";
-      if (d >= -0.05) { back = "ok"; out.push(`Nuestro modelo ${pc(pm)} · ${src} ${pc(mk)}: ${d > 0.05 ? "lo vemos aún más probable" : "coinciden"}`); }
+      if (d > M.SOC.hi) { back = "far"; out.push(`Nuestro modelo ${pc(pm)} · ${src} ${pc(mk)}: vemos de más; la casa probablemente sabe algo que no`); }
+      else if (d >= -0.05) { back = "ok"; out.push(`Nuestro modelo ${pc(pm)} · ${src} ${pc(mk)}: coinciden`); }
       else { // Model lower: does the raw form still back it? (our goals model is known to be conservative with big favorites)
         const TR = sideOf === "A" ? A : H, OR = sideOf === "A" ? H : A, wr = TR.length ? TR.filter(x => x[4] > x[5]).length / TR.length : 0,
           lr = OR.length ? OR.filter(x => x[4] < x[5]).length / OR.length : 0, sc = TR.length ? TR.filter(x => x[4] > 0).length / TR.length : 0;
@@ -415,8 +417,9 @@
     // up to 15 points under the book; everywhere else it must not be under the book
     const onFav = c => fav && ((["1x2", "hc"].includes(c.k) && c.side === fav.side) || (["dc", "dc1h"].includes(c.k) && c.side === (fav.side === "H" ? "1X" : "X2")) || (c.k === "tt" && c.team === fav.side && c.side === "O"));
     const lo = c => c.ucl && onFav(c) ? -0.15 : -0.05;
-    const fair = cs.filter(c => c.p >= 1.25 && c.pr >= 0.6 && okPrice(c) && (c.gap == null || (c.gap >= lo(c) && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr)[0];
-    const u = gi ? (gi.up1H >= gi.up1A ? {side: "H", pr: gi.up1H} : {side: "A", pr: gi.up1A}) : null;
+    const fair = cs.filter(c => c.p >= 1.25 && c.pr >= 0.6 && okPrice(c) && (c.gap == null || (c.gap >= lo(c) && c.gap <= M.SOC.hi))).sort((a, b) => b.pr - a.pr)[0];
+    let u = gi ? (gi.up1H >= gi.up1A ? {side: "H", pr: gi.up1H} : {side: "A", pr: gi.up1A}) : null;
+    if (u && gi.mkL) { const hS = u.side === "H", pm = hS ? M.everAhead(gi.lh, gi.la, 1) : M.everAhead(gi.la, gi.lh, 1), mk = hS ? M.everAhead(gi.mkL.h, gi.mkL.a, 1) : M.everAhead(gi.mkL.a, gi.mkL.h, 1); if (pm - mk > M.SOC.hi) u = null; }
     // A pick with a price first; 1 Up (no price in the source) only when there is nothing else
     if (fair) return {c: fair, tier: "fair"};
     return u && u.pr >= 0.7 ? {up1: u, tier: "up1"} : null;
@@ -426,7 +429,7 @@
   const fam = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal" ? "pl" + c.aid : ["dc", "1x2", "hc", "dc1h"].includes(c.k) ? "res" : c.k === "tt" || c.k === "tc" ? c.k + c.team : c.k;
   M.socBacked = (cands, gi) => { const fav = gi && gi.fav, okPrice = c => c.mk != null ? c.p * c.mk >= 0.92 : c.e >= -0.07;
     // Player overs: what is normal for him (median) must reach the line; a hit rate built on a couple of big nights is not a tendency
-    return cands.filter(c => c.p && c.p >= 1.25 && c.pr >= 0.6 && !c.thin && !(M.isPl(c) && c.md != null && c.md < c.line) && okPrice(c) && M.socAligned(c, fav) && (c.gap == null || (c.gap >= (c.ucl && !M.isPl(c) ? -0.15 : -0.05) && c.gap <= 0.15))).sort((a, b) => b.pr - a.pr); };
+    return cands.filter(c => c.p && c.p >= 1.25 && c.pr >= 0.6 && !c.thin && !(M.isPl(c) && c.md != null && c.md < c.line) && okPrice(c) && M.socAligned(c, fav) && (c.gap == null || (c.gap >= (c.ucl && !M.isPl(c) ? -0.15 : -0.05) && c.gap <= M.SOC.hi))).sort((a, b) => b.pr - a.pr); };
   // Player markets (shots, shots on target, goalscorer) are only secondary picks: never the pick of the match, at most 2,
   // and after the team markets that also pass
   M.isPl = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal";
