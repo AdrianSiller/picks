@@ -1,0 +1,195 @@
+{
+ "search": {
+  "status": 404,
+  "len": 0,
+  "head": ""
+ },
+ "league196": {
+  "status": 200,
+  "len": 770059,
+  "head": "{\"tabs\":[\"overview\",\"table\",\"fixtures\",\"stats\",\"transfers\",\"seasons\"],\"allAvailableSeasons\":[\"2026/2027\",\"2025/2026\",\"2024/2025\",\"2023/2024\",\"2022/2023\",\"2021/2022\",\"2020/2021\",\"2019/2020\",\"2018/2019\",\"2017/2018\",\"2016/2017\",\"2015/2016\",\"2014/2015\",\"2013/2014\",\"2012/2013\",\"2011/2012\",\"2010/2011\"],\"d"
+ },
+ "teams196": [
+  [
+   2182,
+   "Lech Poznań"
+  ],
+  [
+   8020,
+   "Górnik Zabrze"
+  ],
+  [
+   8673,
+   "Legia Warszawa"
+  ],
+  [
+   8023,
+   "Pogoń Szczecin"
+  ],
+  [
+   8021,
+   "Zagłębie Lubin"
+  ],
+  [
+   4023,
+   "GKS Katowice"
+  ],
+  [
+   8028,
+   "Piast Gliwice"
+  ],
+  [
+   10265,
+   "Wisła Kraków"
+  ],
+  [
+   1957,
+   "Jagiellonia Białystok"
+  ],
+  [
+   8245,
+   "Korona Kielce"
+  ],
+  [
+   89466,
+   "Motor Lublin"
+  ],
+  [
+   8243,
+   "Wisła Płock"
+  ],
+  [
+   2186,
+   "Cracovia"
+  ],
+  [
+   8024,
+   "Widzew Łódź"
+  ],
+  [
+   5769,
+   "Radomiak Radom"
+  ],
+  [
+   8025,
+   "Śląsk Wrocław"
+  ],
+  [
+   4024,
+   "Raków Częstochowa"
+  ],
+  [
+   1286895,
+   "Wieczysta Kraków"
+  ]
+ ],
+ "team": {
+  "status": 200,
+  "len": 766010,
+  "head": "{\"tabs\":[\"overview\",\"table\",\"fixtures\",\"squad\",\"stats\",\"transfers\",\"history\"],\"allAvailableSeasons\":[],\"details\":{\"id\":1957,\"type\":\"team\",\"name\":\"Jagiellonia Białystok\",\"latestSeason\":\"2026/2027\",\"shortName\":\"Jagiellonia Białystok\",\"country\":\"POL\",\"gender\":\"male\",\"nationalTeamId\":8568,\"faqJSONLD\":{\""
+ },
+ "teamKeys": [
+  "tabs",
+  "allAvailableSeasons",
+  "details",
+  "seostr",
+  "QAData",
+  "table",
+  "transfers",
+  "overview",
+  "stats",
+  "fixtures",
+  "squad",
+  "history"
+ ],
+ "fx0": [
+  {
+   "id": 5904511,
+   "pageUrl": "/matches/jagiellonia-biaystok-vs-nordsjaelland/180jqd#5904511",
+   "opponent": {
+    "id": 10202,
+    "name": "Nordsjælland",
+    "score": 1
+   },
+   "home": {
+    "id": 10202,
+    "name": "Nordsjælland",
+    "score": 1
+   },
+   "away": {
+    "id": 1957,
+    "name": "Jagiellonia Białystok",
+    "score": 2
+   },
+   "displayTournament": true,
+   "result": 1,
+   "notStarted": false,
+   "tournament": {
+    "name": "Club Friendlies",
+    "stage": "",
+    "leagueId": 489
+   },
+   "status": {
+    "utcTime": "2026-07-17T13:00:00.000Z",
+    "finished": true,
+    "started": true,
+    "cancelled": false,
+    "awarded": false,
+    "scoreStr": "1 - 2",
+    "reason": {
+     "short": "FT",
+     "shortKey": "fulltime_short",
+     "long": "Full-Time",
+     "longKey": "finished"
+    }
+   }
+  },
+  {
+   "id": 5803900,
+   "pageUrl": "/matches/jagiellonia-biaystok-vs-korona-kielce/uzoxg#5803900",
+   "opponent": {
+    "id": 8245,
+    "name": "Korona Kielce",
+    "score": 0
+   },
+   "home": {
+    "id": 1957,
+    "name": "Jagiellonia Białystok",
+    "score": 1
+   },
+   "away": {
+    "id": 8245,
+    "name": "Korona Kielce",
+    "score": 0
+   },
+   "displayTournament": false,
+   "result": 1,
+   "notStarted": false,
+   "tournament": {
+    "name": "Ekstraklasa",
+    "stage": "",
+    "leagueId": 196
+   },
+   "status": {
+    "utcTime": "2026-07-25T12:45:00.000Z",
+    "finished": true,
+    "started": true,
+    "cancelled": false,
+    "awarded": false,
+    "scoreStr": "1 - 0",
+    "reason": {
+     "short": "FT",
+     "shortKey": "fulltime_short",
+     "long": "Full-Time",
+     "longKey": "finished"
+    }
+   }
+  }
+ ],
+ "nDone": 21,
+ "match": {
+  "status": 200,
+  "len": 305555,
+  "head": "{\"general\":{\"matchId\":\"5804028\",\"matchName\":\"Wieczysta Kraków-vs-Jagiellonia Białystok_Sat, Oct 31, 2026, 13:45 UTC\",\"matchRound\":\"13\",\"teamColors\":{\"darkMode\":{\"home\":\"#fde73c\",\"away\":\"#D81921\"},\"lightMode\":{\"home\":\"#E09D00\",\"away\":\"#D81921\"},\"fontDarkMode\":{\"home\":\"rgba(29, 29, 29, 1.0)\",\"away\":\"r"
+ }
+}
