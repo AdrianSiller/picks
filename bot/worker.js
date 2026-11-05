@@ -283,9 +283,23 @@ function tools(env, B, v, key) {
   return [...(row1.length ? [row1] : []), ...(cmp.length >= 2 ? [[btn("🧮 Revisar un parlay", `pa:${key}:0`)]] : [])];
 }
 
+// Data older than 40 min: start a rebuild on GitHub (at most once every 15 min) and tell you when it is done
+async function freshen(env, chat, B, key) {
+  const age = (Date.now() - new Date(B.generatedAt)) / 6e4, at = new Date(B.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: "America/Mexico_City"});
+  let upd = false;
+  if (age > 40 && env.GH_TOKEN && env.BETS) {
+    upd = !!(await env.BETS.get("upd"));
+    if (!upd) { const r = await fetch("https://api.github.com/repos/AdrianSiller/picks/actions/workflows/update.yml/dispatches", {method: "POST", headers: {authorization: `Bearer ${env.GH_TOKEN}`, accept: "application/vnd.github+json", "user-agent": "picks-bot", "content-type": "application/json"}, body: JSON.stringify({ref: "main"})});
+      if (r.status === 204) { upd = true; await env.BETS.put("upd", B.generatedAt, {expirationTtl: 900}); } }
+    if (upd) await env.BETS.put(`wait:${chat}`, key || "home", {expirationTtl: 1800});
+  }
+  B.foot = `<i>Datos de las ${at}${upd ? " · 🔄 actualizando, te aviso en ~5 min" : age <= 40 ? ` (hace ${Math.max(1, Math.round(age))} min)` : ""}</i>`;
+}
+
 async function handle(env, chat, key, editId) {
   const B = await getJSON(DATA + "bot.json");
   if (!B || !(B.v >= 2)) return tg(env, "sendMessage", {chat_id: chat, text: `No pude leer los picks ahorita. Ábrelos en la app: ${APP}`});
+  if (!key || !/^(bm|b|bk|bx|bd|bdl|cm|c|pa|pc|av|acc|den|rmu):|^mine$|^av$/.test(key)) { try { await freshen(env, chat, B, key); } catch (e) {} }
   if (key && /^(bm|b|bk|bx|bd|bdl):|^mine$/.test(key)) return betAction(env, chat, key === "mine" ? "mine:" : key, editId, B);
   if (key && /^(cm|c|pa|pc):/.test(key)) return env.BETS ? toolAction(env, chat, key, editId, B) : tg(env, "sendMessage", {chat_id: chat, text: "No disponible todavía.", reply_markup: HOME});
   if (key && /^av(:|$)/.test(key)) return env.BETS ? avAction(env, chat, key, editId) : tg(env, "sendMessage", {chat_id: chat, text: "No disponible todavía.", reply_markup: HOME});
@@ -357,6 +371,15 @@ export default {
       if (!["understat.com", "www.fotmob.com", "fbref.com"].includes(t.hostname)) return new Response("host", {status: 400});
       const r = await fetch(t.toString(), {headers: {"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36", "accept": "text/html,application/json,*/*", "x-requested-with": url.searchParams.get("x") ? "XMLHttpRequest" : ""}});
       return new Response(r.body, {status: r.status, headers: {"content-type": r.headers.get("content-type") || "text/plain"}});
+    }
+    // Called by the GitHub build when it finishes: tells whoever was waiting that the new data is in
+    if (url.pathname === "/done") {
+      if (req.headers.get("x-key") !== secret || !env.BETS) return new Response("no", {status: 403});
+      const r = await env.BETS.list({prefix: "wait:"});
+      for (const k of r.keys) { const chat = k.name.slice(5), last = await env.BETS.get(k.name); await env.BETS.delete(k.name);
+        await tg(env, "sendMessage", {chat_id: chat, text: "✅ Ya están los datos nuevos.", reply_markup: {inline_keyboard: [[btn("🔄 Ver de nuevo", last && last.length <= 60 ? last : "home")], [btn("🏠 Inicio", "home")]]}}); }
+      await env.BETS.delete("upd");
+      return new Response("ok");
     }
     if (url.pathname !== "/hook" || req.method !== "POST") return new Response("Picks bot");
     if (req.headers.get("X-Telegram-Bot-Api-Secret-Token") !== secret) return new Response("no", {status: 403});

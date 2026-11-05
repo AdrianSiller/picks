@@ -51,3 +51,10 @@ jobs:
           git commit -m "Datos $(date -u '+%Y-%m-%d %H:%M') UTC" || exit 0
           git pull --rebase origin main
           git push
+      - name: Avisar al bot
+        if: always()
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        run: |
+          K=$(printf "picks:%s" "$TELEGRAM_TOKEN" | sha256sum | cut -c1-32)
+          curl -s -X POST -H "x-key: $K" https://picks-bot.adrian-rmzsiller.workers.dev/done || true
