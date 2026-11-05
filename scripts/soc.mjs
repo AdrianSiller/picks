@@ -106,7 +106,9 @@ export async function buildSOC(now = new Date(), nDays = 6) {
   for (const [ab, list] of Object.entries(XI)) {
     const last5 = list.filter(x => x.cls !== "CUP").sort((a, b) => a.d < b.d ? 1 : -1).slice(0, 5), cnt = {};
     for (const m of last5) for (const [id, nm] of m.xi) (cnt[id] = cnt[id] || {nm, n: 0}).n++;
-    if (last5.length >= 3) meta[ab] = {reg: Object.entries(cnt).filter(([, v]) => v.n >= 3).sort((a, b) => b[1].n - a[1].n).map(([id, v]) => [id, v.nm, v.n]), of: last5.length};
+    // Starts in the last 10 matches of any kind (cups too): who is a real squad option and not just a kid getting minutes
+    const s10 = {}; for (const m of list.slice().sort((a, b) => a.d < b.d ? 1 : -1).slice(0, 10)) for (const [id] of m.xi) s10[id] = (s10[id] || 0) + 1;
+    if (last5.length >= 3) meta[ab] = {s10, reg: Object.entries(cnt).filter(([, v]) => v.n >= 3).sort((a, b) => b[1].n - a[1].n).map(([id, v]) => [id, v.nm, v.n]), of: last5.length};
   }
   // Confirmed lineups (out ~1 h before): games starting within 90 minutes get their eleven compared with the usual one
   await pool(games.filter(g => new Date(g.date) - now < 90 * 6e4 && new Date(g.date) > now), 4, async g => {
@@ -116,7 +118,9 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     for (const [k, T] of [["h", g.home], ["a", g.away]]) {
       const r = ros.find(x => x.homeAway === (k === "h" ? "home" : "away")), m = meta[T.abbr]; if (!r || !m) continue;
       const ids = new Set((r.roster || []).filter(p => p.starter && p.athlete).map(p => String(p.athlete.id)));
-      g.xi[k] = {miss: m.reg.filter(([id]) => !ids.has(String(id))).map(x => x[1])};
+      // Who comes in for them: a player who already started 3+ of the last 10 is squad depth (Güler for Diomande), not a weaker team
+      const regIds = new Set(m.reg.map(x => String(x[0]))), inn = (r.roster || []).filter(p => p.starter && p.athlete && !regIds.has(String(p.athlete.id))).map(p => [p.athlete.shortName || p.athlete.displayName, (m.s10 || {})[p.athlete.id] || 0]);
+      g.xi[k] = {miss: m.reg.filter(([id]) => !ids.has(String(id))).map(x => x[1]), inn, depth: inn.filter(x => x[1] >= 3).length};
     }
   });
   // Champions within a few days of a league match: rotation before it, fatigue after it

@@ -312,7 +312,7 @@ function soccer(S, now, hours, day, started = []) {
       else S1.push("Sin pick: nada llega a 62% con un pago decente.");
       if (extras.length) S1.push("", ...extras.flatMap(c => line(c, c.lbl, fx(c.p))));
       if (m && !(gp && gp.up1)) { const s1 = m.up1H >= m.up1A ? "H" : "A", p1 = s1 === "H" ? m.up1H : m.up1A; if (p1 >= 0.6) S1.push("", `<i>1 Up ${esc(s1 === "H" ? g.home.abbr : g.away.abbr)}: ${pct(p1)} · ≈${fx(up1Price(p1))}</i>`); }
-      if (g.xi) { const miss = ["h", "a"].filter(k => g.xi[k] && g.xi[k].miss.length).map(k => `${g[k === "h" ? "home" : "away"].abbr} sin ${g.xi[k].miss.length} titulares`); S1.push(`📋 ${miss.length ? miss.join(" · ") : "Onces habituales"}`); }
+      if (g.xi) { const miss = ["h", "a"].filter(k => g.xi[k] && g.xi[k].miss.length).map(k => { const x = g.xi[k], real = x.miss.length - (x.depth || 0); return `${g[k === "h" ? "home" : "away"].abbr} ${x.miss.length} cambios${x.depth ? ` (${x.depth} de rotación normal${real > 0 ? `, ${real} de suplentes` : ""})` : ""}`; }); S1.push(`📋 ${miss.length ? miss.join(" · ") : "Onces habituales"}`); }
       else if (g.rot) S1.push("⚠️ Posible rotación: revisa alineaciones");
       { const bl = bestLine(g); if (bl) L.push(bl); }
       const meta = S.meta || {}, reg = ab => ((meta[ab] || {}).reg || []).map(x => [x[0], x[1]]);

@@ -249,7 +249,7 @@
       if (M.UEFA.has(g.lg) && M.SOC.alpha) for (const [T, ab] of [[H, g.home.abbr], [A, g.away.abbr]]) { const f = Math.pow(lvl(ab) / 0.88, M.SOC.alpha); T.att *= f; T.def /= f; T.lvl = lvl(ab); }
       // Rotation only when the lineup is confirmed (g.xi, from ↻ Actualizar): each usual starter missing weakens the team a little.
       // A Champions match nearby is only a warning, never assumed (the book already prices what it knows)
-      const xi = g.xi || {}, tweak = (T, x) => { if (!x || !x.miss) return; const k = x.miss.length; T.att *= Math.max(0.85, 1 - 0.03 * k); T.def *= Math.min(1.12, 1 + 0.02 * k); };
+      const xi = g.xi || {}, tweak = (T, x) => { if (!x || !x.miss) return; const k = Math.max(0, x.miss.length - (x.depth || 0) * 0.75); /* a regular sub (3+ starts of 10) costs only a quarter */ T.att *= Math.max(0.85, 1 - 0.03 * k); T.def *= Math.min(1.12, 1 + 0.02 * k); };
       tweak(H, xi.h); tweak(A, xi.a);
       const lh = H.att * A.def / mu * HFA, la = A.att * H.def / mu * AFA;
       const Mx = []; for (let i = 0; i <= 10; i++) { Mx.push([]); for (let j = 0; j <= 10; j++) Mx[i].push(pois(i, lh) * pois(j, la)); }
