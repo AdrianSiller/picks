@@ -57,7 +57,9 @@
     (c.pos === "RB" && (c.cr || 0) < 10 && ["CAR", "RUSHYDS", "RRY"].includes(c.m)) || (["WR", "TE"].includes(c.pos) && (c.tg || 0) < 4 && ["REC", "RECYDS"].includes(c.m)));
   // Margin over the line with the median of the last 10 (one huge night does not inflate it)
   M.score = (c, sport) => { const typ = c.md10 != null ? c.md10 : c.a10, marg = c.m === "ATD" || typ == null ? 0 : (c.s === "over" ? 1 : -1) * (typ - c.l) / Math.max(c.l, 1);
-    return c.pr * 0.8 + clamp(marg, -0.2, 0.4) * 0.5 - (c.sm ? 0.06 : 0) - (c.q ? 0.04 : 0) - (M.lowRole(c, sport) ? 0.05 : 0) - (c.b2b && c.s === "over" ? 0.02 : 0); };
+    // When our raw model sits far above the book (10+ points) those props have hit much less: they rank lower, not excluded
+    const far = c.pm != null && c.mkB != null ? Math.max(0, c.pm - c.mkB - 0.08) : 0;
+    return c.pr * 0.8 + clamp(marg, -0.2, 0.4) * 0.5 - far * 1.5 - (c.sm ? 0.06 : 0) - (c.q ? 0.04 : 0) - (M.lowRole(c, sport) ? 0.05 : 0) - (c.b2b && c.s === "over" ? 0.02 : 0); };
   M.CFG = {NBA: {sp: "NBA", perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {sp: "NFL", perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6}};
   // Why a prop doesn't qualify (same filters for the top 10 and for each game's list); "" = it qualifies
   M.fails = (c, sport) => { const cfg = M.CFG[sport];
@@ -90,7 +92,7 @@
     // Soccer only counts picks from the current model (book-weighted since Nov 2); the old ones came from a different model
     const done = items.filter(x => (x.hit === 0 || x.hit === 1) && x.pr != null && (x.sport !== "SOC" || x.date >= "2026-11-02") && (x.sport === "SOC" || x.kind !== "prop" || x.date >= "2026-11-04")), st = {}, K = 50;
     const add = (k, x) => { const s = st[k] = st[k] || {n: 0, w: 0, p: 0}; s.n++; s.w += x.hit; s.p += x.pr - (x.cal || 0); };
-    for (const x of done) { add("ALL", x); add(x.sport, x); add(M.calGroup(x), x); }
+    for (const x of done) { add("ALL", x); add(x.sport, x); add(M.calGroup(x), x); if (x.sport === "SOC" && x.k) add("SOC|" + x.k, x); }
     const gap = k => st[k] ? {d: (st[k].w - st[k].p) / st[k].n, w: st[k].n / (st[k].n + K)} : {d: 0, w: 0};
     // Overall gap only shared between NBA and NFL (soccer markets work differently)
     for (const x of done) if (x.sport !== "SOC") add("US", x);
@@ -100,6 +102,8 @@
       const isProp = k.includes("|prop|"), sp = isProp ? {d: 0, w: 0} : gap(k.split("|")[0]), g = gap(k), base = k.startsWith("SOC") || isProp ? 0 : all.w * all.d, spv = sp.w * sp.d + (1 - sp.w) * base;
       out[k] = +clamp(g.w * g.d + (1 - g.w) * spv, -0.05, 0.05).toFixed(3);
     }
+    // Each soccer market learns its own correction (e.g. both-teams-score has been hitting far less than estimated), leaning on the overall soccer one
+    for (const k of Object.keys(st).filter(k => /^SOC\|(?!soc$)/.test(k))) { const g = gap(k); out[k] = +clamp(g.w * g.d + (1 - g.w) * out["SOC|soc"], -0.08, 0.05).toFixed(3); }
     return out;
   };
 
@@ -266,8 +270,8 @@
       games.push(gi);
       // Model weight vs the market: lower in Champions, where teams come from leagues of very different level
       const wM = M.UEFA.has(g.lg) ? M.SOC.wCL : M.SOC.w;
-      const cal = M.calAdj("SOC|soc");
-      const add = o => { const blend = clamp((o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7) + cal, 0.02, 0.98); cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, cal, ucl: M.UEFA.has(g.lg) ? 1 : 0, al: M.socAligned(o, M.socFav(L)) ? 1 : 0, thin: Math.min(H.n, A.n) < 6 ? 1 : 0, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
+      const cal0 = M.calAdj("SOC|soc");
+      const add = o => { const cal = M.CALIB["SOC|" + o.k] != null ? M.CALIB["SOC|" + o.k] : cal0, blend = clamp((o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7) + cal, 0.02, 0.98); cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, cal, ucl: M.UEFA.has(g.lg) ? 1 : 0, al: M.socAligned(o, M.socFav(L)) ? 1 : 0, thin: Math.min(H.n, A.n) < 6 ? 1 : 0, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
       const hN = g.home.abbr, aN = g.away.abbr;
       // Early payout (2 goals up = won): the extra chance over just winning, from the book-anchored expected goals
       const upE = (a, b) => mkL ? Math.max(0, M.winOrUp(a, b, M.EARLY.SOC) - M.winOrUp(a, b, 99)) : 0, eH = mkL ? upE(mkL.h, mkL.a) : 0, eA = mkL ? upE(mkL.a, mkL.h) : 0;

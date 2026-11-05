@@ -28,8 +28,11 @@ export function snapshot(data, now, hours = 30) {
     M.socTop(B.cands, G, null).forEach(c => add(c, "top"));
     // The pick of each match (solid or fair) is tracked too, with its tier, to see if the "fair" ones hold up
     const GI = Object.fromEntries(B.games.map(x => [x.id, x]));
-    for (const g of S.games) { const gp = M.socGamePick(B.cands.filter(c => c.g === g.id), GI[g.id]); if (gp && gp.c) add(gp.c, gp.tier === "solid" ? "game" : "fair"); }
+    // Every backed pick of each match (main one and the extras, e.g. player shots), with its tier
+    for (const g of S.games) for (const gp of M.socGamePicks(B.cands.filter(c => c.g === g.id), GI[g.id])) if (gp.c) add(gp.c, gp.tier === "solid" ? "game" : "fair");
   }
+  // Games this run looked at that have not started: their old picks are replaced (even when no pick is left)
+  items.games = [...["nba", "nfl", "soc"].flatMap(k => ((data[k] || {}).games || []).filter(g => new Date(g.date) > now && new Date(g.date) - now < hours * 36e5).map(g => g.id))];
   return items;
 }
 

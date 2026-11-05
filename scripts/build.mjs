@@ -59,7 +59,7 @@ if (runSgo && key) {
 // Only the candidates that are realistic picks count (55%+ and with a price), raw probability vs what really hit.
 const calItems = [];
 for (let i = 1; i <= 30; i++) { const d = dloc(new Date(now.getTime() - i * 864e5).toISOString(), "America/Mexico_City"), s = read(`cands/${d}.json`, null);
-  if (s) for (const x of s.items) if (x.res && x.p && x.pr - (x.cal || 0) >= 0.55) calItems.push({date: d, sport: x.sport, kind: x.kind, s: x.s, pr: x.pr, cal: x.cal || 0, hit: x.res.hit}); }
+  if (s) for (const x of s.items) if (x.res && x.p && x.pr - (x.cal || 0) >= 0.55) calItems.push({date: d, sport: x.sport, kind: x.kind, s: x.s, k: x.k, pr: x.pr, cal: x.cal || 0, hit: x.res.hit}); }
 M.CALIB = M.calibrate(calItems);
 log("calibración", JSON.stringify(M.CALIB));
 // Learn how much to trust the book vs our model from every graded prop of the last 14 days (all candidates, not only picks).
@@ -98,14 +98,17 @@ log("latest.json", (JSON.stringify(latest).length / 1024).toFixed(0) + " KB", `N
 
 // Today's snapshot (overwritten by later runs of the same day) and grading of the last 10 days
 // Each pick goes to the snapshot of its game's day (Mexico City), so a late run never mixes tomorrow into today
-const items = snapshot(latest, now), byDay = {};
+const items = snapshot(latest, now), byDay = {}, looked = new Set(items.games || []);
 for (const x of items) (byDay[dloc(x.d || now.toISOString(), "America/Mexico_City")] = byDay[dloc(x.d || now.toISOString(), "America/Mexico_City")] || []).push(x);
 for (const [d, its] of Object.entries(byDay)) {
   const snap = read(`snap/${d}.json`, null);
   // Picks of games that already started stay as they were; the rest are replaced by this run's version
-  const kept = snap ? snap.items.filter(x => !its.some(y => y.sport === x.sport && y.g === x.g)) : [];
+  const kept = snap ? snap.items.filter(x => !its.some(y => y.sport === x.sport && y.g === x.g) && !(looked.has(x.g) && new Date(x.d) > now)) : [];
   write(`snap/${d}.json`, {date: d, items: kept.concat(its)});
 }
+// Days where this run had games but no pick left: still drop the stale picks of games not started
+for (const f of (fs.existsSync(path.join(DATA, "snap")) ? fs.readdirSync(path.join(DATA, "snap")) : [])) { const d = f.replace(".json", ""); if (byDay[d] || d < dloc(now.toISOString(), "America/Mexico_City")) continue;
+  const snap = read(`snap/${d}.json`, null); if (!snap) continue; const left = snap.items.filter(x => !(looked.has(x.g) && new Date(x.d) > now)); if (left.length !== snap.items.length) write(`snap/${d}.json`, {date: d, items: left}); }
 
 // Every candidate (not only the picks) with its factors, graded later: this is what tells which factors really predict
 const allItems = [], dayOf = iso => dloc(iso || now.toISOString(), "America/Mexico_City");
