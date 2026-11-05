@@ -431,7 +431,10 @@
   // and after the team markets that also pass
   M.isPl = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal";
   M.socGamePicks = (cands, gi, max = 3) => {
-    const main = M.socGamePick(cands, gi); if (!main) return [];
+    const main = M.socGamePick(cands, gi);
+    // No team pick: the backed player picks (if any) still show, so the match list and the top never disagree
+    if (!main) { if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return []; const seen = new Set(), out = [];
+      for (const c of M.socBacked(cands, gi).filter(M.isPl)) { if (out.length >= 2 || seen.has(fam(c))) continue; seen.add(fam(c)); out.push({c, tier: M.socOk(c) ? "solid" : "fair", pl: 1}); } return out; }
     const out = [main], seen = new Set(main.c ? [fam(main.c)] : ["up1"]), B = M.socBacked(cands, gi);
     let npl = 0;
     for (const c of [...B.filter(c => !M.isPl(c)), ...B.filter(M.isPl)]) { if (out.length >= max) break; if (main.c === c || seen.has(fam(c))) continue;
