@@ -13,7 +13,10 @@ const due = keys.filter(k => k.metadata && !k.metadata.res && k.metadata.d && no
 console.log(`mybets: ${keys.length} apuestas, ${due.length} por calificar`);
 if (due.length) {
   const items = []; for (const k of due) { const v = await K.get(k.name); if (v) items.push({k, x: JSON.parse(v)}); }
-  await grade(items.map(i => i.x));
+  // Parlays: grade every leg; the parlay wins only if all legs hit (a void leg leaves it as ➖)
+  await grade(items.flatMap(i => i.x.kind === "par" ? i.x.legs : [i.x]));
+  for (const {x} of items) if (x.kind === "par") { const r = x.legs.map(l => l.res && l.res.hit); if (r.some(h => h === undefined)) continue;
+    x.res = {hit: r.includes(0) ? 0 : r.every(h => h === 1) ? 1 : null, act: `${r.filter(h => h === 1).length} de ${r.length} pegaron`}; }
   let n = 0; for (const {k, x} of items) if (x.res && await K.put(k.name, x, {...k.metadata, res: x.res})) { k.metadata.res = x.res; n++; }
   console.log(`mybets: ${n} calificadas`);
 }

@@ -7,6 +7,8 @@ const APP = "https://adriansiller.github.io/picks/";
 const btn = (text, data) => ({text, callback_data: data});
 const rows = (list, n) => { const out = []; for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n)); return out; };
 const HOME = {inline_keyboard: [[btn("🏀 NBA", "nba"), btn("🏈 NFL", "nfl"), btn("⚽ Soccer", "soc")], [btn("📊 Cómo nos fue", "res"), btn("🧾 Mis apuestas", "mine")], [btn("📋 Picks de hoy", "hoy"), btn("🔎 Buscar", "find")], [btn("🔔 Avisos", "av")]]};
+// Fixed buttons under the text box (always there, no need to type)
+const KB = {keyboard: [[{text: "🔥 Top de hoy"}, {text: "⚽ Soccer"}], [{text: "🏀 NBA"}, {text: "🏈 NFL"}], [{text: "🧾 Mis apuestas"}, {text: "📊 Cómo vamos"}]], resize_keyboard: true, is_persistent: true};
 const LGN = {mx: "🇲🇽 Liga MX", esp: "🇪🇸 La Liga", eng: "🏴 Premier", ger: "🇩🇪 Bundesliga", ita: "🇮🇹 Serie A", fra: "🇫🇷 Ligue 1", ucl: "⭐ Champions", uel: "🟠 Europa League"};
 
 // Free text -> menu key; null = main menu
@@ -24,7 +26,8 @@ function intent(t) {
   if (/soccer|futbol/.test(t)) return "soc";
   if (/mis apuestas|apuestas|aposte/.test(t)) return "mine";
   if (/picks de hoy|de hoy|hoy/.test(t)) return "hoy";
-  if (/ayer|resultado|como nos fue|como fue/.test(t)) return "res";
+  if (/ayer|resultado|como nos fue|como fue|como vamos/.test(t)) return "res";
+  if (/\btop\b/.test(t)) return "hoy";
   return null;
 }
 
@@ -100,6 +103,14 @@ async function check(env, chat, r, what) {
   let d = ""; try { d = (await r.json()).description || ""; } catch (e) {}
   await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/sendMessage`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({chat_id: chat, text: `⚠️ Falló ${what}: ${d || r.status}`})});
   return false;
+}
+// The "what next" menu: only the newest one stays in the chat (the previous one is deleted)
+async function menu(env, chat, body, what = "el menú") {
+  const r = await tg(env, "sendMessage", {chat_id: chat, ...body}), ok = await check(env, chat, r.clone ? r.clone() : r, what);
+  if (ok && env.BETS) { try { const j = await r.json(), prev = await env.BETS.get(`mn:${chat}`);
+    if (prev && prev !== String(j.result.message_id)) await tg(env, "deleteMessage", {chat_id: chat, message_id: +prev});
+    await env.BETS.put(`mn:${chat}`, String(j.result.message_id), {expirationTtl: 172800}); } catch (e) {} }
+  return ok;
 }
 async function sendLong(env, chat, text) {
   // Split between lines (never inside one, so the formatting tags stay whole)
@@ -195,7 +206,8 @@ async function betAction(env, chat, key, editId, B) {
     return tg(env, "sendMessage", {chat_id: chat, text: "🗑️ Apuesta borrada.", reply_markup: HOME}); }
   if (op === "mine") { const list = await myBets(env, chat);
     const kb = {inline_keyboard: [...(list.length ? [[btn("🗑️ Borrar una", "bdl:")]] : []), [btn("🏠 Inicio", "home")]]};
-    await sendLong(env, chat, mineText(list)); return tg(env, "sendMessage", {chat_id: chat, text: "¿Algo más?", reply_markup: kb}); }
+    if (editId) await tg(env, "deleteMessage", {chat_id: chat, message_id: editId});
+    await sendLong(env, chat, mineText(list)); return menu(env, chat, {text: "¿Algo más?", reply_markup: kb}); }
   if (op === "bdl") { const list = (await myBets(env, chat)).sort((a, b) => a.id < b.id ? 1 : -1).slice(0, 12);
     return tg(env, "sendMessage", {chat_id: chat, text: "¿Cuál borro?", reply_markup: {inline_keyboard: [...list.map(x => [btn(`🗑️ ${x.lbl.slice(0, 40)}`, `bd:${x.id}`)]), [btn("🏠 Inicio", "home")]]}}); }
 }
@@ -228,6 +240,16 @@ async function toolAction(env, chat, key, editId, B) {
   if (op === "c") { const x = B.bets[rest]; if (!x) return tg(env, "sendMessage", {chat_id: chat, text: "Ese pick ya no está en la lista.", reply_markup: HOME});
     await setAwait(env, chat, {t: "cmp", pr: x.pr, lbl: x.lbl});
     return tg(env, "sendMessage", {chat_id: chat, parse_mode: "HTML", text: `💲 <b>${x.lbl}</b>\nEstimamos ${Math.round(x.pr * 100)}%: conviene si tu casa paga <b>${fx(1 / x.pr)}</b> o más${x.p ? ` (DraftKings: ${fx(x.p)})` : ""}.\n\n¿Cuánto te paga tu casa? Escríbelo (ej. 1.59 o -150).`}); }
+  // A parlay you placed: saved as one bet with its legs (graded when all legs are in: wins only if all of them hit)
+  if (op === "pb") { const i = rest.lastIndexOf(":"), vkey = rest.slice(0, i), mask = parseInt(rest.slice(i + 1) || "0", 36) || 0, xs = picksOf(B, vkey).slice(0, 20).filter((r, k) => mask & (1 << k)).map(r => B.bets[r]);
+    if (xs.length < 2) return tg(env, "sendMessage", {chat_id: chat, text: "Ese parlay ya no está en la lista.", reply_markup: HOME});
+    const id = Date.now().toString(36), d = xs.map(x => x.d).sort().pop(), dk = xs.every(x => x.p) ? +xs.reduce((s, x) => s * x.p, 1).toFixed(2) : null;
+    const lbl = `Parlay ${xs.length}: ${xs.map(x => x.b || x.lbl).join(" + ")}`.slice(0, 120);
+    await env.BETS.put(`bet:${chat}:${id}`, JSON.stringify({kind: "par", legs: xs, lbl, p: dk, d, pr: xs.reduce((s, x) => s * x.pr, 1)}), {metadata: {lbl, p: dk, d}});
+    await setAwait(env, chat, {t: "bet", id});
+    return tg(env, "sendMessage", {chat_id: chat, text: `📝 Anotado: ${lbl}
+
+¿Qué momio combinado te dieron? Escríbelo (ej. 2.40 o +140).`, reply_markup: {inline_keyboard: [...(dk ? [[btn(`Mismo (${fx(dk)})`, `bk:${id}`)]] : []), [btn("❌ Cancelar", `bx:${id}`)]]}}); }
   if (op === "pa" || op === "pc") { const i = rest.lastIndexOf(":"), vkey = rest.slice(0, i), mask = parseInt(rest.slice(i + 1) || "0", 36) || 0, refs = picksOf(B, vkey).slice(0, 20);
     const sel = refs.filter((r, k) => mask & (1 << k));
     if (op === "pa") { const kb = [...refs.map((r, k) => [btn(`${mask & (1 << k) ? "✅ " : ""}${B.bets[r].b}`, `pa:${vkey}:${(mask ^ (1 << k)).toString(36)}`)])];
@@ -236,7 +258,7 @@ async function toolAction(env, chat, key, editId, B) {
     const xs = sel.map(r => B.bets[r]), pr = xs.reduce((s, x) => s * x.pr, 1), dk = xs.every(x => x.p) ? xs.reduce((s, x) => s * x.p, 1) : null;
     const same = new Set(xs.map(x => x.g)).size < xs.length;
     await setAwait(env, chat, {t: "par", pr, lbl: `Parlay de ${xs.length}`});
-    return tg(env, "sendMessage", {chat_id: chat, parse_mode: "HTML", text: [`🧮 <b>Parlay de ${xs.length}</b>`, ...xs.map(x => `• ${x.lbl} · ${Math.round(x.pr * 100)}%`), "",
+    return tg(env, "sendMessage", {chat_id: chat, parse_mode: "HTML", reply_markup: {inline_keyboard: [[btn("📝 Lo aposté", `pb:${vkey}:${mask.toString(36)}`)], [btn("🏠 Inicio", "home")]]}, text: [`🧮 <b>Parlay de ${xs.length}</b>`, ...xs.map(x => `• ${x.lbl} · ${Math.round(x.pr * 100)}%`), "",
       `Probabilidad de que peguen todos: <b>${Math.round(pr * 100)}%</b> (más o menos 1 de cada ${Math.max(1, Math.round(1 / pr))}).`, `Conviene si el momio combinado es <b>${fx(1 / pr)}</b> o más${dk ? ` (con los momios de DraftKings daría ${fx(dk)})` : ""}.`,
       ...(same ? ["⚠️ Hay dos picks del mismo partido: pueden estar ligados y la probabilidad real cambia."] : []), "", "¿Qué momio combinado te da tu casa? Escríbelo."].join("\n")}); }
 }
@@ -299,9 +321,9 @@ async function freshen(env, chat, B, key) {
 async function handle(env, chat, key, editId) {
   const B = await getJSON(DATA + "bot.json");
   if (!B || !(B.v >= 2)) return tg(env, "sendMessage", {chat_id: chat, text: `No pude leer los picks ahorita. Ábrelos en la app: ${APP}`});
-  if (!key || !/^(bm|b|bk|bx|bd|bdl|cm|c|pa|pc|av|acc|den|rmu):|^mine$|^av$/.test(key)) { try { await freshen(env, chat, B, key); } catch (e) {} }
+  if (!key || !/^(bm|b|bk|bx|bd|bdl|cm|c|pa|pc|pb|av|acc|den|rmu):|^mine$|^av$/.test(key)) { try { await freshen(env, chat, B, key); } catch (e) {} }
   if (key && /^(bm|b|bk|bx|bd|bdl):|^mine$/.test(key)) return betAction(env, chat, key === "mine" ? "mine:" : key, editId, B);
-  if (key && /^(cm|c|pa|pc):/.test(key)) return env.BETS ? toolAction(env, chat, key, editId, B) : tg(env, "sendMessage", {chat_id: chat, text: "No disponible todavía.", reply_markup: HOME});
+  if (key && /^(cm|c|pa|pc|pb):/.test(key)) return env.BETS ? toolAction(env, chat, key, editId, B) : tg(env, "sendMessage", {chat_id: chat, text: "No disponible todavía.", reply_markup: HOME});
   if (key && /^av(:|$)/.test(key)) return env.BETS ? avAction(env, chat, key, editId) : tg(env, "sendMessage", {chat_id: chat, text: "No disponible todavía.", reply_markup: HOME});
   if (key && key.startsWith("q:")) { const res = search(B, key.slice(2));
     if (res.length === 1) return handle(env, chat, res[0].key);
@@ -309,12 +331,13 @@ async function handle(env, chat, key, editId) {
     return tg(env, "sendMessage", {chat_id: chat, text: `No encontré "${key.slice(2)}" en los picks de hoy. Prueba con el apellido o el nombre del equipo.`, reply_markup: HOME}); }
   if (key && key.startsWith("dt:")) { const g = allGames(B).find(x => x.id === key.slice(3));
     await sendLong(env, chat, g ? (g.tl || g.t) : "Ese partido ya no está en la lista.");
-    return tg(env, "sendMessage", {chat_id: chat, text: "¿Algo más?", reply_markup: HOME}); }
+    return menu(env, chat, {text: "¿Algo más?", reply_markup: HOME}); }
   if (key && key.startsWith("chk:")) {
     for (const id of key.slice(4).split(",")) await sendLong(env, chat, await live(B, id, env));
-    return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: "¿Algo más?", reply_markup: {inline_keyboard: [[btn("🔄 Volver a revisar", key)], ...HOME.inline_keyboard]}}), "el menú");
+    return menu(env, chat, {text: "¿Algo más?", reply_markup: {inline_keyboard: [[btn("🔄 Volver a revisar", key)], ...HOME.inline_keyboard]}});
   }
   const v = view(B, key || "home");
+  if ((v.send || v.sendMany) && editId) await tg(env, "deleteMessage", {chat_id: chat, message_id: editId});
   if (v.sendMany) {
     // Each game in its own message so long selections never get cut in half
     for (const t of v.sendMany) await sendLong(env, chat, t);
@@ -322,7 +345,7 @@ async function handle(env, chat, key, editId) {
     const next = view(B, v.after), kb = next.kb || HOME, ids = v.liveMany.join(",");
     const keyb = {inline_keyboard: [...(ids.length + 4 <= 64 ? [[btn(`🔄 Revisar en vivo ${v.liveMany.length > 1 ? "los " + v.liveMany.length : ""}`.trim(), `chk:${ids}`)]] : []),
       ...tools(env, B, v, key), ...kb.inline_keyboard]};
-    return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: keyb}), "el menú");
+    return menu(env, chat, {text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: keyb});
   }
   if (v.send) {
     // Charts first (if the chart service fails, the text still goes)
@@ -331,11 +354,11 @@ async function handle(env, chat, key, editId) {
     const next = view(B, v.after), kb = next.kb || HOME;
     const keyb = {inline_keyboard: [...(v.live && B.v >= 3 ? [[btn("🔍 Más detalle", `dt:${v.live}`), btn("🔄 Revisar en vivo", `chk:${v.live}`)]] : []),
       ...tools(env, B, v, key), ...kb.inline_keyboard]};
-    return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: keyb}), "el menú");
+    return menu(env, chat, {text: next.text ? `¿Algo más? ${next.text}` : "¿Algo más?", reply_markup: keyb});
   }
   // Menus replace the previous menu message so the chat doesn't fill up
   if (editId) { const r = await tg(env, "editMessageText", {chat_id: chat, message_id: editId, text: v.text, reply_markup: v.kb}); if (r.ok) return r; }
-  return check(env, chat, await tg(env, "sendMessage", {chat_id: chat, text: v.text, reply_markup: v.kb}), "el menú");
+  return menu(env, chat, {text: v.text, reply_markup: v.kb});
 }
 
 // Every 5 min (Cloudflare is punctual; GitHub's own schedule runs late): if a game with picks starts in 20-55 min and was not
@@ -420,6 +443,8 @@ export default {
     const work = (async () => {
       try {
         if (cb) { await tg(env, "answerCallbackQuery", {callback_query_id: cb.id, text: cb.data.startsWith("chk:") ? "Revisando en ESPN…" : undefined}); await handle(env, chat, cb.data, cb.message && cb.message.message_id); }
+        else if (env.BETS && !(await env.BETS.get(`kb1:${chat}`))) { await env.BETS.put(`kb1:${chat}`, "1");
+          await tg(env, "sendMessage", {chat_id: chat, text: "👇 Te dejé botones fijos abajo para no tener que escribir.", reply_markup: KB}); await handle(env, chat, intent(msg.text)); }
         else if (!(await oddsReply(env, chat, msg.text))) { const it = intent(msg.text), t = norm(msg.text);
           // Not a menu word and not a greeting: try it as a player or team name
           await handle(env, chat, it || (t.length >= 3 && !/\b(pick|picks|hola|menu|inicio|dame|gracias|buen|buenas|ayuda|que onda|hey)\b/.test(t) ? "q:" + msg.text.slice(0, 40) : null)); }
