@@ -208,7 +208,7 @@
   // If model and book disagree by more than 12 points, the model is probably missing something (lineups, rotation): no pick.
   M.SOC = {w: 0.3, wCL: 0.2, gap: 0.12, hi: 0.08, minPr: 0.62, eMin: -0.03, minP: 1.2, alpha: 1};
   // Level of each domestic league (Champions: goals against a weak league count less). 1 = Premier League.
-  M.SOC_LVL = {PL: 1, LL: 0.95, SA: 0.93, BUN: 0.92, L1: 0.88, POR: 0.82, ERE: 0.8, BEL: 0.78, TUR: 0.76, AUT: 0.74, SUI: 0.73, GRE: 0.72, SCO: 0.72, CZE: 0.72, DEN: 0.72, UKR: 0.72, NOR: 0.7, SRB: 0.7, CRO: 0.7, CYP: 0.68, LMX: 0.75};
+  M.SOC_LVL = {PL: 1, LL: 0.95, SA: 0.93, BUN: 0.92, L1: 0.88, POR: 0.82, ERE: 0.8, BEL: 0.78, TUR: 0.76, AUT: 0.74, SUI: 0.73, GRE: 0.72, SCO: 0.72, CZE: 0.72, DEN: 0.72, UKR: 0.72, NOR: 0.7, SRB: 0.7, CRO: 0.7, CYP: 0.68, LMX: 0.75, POL: 0.7, ISR: 0.68, ROU: 0.68, HUN: 0.67, BUL: 0.64, SVK: 0.66, SVN: 0.64, SWE: 0.7, POR2: 0.62, ARM: 0.58, OTH: 0.62};
   M.SOC_INTL = new Set(["UCL", "UEL", "UECL", "UEFA "]);
   // Goals each team is expected to score according to the book: total from the over/under price, split from the 1X2
   M.mktLambdas = (L, pois) => {
