@@ -6,9 +6,9 @@ const DATA = "https://raw.githubusercontent.com/AdrianSiller/picks/main/data/";
 const APP = "https://adriansiller.github.io/picks/";
 const btn = (text, data) => ({text, callback_data: data});
 const rows = (list, n) => { const out = []; for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n)); return out; };
-const HOME = {inline_keyboard: [[btn("🏀 NBA", "nba"), btn("🏈 NFL", "nfl"), btn("⚽ Soccer", "soc")], [btn("📊 Cómo nos fue", "res"), btn("🧾 Mis apuestas", "mine")], [btn("📋 Picks de hoy", "hoy"), btn("🔎 Buscar", "find")], [btn("🔔 Avisos", "av")]]};
+const HOME = {inline_keyboard: [[btn("🛡️ Más seguros", "safe")], [btn("🏀 NBA", "nba"), btn("🏈 NFL", "nfl"), btn("⚽ Soccer", "soc")], [btn("📊 Cómo nos fue", "res"), btn("🧾 Mis apuestas", "mine")], [btn("📋 Picks de hoy", "hoy"), btn("🔎 Buscar", "find")], [btn("🔔 Avisos", "av")]]};
 // Fixed buttons under the text box (always there, no need to type)
-const KB = {keyboard: [[{text: "🔥 Top de hoy"}, {text: "⚽ Soccer"}], [{text: "🏀 NBA"}, {text: "🏈 NFL"}], [{text: "🧾 Mis apuestas"}, {text: "📊 Cómo vamos"}]], resize_keyboard: true, is_persistent: true};
+const KB = {keyboard: [[{text: "🛡️ Más seguros"}, {text: "🔥 Top de hoy"}], [{text: "⚽ Soccer"}, {text: "🏀 NBA"}, {text: "🏈 NFL"}], [{text: "🧾 Mis apuestas"}, {text: "📊 Cómo vamos"}]], resize_keyboard: true, is_persistent: true};
 const LGN = {mx: "🇲🇽 Liga MX", esp: "🇪🇸 La Liga", eng: "🏴 Premier", ger: "🇩🇪 Bundesliga", ita: "🇮🇹 Serie A", fra: "🇫🇷 Ligue 1", ucl: "⭐ Champions", uel: "🟠 Europa League"};
 
 // Free text -> menu key; null = main menu
@@ -24,6 +24,7 @@ function intent(t) {
   if (/ligue|franc/.test(t)) return "soc:fra";
   if (/champions|ucl/.test(t)) return "soc:ucl";
   if (/soccer|futbol/.test(t)) return "soc";
+  if (/segur/.test(t)) return "safe";
   if (/mis apuestas|apuestas|aposte/.test(t)) return "mine";
   if (/picks de hoy|de hoy|hoy/.test(t)) return "hoy";
   if (/ayer|resultado|como nos fue|como fue|como vamos/.test(t)) return "res";
@@ -70,6 +71,7 @@ function view(B, key) {
   const [a, b, c] = key.split(":"), back = (to, lbl = "⬅️ Atrás") => [btn(lbl, to), btn("🏠 Inicio", "home")];
   if (key === "home") return {text: "¿De qué quieres los picks?", kb: HOME};
   if (key === "hoy") return {send: B.hoy || "Todavía no hay picks de hoy.", after: "home"};
+  if (key === "safe") return {send: B.safe || "Todavía no hay picks en esta sección.", after: "home", bets: B.safeBets, cmp: B.safeBets};
   if (key === "find") return {text: "🔎 Escríbeme el nombre de un jugador o equipo (ej. Doncic, Lakers, Real Madrid, América).", kb: {inline_keyboard: [[btn("🏠 Inicio", "home")]]}};
   if (a === "pl") { const p = ((B[b] || {}).find || []).find(x => x.aid === c); return p ? {send: p.txt, after: "home", bets: p.refs, cmp: p.refs} : {text: "Ese jugador ya no tiene props en la lista.", kb: HOME}; }
   if (key === "res:menu") return {text: "¿Quieres ver más detalle?", kb: {inline_keyboard: [[btn("📋 Ver los picks del último día", "res:d")], ...(B.resSoc ? [[btn("⚽ Soccer por liga", "res:s")]] : []), ...HOME.inline_keyboard]}};
@@ -459,7 +461,7 @@ export default {
     const work = (async () => {
       try {
         if (cb) { await tg(env, "answerCallbackQuery", {callback_query_id: cb.id, text: cb.data.startsWith("chk:") ? "Revisando en ESPN…" : undefined}); await handle(env, chat, cb.data, cb.message && cb.message.message_id); }
-        else if (env.BETS && !(await env.BETS.get(`kb1:${chat}`))) { await env.BETS.put(`kb1:${chat}`, "1");
+        else if (env.BETS && !(await env.BETS.get(`kb2:${chat}`))) { await env.BETS.put(`kb2:${chat}`, "1");
           await tg(env, "sendMessage", {chat_id: chat, text: "👇 Te dejé botones fijos abajo para no tener que escribir.", reply_markup: KB}); await handle(env, chat, intent(msg.text)); }
         else if (!(await oddsReply(env, chat, msg.text))) { const it = intent(msg.text), t = norm(msg.text);
           // Not a menu word and not a greeting: try it as a player or team name

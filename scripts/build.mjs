@@ -138,7 +138,7 @@ for (let i = 0; i < 10; i++) {
   const d = dloc(new Date(now.getTime() - i * 864e5).toISOString(), "America/Mexico_City"), s = read(`snap/${d}.json`, null);
   if (!s) continue;
   if (s.items.some(x => x.res == null)) { await step(`grade ${d}`, () => grade(s.items)); write(`snap/${d}.json`, s); }
-  days.push({date: d, items: s.items.map(x => ({sport: x.sport, lg: x.lg, kind: x.kind, n: x.n, t: x.t, lbl: x.lbl, p: x.p, g: x.g, m: x.m, s: x.s, k: x.k, side: x.side, bet: x.bet, pr: x.pr, cal: x.cal, role: x.role, mv: x.mv, hit: x.res ? x.res.hit : undefined, act: x.res ? x.res.act : undefined}))});
+  days.push({date: d, items: s.items.map(x => ({sport: x.sport, lg: x.lg, kind: x.kind, safe: x.safe, n: x.n, t: x.t, lbl: x.lbl, p: x.p, g: x.g, m: x.m, s: x.s, k: x.k, side: x.side, bet: x.bet, pr: x.pr, cal: x.cal, role: x.role, mv: x.mv, hit: x.res ? x.res.hit : undefined, act: x.res ? x.res.act : undefined}))});
 }
 // Days graded before this pipeline existed (or whose snapshot is gone) stay in the file
 const oldDays = read("results.json", {days: []}).days.filter(d => !days.some(x => x.date === d.date));

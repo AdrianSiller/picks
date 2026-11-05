@@ -445,6 +445,23 @@
     for (const c of [...B.filter(c => !M.isPl(c)), ...B.filter(M.isPl)]) { if (out.length >= max) break; if (main.c === c || seen.has(fam(c))) continue;
       if (M.isPl(c) && npl >= 2) continue; if (M.isPl(c)) npl++; seen.add(fam(c)); out.push({c, tier: M.socOk(c) ? "solid" : "fair"}); }
     return out; };
+  // 🛡️ Safest picks: only low-risk markets (double chance, a team scoring / a team under its goal line), 72%+, our model and the
+  // book within 4 points (nobody "sees more"), full history of both teams and no real substitutes on the side the pick depends on
+  M.socSafe = (cands, gi, g) => { if (!gi || !gi.H || !gi.A || Math.min(gi.H.n, gi.A.n) < 6) return [];
+    const subs = k => { const x = g && g.xi && g.xi[k]; return x ? x.miss.length - (x.depth || 0) : 0; }, fav = gi.fav;
+    return cands.filter(c => c.p && c.p >= 1.18 && c.pr >= 0.72 && c.mk != null && Math.abs(c.pm - c.mk) <= 0.04 && !c.thin && c.al !== 0 && M.socAligned(c, fav) &&
+      ((c.k === "dc" && subs(c.side === "1X" ? "h" : "a") < 3) || (c.k === "tt" && ((c.side === "U" && subs(c.team === "H" ? "h" : "a") < 6) || (c.side === "O" && c.line === 0.5 && subs(c.team === "H" ? "h" : "a") < 3)))))
+      .sort((a, b) => b.pr - a.pr).slice(0, 1); };
+  // NBA: unders of main-role players, 66%+, model and book within 5 points, not questionable, the usual (median) well under the line
+  M.nbaSafe = (cands) => cands.filter(c => c.p && c.s === "under" && c.role !== 0 && !c.q && !c.out && c.pr >= 0.66 && c.pm != null && c.mkB != null && Math.abs(c.pm - c.mkB) <= 0.05 && c.md10 != null && c.md10 <= c.l - Math.max(0.5, c.l * 0.12))
+    .sort((a, b) => b.pr - a.pr);
+  // Best 2- and 3-leg parlays from the safest picks (different games): highest chance that all legs hit
+  M.safeParlays = list => { const out = [], L = list.slice(0, 8);
+    for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { if (L[i].g === L[j].g) continue; out.push([L[i], L[j]]);
+      for (let k = j + 1; k < L.length; k++) if (L[k].g !== L[i].g && L[k].g !== L[j].g) out.push([L[i], L[j], L[k]]); }
+    const pr = a => a.reduce((s, c) => s * c.pr, 1), pz = a => a.reduce((s, c) => s * c.p, 1);
+    const best = n => out.filter(a => a.length === n).sort((a, b) => pr(b) - pr(a))[0];
+    return [best(2), best(3)].filter(Boolean).map(a => ({legs: a, pr: pr(a), p: pz(a)})); };
   M.socTop = (cands, gamesById, lg, n = 10) => { const out = [], per = {};
     for (const c of cands.filter(c => c.p && M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))) { if (lg && gamesById[c.g].lg !== lg) continue; if (per[c.g]) continue; per[c.g] = 1; out.push(c); if (out.length === n) break; }
     return out; };

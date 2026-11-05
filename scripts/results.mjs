@@ -31,6 +31,15 @@ export function snapshot(data, now, hours = 30) {
     // Every backed pick of each match (main one and the extras, e.g. player shots), with its tier
     for (const g of S.games) for (const gp of M.socGamePicks(B.cands.filter(c => c.g === g.id), GI[g.id])) if (gp.c) add(gp.c, gp.tier === "solid" ? "game" : "fair");
   }
+  // 🛡️ Safest picks: tracked with their own flag (and added if they were not a pick already) to see if they really hit more
+  { const S2 = data.soc; if (S2 && S2.games.length) { const B2 = M.buildSoccer(S2), GI2 = Object.fromEntries(B2.games.map(x => [x.id, x]));
+      for (const g of S2.games) { if (!soon(g)) continue; for (const c of M.socSafe(B2.cands.filter(c => c.g === g.id), GI2[g.id], g)) {
+        const ex = items.find(x => x.sport === "SOC" && x.g === c.g && x.k === c.k && x.side === c.side && x.team === c.team && (x.line ?? null) === (c.line ?? null));
+        if (ex) ex.safe = 1; else items.push({sport: "SOC", kind: "soc", lg: g.lg, d: g.date, pr: c.pr, cal: c.cal || 0, e: c.e, g: c.g, k: c.k, side: c.side, team: c.team, line: c.line, p: c.p, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: c.lbl, why: "safe", safe: 1}); } } }
+    const D2 = data.nba; if (D2 && D2.games.length) { const G2 = Object.fromEntries(D2.games.map(g => [g.id, g])), per = new Set();
+      for (const c of M.nbaSafe(D2.cands.filter(c => soon(G2[c.g])))) { if (per.has(c.aid) || per.size >= 6) continue; per.add(c.aid);
+        const ex = items.find(x => x.sport === "NBA" && x.kind === "prop" && x.aid === c.aid && x.m === c.m && x.s === c.s);
+        if (ex) ex.safe = 1; else items.push({sport: "NBA", kind: "prop", why: "safe", safe: 1, d: G2[c.g].date, g: c.g, aid: c.aid, n: c.n, t: c.t, pos: c.pos, m: c.m, l: c.l, s: c.s, p: c.p || null, pr: c.pr, e: c.e, cal: c.calAdj || 0}); } } }
   // Games this run looked at that have not started: their old picks are replaced (even when no pick is left)
   items.games = [...["nba", "nfl", "soc"].flatMap(k => ((data[k] || {}).games || []).filter(g => new Date(g.date) > now && new Date(g.date) - now < hours * 36e5).map(g => g.id))];
   return items;

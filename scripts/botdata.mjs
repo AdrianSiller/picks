@@ -348,7 +348,8 @@ function record(R) {
   };
   const day = days[0], when = d => new Date(d + "T12:00:00").toLocaleDateString("es-MX", {day: "numeric", month: "short"});
   const flat = ds => ds.flatMap(d => d.items), last7 = days.filter(d => (new Date(day.date) - new Date(d.date)) / 864e5 < 7), oldest = days[days.length - 1].date;
-  return ["<b>📊 Cómo nos fue</b>", "", block(`Último día (${when(day.date)})`, day.items), "", block("Últimos 7 días", flat(last7)), ...(days.length > last7.length ? ["", block(`Desde el ${when(oldest)}`, flat(days))] : []),
+  const safeAll = flat(days).filter(x => x.safe), sf = fmt(safeAll);
+  return ["<b>📊 Cómo nos fue</b>", ...(sf.d.length ? ["", `<b>🛡️ Más seguros: ${sf.txt}</b> · ${sf.u >= 0 ? "+" : ""}${sf.u.toFixed(1)} u <i>(desde que existe la sección)</i>`] : []), "", block(`Último día (${when(day.date)})`, day.items), "", block("Últimos 7 días", flat(last7)), ...(days.length > last7.length ? ["", block(`Desde el ${when(oldest)}`, flat(days))] : []),
     "", "<i>u = unidades: 1 por pick con el momio de DraftKings.</i>"].filter(x => x != null).join("\n");
 }
 
@@ -427,12 +428,34 @@ function today(snap, now) {
   return L.join("\n");
 }
 
+// 🛡️ Safest picks of the next ~30 hours (soccer + NBA), with their reasons and the best 2- and 3-leg parlays
+function safeView(latest, now) {
+  const soon = d => new Date(d) > now && new Date(d) - now < 30 * 36e5, list = [];
+  const S = latest.soc; if (S && S.games.length) { const B = M.buildSoccer(S), GM = Object.fromEntries(B.games.map(x => [x.id, x]));
+    for (const g of S.games.filter(g => soon(g.date))) for (const c of M.socSafe(B.cands.filter(c => c.g === g.id), GM[g.id], g)) {
+      const w = M.socWhy(S.teams, g, c, GM[g.id]), br = brief(S, g, c, GM[g.id]);
+      list.push({...c, sport: "SOC", g: g.id, d: g.date, head: `${g.lg === "Europa" ? "🟠" : g.lg === "Champions" ? "⭐" : "⚽"} ${g.away.abbr} @ ${g.home.abbr} · ${hora(g.date)}`, lbl: c.lbl, why: [br.t, w.lines.find(x => x.startsWith("Nuestro modelo"))].filter(Boolean), bet: socBet(g, c)}); } }
+  const D = latest.nba; if (D && D.cands) { const G = Object.fromEntries(D.games.map(g => [g.id, g])), per = new Set();
+    for (const c of M.nbaSafe(D.cands.filter(c => G[c.g] && soon(G[c.g].date)))) { if (per.has(c.aid) || per.size >= 6) continue; per.add(c.aid); const g = G[c.g];
+      list.push({...c, sport: "NBA", d: g.date, head: `🏀 ${g.away.abbr} @ ${g.home.abbr} · ${hora(g.date)}`, lbl: `${c.n} ${c.s === "over" ? "Over" : "Under"} ${c.l} ${SH[c.m] || c.m}`, why: [shortProp("NBA", c, D, g, 1)[0] ? shortProp("NBA", c, D, g, 1)[0].replace(/^- /, "") : "", `Modelo ${pct(c.pm)} · casa ${pct(c.mkB)}`].filter(Boolean), bet: propBet("NBA", c, g.date)}); } }
+  list.sort((a, b) => new Date(a.d) - new Date(b.d) || b.pr - a.pr);
+  if (!list.length) return {txt: "<b>🛡️ Más seguros</b>\n\nAhorita ningún pick cumple las reglas estrictas (72%+, modelo y casa de acuerdo, historial completo, sin suplentes). Mejor no forzar.", bets: []};
+  const L = ["<b>🛡️ Más seguros</b>", "<i>Solo mercados de bajo riesgo · 72%+ · modelo y casa de acuerdo · historial completo · sin suplentes</i>", ""];
+  let last = ""; for (const c of list) { if (c.head !== last) { L.push(...(last ? [""] : []), `<b>${esc(c.head)}</b>`); last = c.head; }
+    L.push(`🛡️ <b>${esc(c.lbl)}</b> · ${fx(c.p)} · ${pct(c.pr)}`, ...c.why.slice(0, 2).map(t => `   ↳ ${esc(t)}`)); }
+  const par = M.safeParlays(list);
+  if (par.length) L.push("", "<b>🧮 Parlays (máximo 3 patas)</b>", ...par.map(x => `${x.legs.length} patas: ${x.legs.map(c => esc(c.lbl)).join(" + ")}\n   ↳ peguen todas: <b>${pct(x.pr)}</b> · momio ~${fx(x.p)} (lo justo: ${fx(1 / x.pr)})${x.p * x.pr >= 0.97 ? "" : " · paga menos de lo que vale"}`));
+  L.push("", "<i>Pagan poco: un fallo se come 3 o 4 aciertos. Sueltos o parlays cortos, monto fijo.</i>");
+  return {txt: L.join("\n"), bets: list.map(c => c.bet), items: list};
+}
+
 export function botData(latest, R, now, snap) {
   const at = new Date(latest.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
   BETS = {};
   const startedOf = sp => ((snap && snap.items) || []).filter(x => x.sport === sp && new Date(x.d) <= now);
   const out = {v: 3, generatedAt: latest.generatedAt, foot: `<i>Datos de las ${at} · antes de apostar dale ↻ Actualizar en la app</i>`,
     nba: players("NBA", latest.nba, now, 30, startedOf("NBA")), nfl: players("NFL", latest.nfl, now, 24 * 6, startedOf("NFL")), soc: socDays(latest.soc, now, snap), res: record(R), resd: results(R), resSoc: recordSoc(R), hoy: today(snap, now)};
+  { const sv = safeView(latest, now); out.safe = sv.txt; out.safeBets = sv.bets; }
   out.bets = BETS;
   return out;
 }
