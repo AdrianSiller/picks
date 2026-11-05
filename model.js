@@ -169,6 +169,8 @@
 
   /* ---------- soccer ---------- */
   M.SOC_SKIP = new Set(["CUP", "QUAL", "FRI"]);
+  // Continental competitions: teams from leagues of very different level (league-level adjustment, more weight to the book)
+  M.UEFA = new Set(["Champions", "Europa"]);
   // "1 Up": the bet pays as a win if the team goes ahead by k (=1) goals at any moment of the match.
   // Goals arrive minute by minute (Poisson); we follow the score difference and stop when it reaches +k.
   M.everAhead = (lt, lo, k = 1, steps = 180) => {
@@ -228,7 +230,7 @@
     const strength = (abbr, lg) => {
       const rows = rowsOf(abbr), n = rows.length, mu = lgMu[lg], cm = lgC[lg], cr = rows.filter(valC), nc = cr.length;
       // Season xG (FotMob) is a steadier measure of how a team plays than goals: half the weight when we have 4+ matches of it
-      const X = (D.xg || {})[abbr], gA = (rows.reduce((s, r) => s + r[4], 0) + K * mu) / (n + K), gD = (rows.reduce((s, r) => s + r[5], 0) + K * mu) / (n + K), wx = X && X.p >= 4 && lg !== "Champions" ? 0.5 : 0; // Champions: xG from leagues of very different level is not comparable
+      const X = (D.xg || {})[abbr], gA = (rows.reduce((s, r) => s + r[4], 0) + K * mu) / (n + K), gD = (rows.reduce((s, r) => s + r[5], 0) + K * mu) / (n + K), wx = X && X.p >= 4 && !M.UEFA.has(lg) ? 0.5 : 0; // Champions: xG from leagues of very different level is not comparable
       return {n, x: X || null, att: (1 - wx) * gA + wx * (X ? X.xg : 0), def: (1 - wx) * gD + wx * (X ? X.xga : 0),
         cf: (cr.reduce((s, r) => s + r[6], 0) + K * cm) / (nc + K), ca: (cr.reduce((s, r) => s + r[7], 0) + K * cm) / (nc + K), nc};
     };
@@ -240,7 +242,7 @@
     for (const g of D.games) {
       const mu = lgMu[g.lg], H = strength(g.home.abbr, g.lg), A = strength(g.away.abbr, g.lg), L = g.lines || {};
       // Champions: scale attack up and defense down by the level of each team's league (goals in a weak league are worth less)
-      if (g.lg === "Champions" && M.SOC.alpha) for (const [T, ab] of [[H, g.home.abbr], [A, g.away.abbr]]) { const f = Math.pow(lvl(ab) / 0.88, M.SOC.alpha); T.att *= f; T.def /= f; T.lvl = lvl(ab); }
+      if (M.UEFA.has(g.lg) && M.SOC.alpha) for (const [T, ab] of [[H, g.home.abbr], [A, g.away.abbr]]) { const f = Math.pow(lvl(ab) / 0.88, M.SOC.alpha); T.att *= f; T.def /= f; T.lvl = lvl(ab); }
       // Rotation only when the lineup is confirmed (g.xi, from ↻ Actualizar): each usual starter missing weakens the team a little.
       // A Champions match nearby is only a warning, never assumed (the book already prices what it knows)
       const xi = g.xi || {}, tweak = (T, x) => { if (!x || !x.miss) return; const k = x.miss.length; T.att *= Math.max(0.85, 1 - 0.03 * k); T.def *= Math.min(1.12, 1 + 0.02 * k); };
@@ -258,14 +260,14 @@
       const nv2 = (a, b) => a && b ? (1 / a) / (1 / a + 1 / b) : null;
       // 1 Up anchored to the book: the goals each team is expected to score according to its 1X2 and total prices,
       // then the same minute-by-minute walk; mixed with the model's like every other market
-      const wM0 = g.lg === "Champions" ? M.SOC.wCL : M.SOC.w, mkL = M.mktLambdas(pn ? {...L, mlHome: pn.h, draw: pn.d, mlAway: pn.a} : L, pois);
+      const wM0 = M.UEFA.has(g.lg) ? M.SOC.wCL : M.SOC.w, mkL = M.mktLambdas(pn ? {...L, mlHome: pn.h, draw: pn.d, mlAway: pn.a} : L, pois);
       const up = (a, b) => M.everAhead(a, b, 1), u1H = mkL ? wM0 * up(lh, la) + (1 - wM0) * up(mkL.h, mkL.a) : up(lh, la), u1A = mkL ? wM0 * up(la, lh) + (1 - wM0) * up(mkL.a, mkL.h) : up(la, lh);
       const gi = {id: g.id, fav: M.socFav(L), lh, la, lc, pH, pD, pA, pBTTS: P((i, j) => i > 0 && j > 0), H, A, up1H: u1H, up1A: u1A, mkL};
       games.push(gi);
       // Model weight vs the market: lower in Champions, where teams come from leagues of very different level
-      const wM = g.lg === "Champions" ? M.SOC.wCL : M.SOC.w;
+      const wM = M.UEFA.has(g.lg) ? M.SOC.wCL : M.SOC.w;
       const cal = M.calAdj("SOC|soc");
-      const add = o => { const blend = clamp((o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7) + cal, 0.02, 0.98); cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, cal, ucl: g.lg === "Champions" ? 1 : 0, al: M.socAligned(o, M.socFav(L)) ? 1 : 0, thin: Math.min(H.n, A.n) < 6 ? 1 : 0, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
+      const add = o => { const blend = clamp((o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7) + cal, 0.02, 0.98); cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, cal, ucl: M.UEFA.has(g.lg) ? 1 : 0, al: M.socAligned(o, M.socFav(L)) ? 1 : 0, thin: Math.min(H.n, A.n) < 6 ? 1 : 0, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
       const hN = g.home.abbr, aN = g.away.abbr;
       // Early payout (2 goals up = won): the extra chance over just winning, from the book-anchored expected goals
       const upE = (a, b) => mkL ? Math.max(0, M.winOrUp(a, b, M.EARLY.SOC) - M.winOrUp(a, b, 99)) : 0, eH = mkL ? upE(mkL.h, mkL.a) : 0, eA = mkL ? upE(mkL.a, mkL.h) : 0;

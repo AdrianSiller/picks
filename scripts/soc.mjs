@@ -4,7 +4,7 @@ import {fotmobXG} from "./fotmob.mjs";
 
 const SITE = "https://site.api.espn.com/apis/site/v2/sports/soccer";
 const CORE = "https://sports.core.api.espn.com/v2/sports/soccer/leagues";
-const LEAGUES = [["mex.1", "Liga MX"], ["esp.1", "La Liga"], ["eng.1", "Premier"], ["ger.1", "Bundesliga"], ["ita.1", "Serie A"], ["fra.1", "Ligue 1"], ["uefa.champions", "Champions"]];
+const LEAGUES = [["mex.1", "Liga MX"], ["esp.1", "La Liga"], ["eng.1", "Premier"], ["ger.1", "Bundesliga"], ["ita.1", "Serie A"], ["fra.1", "Ligue 1"], ["uefa.champions", "Champions"], ["uefa.europa", "Europa"]];
 const CODE = {"mex.1": "LMX", "esp.1": "LL", "uefa.champions": "UCL", "uefa.europa": "UEL", "uefa.europa.conf": "UECL", "eng.1": "PL", "ger.1": "BUN", "ita.1": "SA", "fra.1": "L1",
   "por.1": "POR", "ned.1": "ERE", "tur.1": "TUR", "bel.1": "BEL", "aut.1": "AUT", "gre.1": "GRE", "nor.1": "NOR", "sco.1": "SCO", "den.1": "DEN", "sui.1": "SUI", "cze.1": "CZE",
   "concacaf.leagues.cup": "LC", "concacaf.champions": "CC", "usa.1": "MLS"};
@@ -121,10 +121,10 @@ export async function buildSOC(now = new Date(), nDays = 6) {
   });
   // Champions within a few days of a league match: rotation before it, fatigue after it
   const yr = now.getUTCFullYear(), full = md => { const d = new Date(`${yr}-${md}T12:00:00Z`); return d - now > 60 * 864e5 ? new Date(`${yr - 1}-${md}T12:00:00Z`) : d; };
-  for (const g of games.filter(g => g.lg !== "Champions")) {
+  for (const g of games.filter(g => g.lg !== "Champions" && g.lg !== "Europa")) {
     const gd = new Date(g.date), rot = {};
     for (const side of ["home", "away"]) {
-      const ab = g[side].abbr, next = games.find(x => x.lg === "Champions" && (x.home.abbr === ab || x.away.abbr === ab) && new Date(x.date) > gd);
+      const ab = g[side].abbr, next = games.find(x => (x.lg === "Champions" || x.lg === "Europa") && (x.home.abbr === ab || x.away.abbr === ab) && new Date(x.date) > gd);
       const dn = next ? (new Date(next.date) - gd) / 864e5 : 99;
       const prev = (teams[ab] || []).find(r => r[1] === "UCL"), dp = prev ? (gd - full(prev[0])) / 864e5 : 99;
       if (dn <= 4) rot[side[0]] = {next: Math.round(dn)}; else if (dp >= 0 && dp <= 3.5) rot[side[0]] = {prev: Math.round(dp)};

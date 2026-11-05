@@ -14,7 +14,7 @@ const gameLbl = l => l.replace(" (moneyline)", " ML").replace(" (spread)", "");
 const bestLine = g => { const b = g.best; if (!b || !(b.h || b.a)) return null;
   const it = [["h", g.home.abbr], ["d", "Empate"], ["a", g.away.abbr]].filter(([k]) => b[k]).map(([k, n]) => `${esc(n)} ${b[k].p.toFixed(2)} (${esc(b[k].bk)})`);
   return `💰 Mejor momio del mercado: ${it.join(" · ")}`; };
-export const LG = {"Liga MX": "mx", "La Liga": "esp", "Premier": "eng", "Bundesliga": "ger", "Serie A": "ita", "Ligue 1": "fra", "Champions": "ucl"};
+export const LG = {"Liga MX": "mx", "La Liga": "esp", "Premier": "eng", "Bundesliga": "ger", "Serie A": "ita", "Ligue 1": "fra", "Champions": "ucl", "Europa": "uel"};
 
 // Bets you can mark from the bot: each pick gets a short stable ref (same pick = same ref across builds) and the fields grading needs
 let BETS = {};
@@ -267,7 +267,7 @@ function soccer(S, now, hours, day, started = []) {
   const games = S.games.filter(g => new Date(g.date) > now && dlocMx(g.date) === day);
   if (!games.length && !started.length) return null;
   const B = M.buildSoccer(S), G = Object.fromEntries(S.games.map(g => [g.id, g])), GM = Object.fromEntries(B.games.map(x => [x.id, x]));
-  const FLAG = {"Liga MX": "🇲🇽", "La Liga": "🇪🇸", Premier: "🏴", Bundesliga: "🇩🇪", "Serie A": "🇮🇹", "Ligue 1": "🇫🇷", Champions: "⭐"};
+  const FLAG = {"Liga MX": "🇲🇽", "La Liga": "🇪🇸", Premier: "🏴", Bundesliga: "🇩🇪", "Serie A": "🇮🇹", "Ligue 1": "🇫🇷", Champions: "⭐", Europa: "🟠"};
   const row = c => { const g = G[c.g], br = brief(S, g, c, GM[g.id]); return [`${br.b} <b>${esc(c.lbl)}</b> · ${c.p ? (c.est ? "≈" : "") + fx(c.p) : "sin momio"} · ${pct(c.pr)}`, `${IND}<i>${esc(g.away.abbr)}@${esc(g.home.abbr)} ${hora(g.date).replace(/^\S+ /, "")}</i> · ${esc(br.t)}`].join("\n"); };
   const backed = c => brief(S, G[c.g], c, GM[c.g]).back !== "market";
   const out = {top: null, leagues: []};
@@ -349,7 +349,7 @@ function record(R) {
 // Soccer record by league (last 7 days and everything), each with its markets
 function recordSoc(R) {
   const days = (R.days || []).filter(d => d.items.some(x => x.sport === "SOC" && (x.hit === 0 || x.hit === 1))); if (!days.length) return "Todavía no hay resultados de soccer calificados.";
-  const FLAG = {"Liga MX": "🇲🇽", "La Liga": "🇪🇸", Premier: "🏴", Bundesliga: "🇩🇪", "Serie A": "🇮🇹", "Ligue 1": "🇫🇷", Champions: "⭐"};
+  const FLAG = {"Liga MX": "🇲🇽", "La Liga": "🇪🇸", Premier: "🏴", Bundesliga: "🇩🇪", "Serie A": "🇮🇹", "Ligue 1": "🇫🇷", Champions: "⭐", Europa: "🟠"};
   const SK = {"1x2": "Resultado", dc: "Doble oport.", dc1h: "Doble oport. 1T", hc: "Handicap", tot: "Goles", btts: "Ambos anotan", cor: "Corners", tt: "Goles por equipo"};
   const fmt = arr => { const w = arr.filter(x => x.hit).length, u = arr.reduce((s, x) => s + (x.hit ? (x.p || 1.91) - 1 : -1), 0); return {w, n: arr.length, u}; };
   const block = (title, items) => {

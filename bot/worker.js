@@ -7,7 +7,7 @@ const APP = "https://adriansiller.github.io/picks/";
 const btn = (text, data) => ({text, callback_data: data});
 const rows = (list, n) => { const out = []; for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n)); return out; };
 const HOME = {inline_keyboard: [[btn("🏀 NBA", "nba"), btn("🏈 NFL", "nfl"), btn("⚽ Soccer", "soc")], [btn("📊 Cómo nos fue", "res"), btn("🧾 Mis apuestas", "mine")], [btn("📋 Picks de hoy", "hoy"), btn("🔎 Buscar", "find")], [btn("🔔 Avisos", "av")]]};
-const LGN = {mx: "🇲🇽 Liga MX", esp: "🇪🇸 La Liga", eng: "🏴 Premier", ger: "🇩🇪 Bundesliga", ita: "🇮🇹 Serie A", fra: "🇫🇷 Ligue 1", ucl: "⭐ Champions"};
+const LGN = {mx: "🇲🇽 Liga MX", esp: "🇪🇸 La Liga", eng: "🏴 Premier", ger: "🇩🇪 Bundesliga", ita: "🇮🇹 Serie A", fra: "🇫🇷 Ligue 1", ucl: "⭐ Champions", uel: "🟠 Europa League"};
 
 // Free text -> menu key; null = main menu
 function intent(t) {
