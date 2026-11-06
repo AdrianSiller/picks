@@ -251,6 +251,7 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
 .sp{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .sp b{font-weight:600}.sp small{display:block;color:var(--muted);font-size:12px}.sp .px{font:600 14px var(--f-mono);white-space:nowrap;text-align:right}
 /* team crests */
+.crs2{display:inline-flex;gap:4px;vertical-align:-6px;margin-right:6px}.crs2 img{width:24px;height:24px;object-fit:contain}
 .crest{width:38px;height:38px;object-fit:contain;display:block;margin-bottom:4px}
 .team[style*="right"] .crest{margin-left:auto}
 .team{font-size:22px}
@@ -297,11 +298,11 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
 <footer class="ver">Versión de la app: 6 nov 11:30 a.m. · diseño v2</footer>
-<script src="model.js?v=20261106-1150"></script>
+<script src="model.js?v=20261106-1225"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261106-1150";
+const APP_VERSION = "20261106-1225";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -424,7 +425,7 @@ function socCard(c, i) {
     <div class="row">
       ${i != null ? `<div class="rank">${i + 1}</div>` : ""}
       <div class="main">
-        <div class="who">${esc(g.away.name)} @ ${esc(g.home.name)}</div>
+        <div class="who"><span class="crs2">${crest(g.away, "soc", "")}${crest(g.home, "soc", "")}</span>${esc(g.away.name)} @ ${esc(g.home.name)}</div>
         <div class="team-line">${esc(LGSHORT[g.lg] || g.lg)}</div>
         <div class="meta">${socWhen(g.date)}</div>
         <div class="pick">${esc(c.lbl)}</div>
@@ -792,9 +793,9 @@ function pickCard(c, i) {
     <div class="row">
       ${i != null ? `<div class="rank">${i + 1}</div>` : ""}
       <div class="main">
-        <div class="who">${esc(c.n)}</div>
+        <div class="who"><span class="crs2">${crest({abbr: c.t}, S.name.toLowerCase(), "")}</span>${esc(c.n)}</div>
         <div class="team-line">${esc(tname(c.t))} · ${POS[c.pos] || c.pos}</div>
-        <div class="meta">${c.h ? "En casa vs" : "De visita en"} ${esc(tname(c.o))} · ${time(games[c.g].date)}</div>
+        <div class="meta">${c.h ? "En casa vs" : "De visita en"} <span class="crs2" style="vertical-align:-5px;margin:0 2px">${crest({abbr: c.o}, S.name.toLowerCase(), "")}</span>${esc(tname(c.o))} · ${time(games[c.g].date)}</div>
         <div class="pick">${pickLbl(c)}</div>
         ${reasonsShort(c)}
       </div>
@@ -1197,8 +1198,8 @@ function wireFilters(v) {
 }
 // Team crests: ESPN's (in the data), FotMob's by team id for soccer, ESPN by abbreviation for NBA / NFL
 const FMT = (await getData("data/fm/teams.json")) || {};
-const crest = (T, sp) => { const u = T.logo || (sp === "soc" ? (FMT[T.abbr] ? `https://images.fotmob.com/image_resources/logo/teamlogo/${FMT[T.abbr].id}.png` : "") : `https://a.espncdn.com/i/teamlogos/${sp}/500/${String(T.abbr).toLowerCase()}.png`);
-  return u ? `<img class="crest" src="${u}" alt="" loading="lazy" onerror="this.remove()">` : ""; };
+const crest = (T, sp, cls = "crest") => { const u = T.logo || (sp === "soc" ? (FMT[T.abbr] ? `https://images.fotmob.com/image_resources/logo/teamlogo/${FMT[T.abbr].id}.png` : "") : `https://a.espncdn.com/i/teamlogos/${sp}/500/${String(T.abbr).toLowerCase()}.png`);
+  return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy" onerror="this.remove()">` : ""; };
 // Calificación: our model vs the book vs a coin (all graded candidates), and "when to believe it" (our picks by confidence)
 async function viewGrade() {
   const days = []; for (let i = 1; i <= 10; i++) { const d = new Date(Date.now() - i * 864e5).toLocaleDateString("en-CA", {timeZone: TZ}); const j = await getData(`data/cands/${d}.json`); if (j) days.push(j); }
@@ -1252,8 +1253,8 @@ const quickToggle = () => `<div class="qtog"><button data-q="1" class="${quick ?
 // ---- 🛡️ Más seguros (top of Top 10): strict rules, plus the best 2- and 3-leg parlays ----
 function safeHtml() {
   const soon = d => new Date(d) > Date.now() && new Date(d) - Date.now() < 30 * 36e5, list = [];
-  if (S.custom) { for (const g of SOC_DATA.games.filter(g => soon(g.date) && (!filt.lg || g.lg === filt.lg))) for (const c of M.socSafe(SOC.cands.filter(c => c.g === g.id), socModel[g.id], g)) list.push({...c, d: g.date, m2: `${g.away.abbr} @ ${g.home.abbr} · ${g.lg}`, lbl2: qShort(c.lbl), why: M.socWhy(SOC_DATA.teams, g, c, socModel[g.id]).lines[0] || ""}); }
-  else if (S.name === "NBA") { const per = new Set(); for (const c of M.nbaSafe(DATA.cands.filter(c => games[c.g] && soon(games[c.g].date)))) { if (per.has(c.aid) || per.size >= 6) continue; per.add(c.aid); const g = games[c.g];
+  if (S.custom) { for (const g of SOC_DATA.games.filter(g => soon(g.date) && inDay(g) && (!filt.lg || g.lg === filt.lg))) for (const c of M.socSafe(SOC.cands.filter(c => c.g === g.id), socModel[g.id], g)) list.push({...c, d: g.date, m2: `${g.away.abbr} @ ${g.home.abbr} · ${g.lg}`, lbl2: qShort(c.lbl), why: M.socWhy(SOC_DATA.teams, g, c, socModel[g.id]).lines[0] || ""}); }
+  else if (S.name === "NBA") { const per = new Set(); for (const c of M.nbaSafe(DATA.cands.filter(c => games[c.g] && soon(games[c.g].date) && inDay(games[c.g])))) { if (per.has(c.aid) || per.size >= 6) continue; per.add(c.aid); const g = games[c.g];
     list.push({...c, d: g.date, m2: `${g.away.abbr} @ ${g.home.abbr}`, lbl2: `${c.n} menos de ${c.l} ${MK[c.m].lbl}`, why: c.h10 ? `Pasó ${c.h10[0]} de ${c.h10[1]} · lo normal en él: ${c.md10}` : ""}); } }
   if (!list.length) return "";
   list.sort((a, b) => new Date(a.d) - new Date(b.d)); const par = M.safeParlays(list);
@@ -1282,7 +1283,7 @@ function wireQuick(v) {
 }
 function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""};
   // Soccer opens on today's matches (or the next day with matches); other days only when picked
-  if (key === "soc") { const d0 = dayKey(new Date()), ds = [...new Set(SOC_DATA.games.map(g => dayKey(g.date)))].sort(); filt.day = ds.includes(d0) ? d0 : ds[0] || ""; } setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Revisado en vivo a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
+  { const d0 = dayKey(new Date()), gs = key === "soc" ? SOC_DATA.games : ((SPORTS[key].data || {}).games || []), ds = [...new Set(gs.filter(g => new Date(g.date) > Date.now() - 3 * 36e5).map(g => dayKey(g.date)))].sort(); filt.day = ds.includes(d0) ? d0 : ds[0] || ""; } setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Revisado en vivo a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
 ["picks", "games", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
 ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).addEventListener("click", () => sport(k)));
 try { curTab = localStorage.getItem("tab") || "picks"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
