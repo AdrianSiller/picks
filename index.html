@@ -114,7 +114,7 @@ svg text{font-family:var(--f-mono)}
 .tb-h b{font-family:var(--f-display);font-size:16px;color:var(--team)}
 .tb-h span{font-family:var(--f-mono);font-size:13px}
 .tb .l5{margin-top:4px;gap:3px}
-.tb .l5 i{min-width:0;flex:1;font-size:11.5px;padding:0 2px;height:22px;line-height:22px}
+.tb .l5 i{min-width:0;flex:1;font-size:11px;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;padding:0 1px;height:22px;line-height:22px}
 .tb .l5 i.n{background:var(--surface)}
 .tb .l5-note{display:none}
 .l5-legend{font-size:10.5px;color:var(--muted);margin-top:3px}
@@ -297,12 +297,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 6 nov 12:30 p.m. · diseño v2</footer>
-<script src="model.js?v=20261106-1230"></script>
+<footer class="ver">Versión de la app: 6 nov 12:35 p.m. · diseño v2</footer>
+<script src="model.js?v=20261106-1235"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261106-1230";
+const APP_VERSION = "20261106-1235";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -386,6 +386,15 @@ function socHit(c, r, side) {
   return null;
 }
 function socChipVal(c, r, side) { return c.k === "cor" ? (r[6] + r[7] || "–") : c.k === "tot" ? r[4] + r[5] : c.k === "tt" ? ((c.team === "H") === (side === "home") ? r[4] : r[5]) : `${r[4]}-${r[5]}`; }
+// Player props: his own last matches (shots / on target / goals) instead of the teams' scores, which say nothing about him
+function socBlocks(c) {
+  if (c.k === "psot" || c.k === "pshot" || c.k === "pgoal") { const P = (SOC_DATA.players || {})[c.aid]; if (!P) return "";
+    const col = c.k === "psot" ? 1 : c.k === "pshot" ? 2 : 4, need = c.k === "pgoal" ? 1 : c.line, rows = P.rows.slice(0, 8).reverse(), hit = P.rows.filter(r => r[col] >= need).length;
+    const what = c.k === "psot" ? "tiros a puerta" : c.k === "pshot" ? "tiros" : "goles";
+    return `<div class="tbs" style="grid-template-columns:1fr"><div class="tb"><div class="tb-h"><b>${esc(P.n)} · ${what}</b><span>${hit} de ${P.rows.length} llegó a ${need}+</span></div>
+      <div class="l5">${rows.map(r => `<i class="${r[col] >= need ? "y" : "n"}" title="${esc(r[0].slice(5, 10))}${r[3] ? "" : " (suplente)"}">${r[col]}</i>`).join("")}</div><div class="l5-legend">Sus últimos ${rows.length} partidos, del más viejo al más reciente</div></div></div>`; }
+  return `<div class="tbs">${socTeamBlock(c, "away")}${socTeamBlock(c, "home")}</div>`;
+}
 function socTeamBlock(c, side) {
   const g = socGames[c.g], t = g[side], rows = SOC.rowsOf(t.abbr);
   const hits = rows.map(r => socHit(c, r, side)).filter(x => x !== null), n = hits.length, h = hits.filter(Boolean).length;
@@ -432,7 +441,7 @@ function socCard(c, i) {
       </div>
       <div class="price"><small>Momio</small><b>${c.p ? (c.est ? "≈" : "") + fx(c.p) : "—"}</b><small class="nop">${c.p ? esc(c.bk || "DraftKings") : "en tu casa"}</small></div>
     </div>
-    <div class="tbs">${socTeamBlock(c, "away")}${socTeamBlock(c, "home")}</div>
+    ${socBlocks(c)}
     <div class="prob">
       <div class="bar"><i style="width:${c.pr * 100}%"></i>${c.imp ? `<u style="left:${c.imp * 100}%"></u>` : ""}</div>
       <div class="probtxt"><span>Probabilidad estimada <b>${pct(c.pr)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / c.pr)}</b> o más</span></div>
