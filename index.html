@@ -298,12 +298,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 6 nov 3:05 p.m. · diseño v2</footer>
-<script src="model.js?v=20261106-1505"></script>
+<footer class="ver">Versión de la app: 6 nov 3:10 p.m. · diseño v2</footer>
+<script src="model.js?v=20261106-1510"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261106-1505";
+const APP_VERSION = "20261106-1510";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1298,7 +1298,8 @@ async function viewToday() {
     if (x.bet === "ml") return x.side === "H" ? h > a : a > h; if (x.bet === "sp") return (x.side === "H" ? h - a : a - h) + x.line > 0; if (x.bet === "tot") return x.side === "O" ? h + a > x.line : h + a < x.line; return null; };
   const val = x => { const L = live[x.g]; if (!L) return ""; if (x.kind === "prop") { const p = L.pl[x.aid]; return p && p[x.m] != null ? ` · lleva ${p[x.m]}` : ""; } if (["psot", "pshot", "pgoal"].includes(x.k)) { const p = L.pl[x.aid]; return p ? ` · lleva ${x.k === "psot" ? p.sot : x.k === "pshot" ? p.sh : p.g}` : ""; } return ""; };
   let W = 0, F = 0;
-  const rowsHtml = it.map(x => { const L = live[x.g], started = new Date(x.d) <= now, res = x.res && x.res.hit != null ? x.res.hit : null, j = res != null ? !!res : started ? judge(x) : null, done = res != null || (L && L.done);
+  const grp = {up: [], live: [], done: []};
+  it.forEach(x => { const L = live[x.g], started = new Date(x.d) <= now, res = x.res && x.res.hit != null ? x.res.hit : null, j = res != null ? !!res : started ? judge(x) : null, done = res != null || (L && L.done);
     if (done && j != null) j ? W++ : F++;
     const st = !started ? `<span class="chip" style="background:var(--accent-soft)">🔜 ${esc(new Date(x.d).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ}))}</span>`
       : done ? (j == null ? `<span class="chip">➖ terminado</span>` : j ? `<span class="chip c-good">✅ pegó</span>` : `<span class="chip" style="background:#f2d8d4;color:var(--bad)">❌ falló</span>`)
@@ -1306,7 +1307,9 @@ async function viewToday() {
     const score = L ? `${esc(L.aa)} ${L.a} · ${esc(L.ha)} ${L.h} · ${esc(L.clock || "")}` : esc(x.kind === "prop" ? (x.t || "") : (x.n || ""));
     const lbl = x.kind === "prop" ? `${x.n} ${x.lbl}` : x.lbl, sp = x.sport === "SOC" ? "soc" : x.sport.toLowerCase();
     const cr = L ? `<span class="crs2">${crest({abbr: L.aa, logo: L.A.logo}, sp, "")}${crest({abbr: L.ha, logo: L.H.logo}, sp, "")}</span>` : "";
-    return `<div class="sp"><span><b>${x.safe ? "🛡️ " : ""}${esc(lbl)}</b><small>${cr}${score}${esc(val(x))}</small></span><span class="px">${st}<br><span style="font-size:12px">${fx(x.p)} · ${Math.round(x.pr * 100)}%</span></span></div>`; });
+    grp[!started ? "up" : done ? "done" : "live"].push(`<div class="sp"><span><b>${x.safe ? "🛡️ " : ""}${esc(lbl)}</b><small>${cr}${score}${esc(val(x))}</small></span><span class="px">${st}<br><span style="font-size:12px">${fx(x.p)} · ${Math.round(x.pr * 100)}%</span></span></div>`); });
+  const sec = (t, a) => a.length ? `<div class="qday" style="margin-top:14px">${t} (${a.length})</div>${a.join("")}` : "";
+  const rowsHtml = [sec("🔜 Por empezar", grp.up), sec("⏳ En vivo", grp.live), sec("🏁 Finalizados", grp.done)];
   return `<div class="safebox"><h3>📋 Picks de hoy</h3><p class="lead">Todos los picks registrados hoy (NBA, NFL y soccer), con el marcador en vivo. ⏳ = provisional mientras se juega.</p>
     <div class="gbig" style="margin:8px 0"><div><b>${W}</b><small>pegaron</small></div><div class="${F > W ? "warn" : ""}"><b>${F}</b><small>fallaron</small></div></div>
     ${rowsHtml.join("")}<p class="lead" style="margin-top:8px"><button class="rbtn" id="t-re" type="button">↻ Revisar marcadores</button></p></div>`;
