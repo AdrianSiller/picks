@@ -286,7 +286,7 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
       <button class="sport" role="tab" id="s-soc" aria-selected="false">Soccer</button>
     </div>
     <div class="src" id="src"></div>
-    <div class="refresh"><button class="rbtn" id="refresh" type="button">↻ Actualizar</button><button class="rbtn" id="rebuild" type="button">⟳ Recalcular todo</button><span class="rstat" id="rstat"></span></div>
+    <div class="refresh"><button class="rbtn" id="refresh" type="button">↻ Actualizar</button><span class="rstat" id="rstat"></span></div>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="t-picks" aria-selected="true">Top 10</button>
       <button class="tab" role="tab" id="t-games" aria-selected="false">Partidos</button>
@@ -297,12 +297,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 6 nov 12:50 p.m. · diseño v2</footer>
-<script src="model.js?v=20261106-1250"></script>
+<footer class="ver">Versión de la app: 6 nov 12:55 p.m. · diseño v2</footer>
+<script src="model.js?v=20261106-1255"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261106-1250";
+const APP_VERSION = "20261106-1255";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1009,7 +1009,7 @@ function changesHtml() {
   return `<details class="card changes" style="cursor:default"${list.length ? " open" : ""}><summary>${list.length ? `${R.changes.length} cambio${R.changes.length > 1 ? "s" : ""} desde la carga` : "Sin cambios: todo sigue igual"}</summary>
     ${list.length ? `<ul>${list.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${R.changes.length > 25 ? `<div class="meta">y ${R.changes.length - 25} más</div>` : ""}</details>`;
 }
-document.getElementById("refresh").addEventListener("click", refresh);
+document.getElementById("refresh").addEventListener("click", () => { refresh(); rebuild(); });
 
 /* ---------- views ---------- */
 const topNow = () => filt.day ? M.topPicks(DATA.cands.filter(c => games[c.g] && inDay(games[c.g])), S.name) : topPicks;
@@ -1273,8 +1273,9 @@ function safeHtml() {
     <p class="lead" style="margin-top:6px">Pagan poco: un fallo se come 3 o 4 aciertos. Sueltos o parlays cortos, monto fijo.</p></div>`;
 }
 // ⟳ Recalcular todo: asks the bot's server to start the full build (momios, lesiones, alineaciones, modelo)
-document.getElementById("rebuild").addEventListener("click", async () => { const st = document.getElementById("rstat"); st.textContent = "Pidiendo…";
-  try { const r = await fetch("https://picks-bot.adrian-rmzsiller.workers.dev/rebuild", {method: "POST"}); const j = await r.json(); st.textContent = j.msg; } catch (e) { st.textContent = "No se pudo; intenta en un rato."; } });
+// ↻ Actualizar also starts the full recalculation (momios, lesiones, alineaciones, modelo) on the server, ~5 min
+async function rebuild() { try { const r = await fetch("https://picks-bot.adrian-rmzsiller.workers.dev/rebuild", {method: "POST"}); const j = await r.json();
+  const n = document.getElementById("rnote") || Object.assign(document.createElement("div"), {id: "rnote", className: "lead"}); n.textContent = "🔄 " + j.msg; document.querySelector(".refresh").after(n); } catch (e) {} }
 let curTab = "picks", curSport = "nba";
 function show(name) {
   curTab = name;
