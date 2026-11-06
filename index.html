@@ -226,6 +226,30 @@ h1 span{color:var(--accent)}
 .gpick-h{color:var(--accent);font-family:var(--f-mono);letter-spacing:.08em}
 .gpick .bk.ok{color:var(--good)}.gpick .bk.mk{color:var(--warn)}
 h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
+/* quick view: one block per match (Partido · Pick · Confianza) */
+.qtog{display:flex;gap:6px;margin:2px 0 4px}.qtog button{flex:1;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:7px;font:600 11.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.qtog button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.qday{font:700 12px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;margin:10px 0 0}
+.blk{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px 12px;cursor:pointer;text-align:left;width:100%;color:inherit;font:inherit;display:block}
+.blk.off{opacity:.6}
+.m-top{display:flex;justify-content:space-between;font:600 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.m-vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin:6px 0 8px}
+.m-vs .tm{display:flex;align-items:center;gap:8px}.m-vs .tm.r{justify-content:flex-end}
+.m-vs .tm b{font:700 21px var(--f-display);letter-spacing:.02em}.m-vs .vx{font:500 12px var(--f-mono);color:var(--muted);padding:0 6px}
+.m-vs .crest{width:40px;height:40px;margin:0}
+.m-pick,.m-conf{display:grid;grid-template-columns:78px 1fr auto;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--line)}
+.m-conf{grid-template-columns:78px auto 1fr 44px}
+.m-pick .k,.m-conf .k{font:600 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.m-pick b{font:600 15.5px var(--f-body);line-height:1.25}.m-pick b.no{font-weight:500;color:var(--muted);font-size:13.5px}
+.m-pick .px{font:600 15px var(--f-mono)}
+.m-conf i{font-style:normal;font:600 10.5px var(--f-mono);padding:2px 6px;border-radius:3px;white-space:nowrap}
+.m-conf .pct{font:600 15px var(--f-mono);text-align:right}
+.m-conf .bar{height:9px}.m-conf .bar.safe i{background:var(--ink)}.m-conf .bar.mid i{background:var(--mid)}
+.t-safe{background:var(--ink);color:var(--bg)}.t-ok{background:var(--accent);color:var(--bg)}.t-mid{background:var(--mid);color:#29241d}
+.safebox{border:1.5px solid var(--ink);border-radius:10px;padding:12px;background:var(--surface)}
+.safebox h3{margin:0 0 2px;font:700 18px var(--f-display)}.safebox .lead{margin-bottom:6px}
+.sp{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.sp b{font-weight:600}.sp small{display:block;color:var(--muted);font-size:12px}.sp .px{font:600 14px var(--f-mono);white-space:nowrap;text-align:right}
 /* team crests */
 .crest{width:38px;height:38px;object-fit:contain;display:block;margin-bottom:4px}
 .team[style*="right"] .crest{margin-left:auto}
@@ -273,11 +297,11 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
 <footer class="ver">Versión de la app: 6 nov 11:30 a.m. · diseño v2</footer>
-<script src="model.js?v=20261106-1130"></script>
+<script src="model.js?v=20261106-1145"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261106-1130";
+const APP_VERSION = "20261106-1145";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1194,6 +1218,50 @@ async function viewGrade() {
     <div class="relx">${bins.map(b => `<span><b>${b.w}-${b.n - b.w}</b>${b.l}<br>${b.n} picks</span>`).join("")}</div>
     <p class="lead" style="text-align:center;margin-top:8px">Barra = lo que acertó · línea = lo que prometió. Rojo: pega bastante menos de lo que dice.</p>`;
 }
+// ---- Quick view (Partidos): one block per match with its pick and how backed it is; tap = full detail of that match ----
+let quick = true; try { quick = localStorage.getItem("quick") !== "0"; } catch (e) {}
+const QT = {safe: ["t-safe", "🛡 seguro"], ok: ["t-ok", "respaldado"], mid: ["t-mid", "paga lo justo"]};
+const qPick = (lbl, price, pr, tier) => { const [tc, tt] = QT[tier]; return `<div class="m-pick"><span class="k">Pick</span><b>${esc(lbl)}</b><span class="px">${price}</span></div>
+  <div class="m-conf"><span class="k">Confianza</span><i class="${tc}">${tt}</i><span class="bar ${tier}"><i style="width:${Math.round(pr * 100)}%"></i></span><span class="pct">${Math.round(pr * 100)}%</span></div>`; };
+const qHead = (g, sp, lg) => `<div class="m-top"><span>${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}</span><span>${esc(lg || "")}</span></div>
+  <div class="m-vs"><span class="tm">${crest(g.away, sp)}<b>${esc(g.away.abbr)}</b></span><span class="vx">vs</span><span class="tm r"><b>${esc(g.home.abbr)}</b>${crest(g.home, sp)}</span></div>`;
+const qShort = l => String(l).replace(" tiros a puerta", " a puerta").replace("Ambos anotan: Sí", "Ambos anotan");
+function quickHtml() {
+  const out = [], days = {};
+  if (S.custom) {
+    for (const g of SOC_DATA.games.filter(g => (!filt.lg || g.lg === filt.lg) && inDay(g) && new Date(g.date) > Date.now() - 2.5 * 36e5).sort((a, b) => new Date(a.date) - new Date(b.date))) {
+      const cs = SOC.cands.filter(c => c.g === g.id), gi = socModel[g.id], gps = M.socGamePicks(cs, gi), safe = M.socSafe(cs, gi, g);
+      const main = safe[0] || (gps[0] && gps[0].c) || null, up = !main && gps[0] && gps[0].up1 ? gps[0].up1 : null, w = main && M.socWhy(SOC_DATA.teams, g, main, gi);
+      const tier = !main ? "mid" : safe[0] === main ? "safe" : (w.back === "ok" || w.back === "form") ? "ok" : "mid";
+      const body = main ? qPick(qShort(main.lbl), fx(main.p), main.pr, tier) : up ? qPick(`1 Up ${up.side === "H" ? g.home.abbr : g.away.abbr}`, "≈" + fx(1 / (up.pr * 1.06)), up.pr, "mid") : `<div class="m-pick"><span class="k">Pick</span><b class="no">Sin pick: nada pasa los filtros</b></div>`;
+      (days[dayKey(g.date)] = days[dayKey(g.date)] || []).push(`<button class="blk${main || up ? "" : " off"}" data-qg="${g.id}">${qHead(g, "soc", g.lg)}${body}</button>`); }
+  } else {
+    const sp = S.name.toLowerCase(), list = DATA.games.filter(g => inDay(g) && new Date(g.date) > Date.now() - 3 * 36e5).sort((a, b) => new Date(a.date) - new Date(b.date));
+    const top = M.topPicks(DATA.cands, S.name), prob = M.probables(DATA.cands, S.name, 6, top), safe = S.name === "NBA" ? M.nbaSafe(DATA.cands) : [];
+    for (const g of list) { const parts = [];
+      if (S.teams && S.teams[g.home.abbr] && S.teams[g.away.abbr]) { const m = gameModel(g);
+        if (m.play) parts.push(qPick(m.best.lbl.replace(" (moneyline)", " (ML)"), fx(m.best.price), m.best.p, "ok"));
+        if (m.tot && m.tot.play) parts.push(qPick(`Total ${m.tot.best.lbl.replace("Over", "más de").replace("Under", "menos de")}`, fx(m.tot.best.price), m.tot.best.p, "ok")); }
+      for (const c of [...top, ...prob].filter(c => c.g === g.id).sort((a, b) => b.pr - a.pr).slice(0, 3)) parts.push(qPick(`${c.n} ${c.m === "ATD" ? "anota TD" : (c.s === "over" ? "más de " : "menos de ") + c.l + " " + MK[c.m].lbl}`, fx(c.p), c.pr, safe.includes(c) ? "safe" : top.includes(c) ? "ok" : "mid"));
+      (days[dayKey(g.date)] = days[dayKey(g.date)] || []).push(`<button class="blk${parts.length ? "" : " off"}" data-qg="${g.id}">${qHead(g, sp, S.name)}${parts.join("") || `<div class="m-pick"><span class="k">Pick</span><b class="no">Sin pick: nada pasa los filtros</b></div>`}</button>`); }
+  }
+  for (const [k, arr] of Object.entries(days).sort()) out.push(`<div class="qday">${esc(dayLbl(k))}</div>`, ...arr);
+  return out.length ? out.join("") : `<div class="card meta" style="cursor:default">No hay partidos con estos filtros.</div>`;
+}
+const quickToggle = () => `<div class="qtog"><button data-q="1" class="${quick ? "on" : ""}">Vista rápida</button><button data-q="0" class="${quick ? "" : "on"}">Detalle</button></div>`;
+// ---- 🛡️ Más seguros (top of Top 10): strict rules, plus the best 2- and 3-leg parlays ----
+function safeHtml() {
+  const soon = d => new Date(d) > Date.now() && new Date(d) - Date.now() < 30 * 36e5, list = [];
+  if (S.custom) { for (const g of SOC_DATA.games.filter(g => soon(g.date) && (!filt.lg || g.lg === filt.lg))) for (const c of M.socSafe(SOC.cands.filter(c => c.g === g.id), socModel[g.id], g)) list.push({...c, d: g.date, m2: `${g.away.abbr} @ ${g.home.abbr} · ${g.lg}`, lbl2: qShort(c.lbl), why: M.socWhy(SOC_DATA.teams, g, c, socModel[g.id]).lines[0] || ""}); }
+  else if (S.name === "NBA") { const per = new Set(); for (const c of M.nbaSafe(DATA.cands.filter(c => games[c.g] && soon(games[c.g].date)))) { if (per.has(c.aid) || per.size >= 6) continue; per.add(c.aid); const g = games[c.g];
+    list.push({...c, d: g.date, m2: `${g.away.abbr} @ ${g.home.abbr}`, lbl2: `${c.n} menos de ${c.l} ${MK[c.m].lbl}`, why: c.h10 ? `Pasó ${c.h10[0]} de ${c.h10[1]} · lo normal en él: ${c.md10}` : ""}); } }
+  if (!list.length) return "";
+  list.sort((a, b) => new Date(a.d) - new Date(b.d)); const par = M.safeParlays(list);
+  return `<div class="safebox"><h3>🛡️ Más seguros</h3><p class="lead">Mercados de bajo riesgo · 72%+ · modelo y casa de acuerdo · historial completo · sin suplentes</p>
+    ${list.map(c => `<div class="sp"><span><b>${esc(c.lbl2)}</b><small>${esc(c.m2)} · ${esc(new Date(c.d).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ}))}${c.why ? " · " + esc(c.why) : ""}</small></span><span class="px">${fx(c.p)}<br>${Math.round(c.pr * 100)}%</span></div>`).join("")}
+    ${par.length ? `<div class="sp" style="border-top:1.5px solid var(--ink)"><span><b>🧮 Parlays (máximo 3 patas)</b></span></div>` + par.map(x => `<div class="sp"><span><b>${x.legs.length} patas</b><small>${x.legs.map(c => esc(c.lbl2)).join(" + ")}</small></span><span class="px">${fx(x.p)}<br>${Math.round(x.pr * 100)}%</span></div>`).join("") : ""}
+    <p class="lead" style="margin-top:6px">Pagan poco: un fallo se come 3 o 4 aciertos. Sueltos o parlays cortos, monto fijo.</p></div>`;
+}
 let curTab = "picks", curSport = "nba";
 function show(name) {
   curTab = name;
@@ -1201,10 +1269,16 @@ function show(name) {
   const v = document.getElementById("view");
   if (name === "grade") { v.innerHTML = `<div class="loading">Calculando…</div>`; viewGrade().then(h => { if (curTab === "grade") v.innerHTML = h; }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "perf") { v.innerHTML = viewPerf(); try { localStorage.setItem("tab", name); } catch (e) {} return; }
-  if (S.custom) { v.innerHTML = changesHtml() + filterBar() + S.views[name]() + socMethod(); socWire(v); }
-  else { v.innerHTML = changesHtml() + filterBar() + views[name]() + methodHtml(); wire(v); }
-  wireFilters(v);
+  if (name === "games" && quick && !filt.game) { v.innerHTML = changesHtml() + filterBar() + quickToggle() + quickHtml(); wireFilters(v); wireQuick(v); try { localStorage.setItem("tab", name); } catch (e) {} return; }
+  const pre = (name === "picks" && !filt.game ? safeHtml() : "") + (name === "games" ? quickToggle() : "");
+  if (S.custom) { v.innerHTML = changesHtml() + filterBar() + pre + S.views[name]() + socMethod(); socWire(v); }
+  else { v.innerHTML = changesHtml() + filterBar() + pre + views[name]() + methodHtml(); wire(v); }
+  wireFilters(v); wireQuick(v);
   try { localStorage.setItem("tab", name); localStorage.setItem("sport", curSport); } catch (e) {}
+}
+function wireQuick(v) {
+  v.querySelectorAll("[data-q]").forEach(b => b.addEventListener("click", () => { quick = b.dataset.q === "1"; filt.game = ""; try { localStorage.setItem("quick", quick ? "1" : "0"); } catch (e) {} show("games"); }));
+  v.querySelectorAll("[data-qg]").forEach(b => b.addEventListener("click", () => { filt.game = b.dataset.qg; show("games"); window.scrollTo(0, 0); }));
 }
 function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""};
   // Soccer opens on today's matches (or the next day with matches); other days only when picked
