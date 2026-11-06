@@ -186,8 +186,11 @@ export async function buildNBA(now = new Date()) {
     // Rebounds and assists: not by position but by how steady he is in that stat (a guard who grabs boards to push the break
     // counts). Overs: 3+ per game and low swing (coefficient of variation up to 0.5); unders: low swing (up to 0.6).
     const sv = r10.map(r => r[i]), sm = sv.reduce((s, v) => s + v, 0) / (sv.length || 1), cv = sm ? Math.sqrt(sv.reduce((s, v) => s + (v - sm) ** 2, 0) / (sv.length || 1)) / sm : 9;
-    const statRole = s => ({"3PM": av(8) >= 4, PTS: av(4) >= 12, REB: s === "over" ? sm >= 3 && cv <= 0.5 : cv <= 0.6, AST: s === "over" ? sm >= 3 && cv <= 0.5 : cv <= 0.6})[p.m];
-    const roleOf = s => min * vm >= 20 && msd <= 7 && statRole(s) ? 1 : 0;
+    // Unders do not need him to be a scorer / shooter (a player averaging 11.9 points can perfectly be an under 12.5): only steady numbers
+    const statRole = s => ({"3PM": s === "over" ? av(8) >= 4 : av(8) >= 2 && cv <= 0.8, PTS: s === "over" ? av(4) >= 12 : cv <= 0.6, REB: s === "over" ? sm >= 3 && cv <= 0.5 : cv <= 0.6, AST: s === "over" ? sm >= 3 && cv <= 0.5 : cv <= 0.6})[p.m];
+    // Minutes: 20+ steady; a bench shooter (4+ threes tried a game) qualifies for threes from 16 minutes
+    const minNeed = p.m === "3PM" && av(8) >= 4 ? 16 : 20;
+    const roleOf = s => min * vm >= minNeed && msd <= 7 && statRole(s) ? 1 : 0;
     let best = null;
     for (const s of ["over", "under"]) {
       const price = s === "over" ? p.po : p.pu; if (!price || price < 1.25) continue; if (s === "over" && min < 20) continue;
