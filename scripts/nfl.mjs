@@ -101,7 +101,7 @@ export async function buildNFL(now = new Date()) {
   const games = [], props = [], inj = {};
   await pool(events, 5, async e => {
     const c = e.competitions[0], H = c.competitors.find(x => x.homeAway === "home"), A = c.competitors.find(x => x.homeAway === "away");
-    const tm = x => ({abbr: x.team.abbreviation, name: x.team.displayName, record: (x.records && x.records[0] && x.records[0].summary) || ""});
+    const tm = x => ({abbr: x.team.abbreviation, name: x.team.displayName, logo: x.team.logo || "", record: (x.records && x.records[0] && x.records[0].summary) || ""});
     const base = `${CORE}/events/${e.id}/competitions/${e.id}/odds`;
     const [o, s, pb] = await Promise.all([J(base + "?lang=en&region=us"), J(`${SITE}/summary?event=${e.id}`), J(base + "/100/propBets?lang=en&region=us&limit=1000")]);
     const gi = [];

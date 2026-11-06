@@ -26,7 +26,7 @@ export async function buildSOC(now = new Date(), nDays = 6) {
     // Two clubs can share ESPN's abbreviation (Celtic and Celta are both "CEL"): the second one gets its own, so their data never mix
     for (const x of [H, A]) { const ab = x.team.abbreviation; if (teamIds[ab] && teamIds[ab] !== x.team.id) { const alt = String(x.team.shortDisplayName || x.team.displayName || ab).replace(/[^A-Za-z]/g, "").slice(0, 4).toUpperCase();
       x.team.abbreviation = !teamIds[alt] || teamIds[alt] === x.team.id ? alt : ab + "2"; } }
-    const tm = x => ({abbr: x.team.abbreviation, name: x.team.displayName, record: (x.records && x.records[0] && x.records[0].summary) || ""});
+    const tm = x => ({abbr: x.team.abbreviation, name: x.team.displayName, logo: x.team.logo || "", record: (x.records && x.records[0] && x.records[0].summary) || ""});
     teamIds[H.team.abbreviation] = H.team.id; teamIds[A.team.abbreviation] = A.team.id;
     const base = `${CORE}/${slug}/events/${e.id}/competitions/${e.id}/odds`;
     const [o, pb] = await Promise.all([J(base + "?lang=en&region=us"), J(base + "/100/propBets?lang=en&region=us&limit=1000")]);

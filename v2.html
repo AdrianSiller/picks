@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Picks · boceto v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f2ece1;--grid:rgba(90,70,40,.07);--ink:#29241d;--muted:#8a7f70;--line:#d9cfbf;--hi:#6b553d;--mid:#c8c4e2;--safe:#3f3326;--bad:#9b2226;--card:#f7f2e9}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--paper);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px;color:var(--ink);font:15px/1.45 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:560px;margin:0 auto;padding:18px 16px 90px}
+.kick{font:600 12px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center}
+h1{font:700 34px/1.05 'Space Grotesk',sans-serif;text-align:center;margin:6px 0 2px;letter-spacing:-.01em}
+.sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:14px}
+.tabs{display:flex;gap:6px;justify-content:center;margin:10px 0 16px;flex-wrap:wrap}
+.tabs button{font:600 12px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);background:transparent;color:var(--ink);padding:7px 12px;border-radius:999px;cursor:pointer}
+.tabs button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.thead{display:grid;grid-template-columns:1fr 150px;font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1.5px solid var(--ink);padding:0 0 6px;margin-top:6px}
+.thead span:last-child{text-align:right}
+.day{font:700 12px 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;margin:16px 0 4px;color:var(--ink)}
+.row{display:grid;grid-template-columns:46px 1fr 150px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.row:active{background:rgba(0,0,0,.03)}
+.t{font:500 12px 'IBM Plex Mono',monospace;color:var(--muted)}
+.pk b{font:600 14.5px Inter;display:block;line-height:1.25}
+.cr{width:18px;height:18px;object-fit:contain;vertical-align:-4px;display:inline-block}
+.pk{min-width:0}.crs{display:inline-flex;gap:3px;margin-right:6px;vertical-align:-4px}.pk small i{white-space:nowrap}
+.crb{width:64px;height:64px;object-fit:contain;display:block;margin:4px auto}
+.pk small{color:var(--muted);font-size:12px}
+.pk small i{font-style:normal;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:1px}
+.tag-safe{background:var(--safe);color:var(--paper)}.tag-ok{background:var(--hi);color:var(--paper)}.tag-mid{background:var(--mid);color:var(--ink)}.tag-warn{background:#e7c9c3;color:var(--bad)}
+.br{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.bar{flex:1;height:9px;background:#e6dece;position:relative}
+.bar>span{position:absolute;left:0;top:0;bottom:0;background:var(--mid)}
+.bar.hi>span{background:var(--hi)}.bar.safe>span{background:var(--safe)}
+.pct{font:600 14px 'IBM Plex Mono',monospace;min-width:52px;text-align:right}
+.none{color:var(--muted);font-size:12.5px;padding:10px 0;border-bottom:1px solid var(--line)}
+.legend{display:flex;gap:14px;justify-content:center;font:500 11px 'IBM Plex Mono',monospace;color:var(--muted);margin:14px 0 0;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px}
+/* match card */
+.sheet{position:fixed;inset:0;background:rgba(41,36,29,.35);display:none;align-items:flex-end;justify-content:center;z-index:9}
+.sheet.on{display:flex}
+.card{background:var(--paper);background-image:inherit;width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px 18px 28px;box-shadow:0 -8px 30px rgba(0,0,0,.15)}
+.card .x{float:right;border:0;background:none;font:600 22px Inter;color:var(--muted);cursor:pointer}
+.mh{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:center}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin:10px 0 8px;text-align:center}
+.vs .tm b{font:700 30px 'Space Grotesk',Inter,sans-serif;display:block;letter-spacing:.02em}
+.vs .tm small{font:500 11px 'IBM Plex Mono',monospace;color:var(--muted)}
+.vs .at{font:500 13px 'IBM Plex Mono',monospace;color:var(--muted)}
+.split{display:flex;height:22px;margin:6px 0 4px}
+.split span{height:100%}
+.splitl{display:flex;justify-content:space-between;font:600 15px 'IBM Plex Mono',monospace}
+.splitl small{display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--muted)}
+.note{text-align:center;font-size:13px;color:#4a4237;margin:14px 6px;line-height:1.5}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);margin:12px 0}
+.kv div{background:var(--card);padding:8px 10px}
+.kv small{display:block;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kv b{font:600 14px 'IBM Plex Mono',monospace}
+.pl{border-top:1.5px solid var(--ink);margin-top:14px;padding-top:8px}
+.pl h4{margin:0 0 6px;font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.pick{padding:8px 0;border-bottom:1px solid var(--line)}
+.pick .top{display:flex;justify-content:space-between;gap:8px}
+.pick b{font:600 14.5px Inter}.pick .px{font:600 14px 'IBM Plex Mono',monospace;white-space:nowrap}
+.pick ul{margin:4px 0 0;padding-left:16px;font-size:13px;color:#4a4237}
+/* grade */
+.gtable{width:100%;border-collapse:collapse;margin:8px 0 4px;font:500 14px 'IBM Plex Mono',monospace}
+.gtable th{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:right;padding:6px 4px;border-bottom:1.5px solid var(--ink)}
+.gtable th:first-child,.gtable td:first-child{text-align:left;font-family:Inter;font-weight:600}
+.gtable td{text-align:right;padding:9px 4px;border-bottom:1px solid var(--line)}
+.gtable tr.em td{background:rgba(107,85,61,.08)}
+.fine{font-size:12px;color:var(--muted);margin:4px 0 18px}
+h2{font:700 22px/1.15 'Space Grotesk',Inter,sans-serif;margin:26px 0 4px;text-align:center}
+.h2s{text-align:center;color:var(--muted);font-size:12.5px;margin-bottom:10px}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0 6px}
+.big div{text-align:center;padding:8px;border:1px solid var(--line);background:var(--card)}
+.big b{font:700 34px 'Space Grotesk',Inter,sans-serif;display:block}
+.big small{font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.big .warn{border-color:#e2b7b0;background:#f6e6e2}.big .warn b{color:var(--bad)}
+.rel{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px;align-items:end;height:190px;border-bottom:1.5px solid var(--ink);margin-top:14px}
+.rel .c{position:relative;height:100%;display:flex;align-items:flex-end;justify-content:center}
+.rel .act{width:70%;background:#d1c8b8}.rel .act.bad{background:var(--bad)}
+.rel .prom{position:absolute;left:8%;right:8%;border-top:2px solid var(--ink)}
+.rel .lab{position:absolute;top:-18px;left:0;right:0;text-align:center;font:600 12px 'IBM Plex Mono',monospace}
+.relx{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px;text-align:center;font:500 11px 'IBM Plex Mono',monospace;color:var(--muted);margin-top:6px}
+.relx b{display:block;color:var(--ink)}
+.empty{text-align:center;color:var(--muted);padding:30px 0}
+.foot{text-align:center;font:500 11px 'IBM Plex Mono',monospace;color:var(--muted);margin-top:24px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kick" id="kick">Picks · boceto</div>
+  <h1 id="title">Mis pronósticos</h1>
+  <div class="sub" id="sub">En orden de juego · hora CDMX</div>
+  <div class="tabs" id="tabs"></div>
+  <div id="main"><div class="empty">Cargando datos…</div></div>
+  <div class="foot" id="foot"></div>
+</div>
+<div class="sheet" id="sheet"><div class="card" id="card"></div></div>
+<script src="model.js?v=20261106"></script>
+<script type="module">
+const M = window.M, RAW = "https://raw.githubusercontent.com/AdrianSiller/picks/main/";
+const get = async f => { for (const u of [RAW + f, f]) { try { const r = await fetch(u + "?t=" + Date.now(), {cache: "no-store"}); if (r.ok) return await r.json(); } catch (e) {} } return null; };
+const TZ = "America/Mexico_City", esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const pct = x => (x * 100).toFixed(1) + "%", pc0 = x => Math.round(x * 100) + "%", fx = x => x ? (+x).toFixed(2) : "—";
+const hhmm = d => new Date(d).toLocaleTimeString("es-MX", {hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ});
+const dayKey = d => new Date(d).toLocaleDateString("en-CA", {timeZone: TZ}), dayLbl = d => new Date(d).toLocaleDateString("es-MX", {weekday: "long", day: "numeric", month: "short", timeZone: TZ});
+const short = l => String(l).replace(" tiros a puerta", " a puerta").replace("Ambos anotan: Sí", "Ambos anotan");
+
+const L = await get("data/latest.json"), R = (await get("data/results.json")) || {days: []}, FM = (await get("data/fm/teams.json")) || {};
+// Team crests: ESPN's when the data has it, FotMob's (by team id) otherwise; NBA from ESPN by abbreviation
+const logo = (T, sp) => T.logo || (sp === "nba" ? `https://a.espncdn.com/i/teamlogos/nba/500/${String(T.abbr).toLowerCase()}.png` : FM[T.abbr] ? `https://images.fotmob.com/image_resources/logo/teamlogo/${FM[T.abbr].id}.png` : "");
+const crest = (T, sp, cls = "cr") => { const u = logo(T, sp); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : `<span class="${cls}"></span>`; };
+if (!L) { document.getElementById("main").innerHTML = `<div class="empty">No pude leer los datos.</div>`; throw 0; }
+M.CALIB = L.calib || {}; if (L.learn) M.PROP_W = {NBA: (L.learn.NBA || {}).w ?? 0.5, NFL: (L.learn.NFL || {}).w ?? 0.5};
+const now = new Date(), soon = d => new Date(d) > now - 2.5 * 36e5 && new Date(d) - now < 3 * 864e5;
+
+/* ---------- soccer: one row per match (its main pick), tier by how it is backed ---------- */
+const S = L.soc, SB = M.buildSoccer(S), GI = Object.fromEntries(SB.games.map(x => [x.id, x]));
+const socRows = S.games.filter(g => soon(g.date)).sort((a, b) => new Date(a.date) - new Date(b.date)).map(g => {
+  const cs = SB.cands.filter(c => c.g === g.id), gi = GI[g.id], gps = M.socGamePicks(cs, gi), safe = M.socSafe(cs, gi, g);
+  const main = safe[0] || (gps[0] && gps[0].c) || null, up = !main && gps[0] && gps[0].up1 ? gps[0].up1 : null;
+  const w = main ? M.socWhy(S.teams, g, main, gi) : null, tier = !main ? (up ? "mid" : null) : safe[0] === main ? "safe" : w.back === "ok" ? "ok" : w.back === "form" ? "ok" : "mid";
+  return {g, gi, main, up, tier, extras: [...gps.map(x => x.c), ...safe].filter((c, i, a) => c && c !== main && a.indexOf(c) === i).slice(0, 3)};
+});
+/* ---------- NBA: the props in the top + probables, by game time ---------- */
+const N = L.nba, NG = Object.fromEntries((N.games || []).map(g => [g.id, g]));
+const nCands = (N.cands || []).filter(c => NG[c.g] && soon(NG[c.g].date)), nTop = M.topPicks(nCands, "NBA"), nProb = M.probables(nCands, "NBA", 6, nTop), nSafe = M.nbaSafe(nCands);
+const nbaRows = [...nTop, ...nProb].map(c => ({c, g: NG[c.g], tier: nSafe.includes(c) ? "safe" : nTop.includes(c) ? "ok" : "mid"})).sort((a, b) => new Date(a.g.date) - new Date(b.g.date) || b.c.pr - a.c.pr);
+
+const TAG = {safe: ["tag-safe", "🛡 seguro"], ok: ["tag-ok", "respaldado"], mid: ["tag-mid", "paga lo justo"]};
+const barCls = t => t === "safe" ? "safe" : t === "ok" ? "hi" : "";
+function table(rows, render) {
+  if (!rows.length) return `<div class="empty">No hay partidos en los próximos días.</div>`;
+  let out = `<div class="thead"><span>Pick</span><span>Probabilidad</span></div>`, last = "";
+  for (const r of rows) { const d = r.g.date, k = dayKey(d); if (k !== last) { out += `<div class="day">${esc(dayLbl(d))}</div>`; last = k; } out += render(r, rows.indexOf(r)); }
+  return out + `<div class="legend"><span><i style="background:var(--safe)"></i>🛡 más seguro</span><span><i style="background:var(--hi)"></i>respaldado</span><span><i style="background:var(--mid)"></i>paga lo justo</span></div>`;
+}
+const socRow = (r, i) => { const {g, main, up, tier} = r, m = `<span class="crs">${crest(g.away, "soc")}${crest(g.home, "soc")}</span>${g.away.abbr} @ ${g.home.abbr} · ${esc(g.lg)}`;
+  if (!main && !up) return `<div class="row" data-s="${i}"><span class="t">${hhmm(g.date)}</span><span class="pk"><b style="color:var(--muted);font-weight:500">Sin pick</b><small>${m}</small></span><span class="br"><span class="pct" style="color:var(--muted)">—</span></span></div>`;
+  const pr = main ? main.pr : up.pr, lbl = main ? short(main.lbl) : `1 Up ${up.side === "H" ? g.home.abbr : g.away.abbr}`, [tc, tt] = TAG[tier];
+  return `<div class="row" data-s="${i}"><span class="t">${hhmm(g.date)}</span><span class="pk"><b>${esc(lbl)}</b><small>${m} · ${main ? fx(main.p) : "≈" + fx(1 / (up.pr * 1.06))}<i class="${tc}">${tt}</i></small></span>
+    <span class="br"><span class="bar ${barCls(tier)}"><span style="width:${(pr * 100).toFixed(0)}%"></span></span><span class="pct">${pct(pr)}</span></span></div>`; };
+const nbaRow = (r, i) => { const {c, g, tier} = r, [tc, tt] = TAG[tier];
+  return `<div class="row" data-n="${i}"><span class="t">${hhmm(g.date)}</span><span class="pk"><b>${esc(c.n)} ${c.s === "over" ? "Más" : "Menos"} de ${c.l} ${({PTS: "pts", REB: "reb", AST: "ast", "3PM": "triples"})[c.m] || c.m}</b><small><span class="crs">${crest(g.away, "nba")}${crest(g.home, "nba")}</span>${g.away.abbr} @ ${g.home.abbr} · ${fx(c.p)}<i class="${tc}">${tt}</i></small></span>
+    <span class="br"><span class="bar ${barCls(tier)}"><span style="width:${(c.pr * 100).toFixed(0)}%"></span></span><span class="pct">${pct(c.pr)}</span></span></div>`; };
+
+/* ---------- match card ---------- */
+function socCard(r) {
+  const {g, gi, main, up, extras} = r, X = S.xg || {}, xi = g.xi || {};
+  const rec = ab => { const rows = (S.teams[ab] || []).filter(x => !x[8]).slice(0, 10); return `${rows.filter(x => x[4] > x[5]).length}-${rows.filter(x => x[4] === x[5]).length}-${rows.filter(x => x[4] < x[5]).length}`; };
+  const pH = gi ? gi.pH : 0, pD = gi ? gi.pD : 0, pA = gi ? gi.pA : 0, L0 = g.lines || {}, inv = L0.mlHome ? 1 / L0.mlHome + 1 / L0.draw + 1 / L0.mlAway : null;
+  const mk = inv ? [1 / L0.mlAway / inv, 1 / L0.draw / inv, 1 / L0.mlHome / inv] : [pA, pD, pH], wM = M.UEFA.has(g.lg) ? M.SOC.wCL : M.SOC.w;
+  const bl = [wM * pA + (1 - wM) * mk[0], wM * pD + (1 - wM) * mk[1], wM * pH + (1 - wM) * mk[2]];
+  const lineup = k => xi[k] ? (xi[k].miss.length ? `${xi[k].miss.length} cambios${xi[k].depth ? ` (${xi[k].depth} de rotación)` : ""}` : "once habitual") : "sin confirmar";
+  const xs = ab => X[ab] ? `${X[ab].xg} / ${X[ab].xga}` : "—";
+  const pk = c => { const w = M.socWhy(S.teams, g, c, gi); return `<div class="pick"><div class="top"><b>${esc(short(c.lbl))}</b><span class="px">${fx(c.p)} · ${pc0(c.pr)}</span></div><ul>${w.lines.slice(0, 3).map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`; };
+  const w = main && M.socWhy(S.teams, g, main, gi);
+  return `<button class="x" data-close>×</button><div class="mh">${esc(g.away.abbr)} @ ${esc(g.home.abbr)} · ${esc(dayLbl(g.date))} · ${hhmm(g.date)} h</div>
+    <div class="vs"><div class="tm"><small>RACHA ${rec(g.away.abbr)}</small>${crest(g.away, "soc", "crb")}<b>${esc(g.away.abbr)}</b><small>${esc(g.away.name)}</small></div><div class="at">@</div><div class="tm"><small>RACHA ${rec(g.home.abbr)}</small>${crest(g.home, "soc", "crb")}<b>${esc(g.home.abbr)}</b><small>${esc(g.home.name)}</small></div></div>
+    <div class="split"><span style="width:${bl[0] * 100}%;background:var(--mid)"></span><span style="width:${bl[1] * 100}%;background:#e6dece"></span><span style="width:${bl[2] * 100}%;background:var(--hi)"></span></div>
+    <div class="splitl"><span>${pct(bl[0])}<small>visitante</small></span><span style="text-align:center">${pct(bl[1])}<small>empate</small></span><span style="text-align:right">${pct(bl[2])}<small>local</small></span></div>
+    <div class="note">${main ? esc(w.lines.slice(0, 2).join(". ")) + "." : up ? `Lo más probable: que ${esc(up.side === "H" ? g.home.name : g.away.name)} vaya arriba en algún momento (${pc0(up.pr)}).` : "Ninguna opción pasa los filtros: mejor pasar este partido."}</div>
+    <div class="kv"><div><small>xG favor / contra · ${esc(g.away.abbr)}</small><b>${xs(g.away.abbr)}</b></div><div><small>xG favor / contra · ${esc(g.home.abbr)}</small><b>${xs(g.home.abbr)}</b></div>
+      <div><small>Alineación ${esc(g.away.abbr)}</small><b style="font-size:12.5px">${lineup("a")}</b></div><div><small>Alineación ${esc(g.home.abbr)}</small><b style="font-size:12.5px">${lineup("h")}</b></div>
+      <div><small>Modelo (sin casa)</small><b>${pc0(pA)} · ${pc0(pD)} · ${pc0(pH)}</b></div><div><small>Casa sin comisión</small><b>${pc0(mk[0])} · ${pc0(mk[1])} · ${pc0(mk[2])}</b></div></div>
+    ${main || extras.length ? `<div class="pl"><h4>Picks del partido</h4>${[main, ...extras].filter(Boolean).map(pk).join("")}</div>` : ""}`;
+}
+function nbaCard(r) { const {c, g} = r;
+  const hist = c.h10 ? `Pasó la línea ${c.h10[0]} de ${c.h10[1]} veces · lo normal en él: ${c.md10 ?? "—"}` : "";
+  return `<button class="x" data-close>×</button><div class="mh">${esc(g.away.abbr)} @ ${esc(g.home.abbr)} · ${hhmm(g.date)} h</div>
+    <div class="vs"><div class="tm">${crest(g.away, "nba", "crb")}</div><div class="at">@</div><div class="tm">${crest(g.home, "nba", "crb")}</div></div><div class="vs" style="grid-template-columns:1fr"><div class="tm"><b style="font-size:22px">${esc(c.n)}</b><small>${esc(c.t)} · ${esc(c.pos || "")}</small></div></div>
+    <div class="split"><span style="width:${c.pr * 100}%;background:var(--hi)"></span><span style="width:${(1 - c.pr) * 100}%;background:var(--mid)"></span></div>
+    <div class="splitl"><span>${pct(c.pr)}<small>${c.s === "over" ? "más" : "menos"} de ${c.l}</small></span><span style="text-align:right">${pct(1 - c.pr)}<small>lo contrario</small></span></div>
+    <div class="note">${esc(hist)}</div>
+    <div class="kv"><div><small>Modelo</small><b>${c.pm != null ? pc0(c.pm) : "—"}</b></div><div><small>Casa sin comisión</small><b>${c.mkB != null ? pc0(c.mkB) : "—"}</b></div>
+      <div><small>Momio</small><b>${fx(c.p)}</b></div><div><small>Conviene desde</small><b>${fx(1 / c.pr)}</b></div></div>`; }
+
+/* ---------- grade: model vs book vs coin, and "when to believe it" ---------- */
+async function grade() {
+  const days = []; for (let i = 1; i <= 10; i++) { const d = new Date(now - i * 864e5).toLocaleDateString("en-CA", {timeZone: TZ}); const j = await get(`data/cands/${d}.json`); if (j) days.push(j); }
+  const items = days.flatMap(d => d.items).filter(x => x.res && (x.res.hit === 0 || x.res.hit === 1) && x.p && x.pm != null && (x.mk != null || x.mkB != null));
+  const mkOf = x => x.mk != null ? x.mk : x.mkB, br = f => items.reduce((s, x) => s + (f(x) - x.res.hit) ** 2, 0) / items.length;
+  const picks = R.days.flatMap(d => d.items).filter(x => x.hit === 0 || x.hit === 1), hits = picks.filter(x => x.hit).length;
+  const bins = [[0.5, 0.6, "50–60%"], [0.6, 0.7, "60–70%"], [0.7, 0.8, "70–80%"], [0.8, 1.01, "80%+"]].map(([a, b, l]) => { const p = picks.filter(x => x.pr >= a && x.pr < b); return {l, n: p.length, w: p.filter(x => x.hit).length, prom: p.length ? p.reduce((s, x) => s + x.pr, 0) / p.length : (a + b) / 2}; });
+  const lo = bins[0], top = bins.filter(b => b.l !== "50–60%").reduce((s, b) => ({n: s.n + b.n, w: s.w + b.w}), {n: 0, w: 0});
+  const safe = picks.filter(x => x.safe), sw = safe.filter(x => x.hit).length;
+  return `<h2>¿Qué tan bueno es el modelo?</h2><div class="h2s">Todos los candidatos calificados de los últimos 10 días · ${items.length} apuestas</div>
+    <table class="gtable"><tr><th></th><th>Modelo</th><th>Casa</th><th>Moneda</th></tr>
+    <tr class="em"><td>Brier</td><td>${br(x => x.pm).toFixed(3)}</td><td>${br(mkOf).toFixed(3)}</td><td>0.250</td></tr></table>
+    <div class="fine">Brier mide qué tan cerca quedó cada probabilidad de lo que pasó; más bajo es mejor. Si el modelo no le gana a la casa, no aporta.</div>
+    <table class="gtable"><tr><th></th><th>Pegaron</th><th>%</th></tr>
+    <tr><td>Nuestros picks</td><td>${hits} de ${picks.length}</td><td>${picks.length ? pc0(hits / picks.length) : "—"}</td></tr>
+    <tr><td>🛡 Más seguros</td><td>${safe.length ? `${sw} de ${safe.length}` : "—"}</td><td>${safe.length ? pc0(sw / safe.length) : "desde hoy"}</td></tr></table>
+    <h2>¿Cuándo hay que creerle?</h2><div class="h2s">Si el modelo dice 70%, ¿el pick pega 70% de las veces?</div>
+    <div class="big"><div><b>${top.n ? pc0(top.w / top.n) : "—"}</b><small>acierta cuando dice 60%+<br>${top.w}-${top.n - top.w}</small></div><div class="${lo.n && lo.w / lo.n < 0.5 ? "warn" : ""}"><b>${lo.n ? pc0(lo.w / lo.n) : "—"}</b><small>acierta cuando dice 50–60%<br>${lo.w}-${lo.n - lo.w}</small></div></div>
+    <div class="rel">${bins.map(b => { const a = b.n ? b.w / b.n : 0; return `<div class="c"><div class="act ${b.n && a < b.prom - 0.1 ? "bad" : ""}" style="height:${a * 100}%"></div><div class="prom" style="bottom:${b.prom * 100}%"></div><div class="lab" style="bottom:${Math.max(a, b.prom) * 100 + 2}%;top:auto">${b.n ? pc0(a) : ""}</div></div>`; }).join("")}</div>
+    <div class="relx">${bins.map(b => `<span><b>${b.w}-${b.n - b.w}</b>${b.l}<br>${b.n} picks</span>`).join("")}</div>
+    <div class="legend"><span><i style="background:#d1c8b8"></i>lo que acertó</span><span><i style="background:none;border-top:2px solid var(--ink);height:0;width:14px"></i>lo que prometió</span></div>`;
+}
+
+/* ---------- tabs ---------- */
+const TABS = [["soc", "⚽ Soccer"], ["nba", "🏀 NBA"], ["grade", "📊 Calificación"]];
+let cur = "soc";
+async function show(t) { cur = t; document.getElementById("tabs").innerHTML = TABS.map(([k, l]) => `<button class="${k === t ? "on" : ""}" data-t="${k}">${l}</button>`).join("");
+  const main = document.getElementById("main"), title = document.getElementById("title"), sub = document.getElementById("sub");
+  if (t === "soc") { title.textContent = "Mis pronósticos"; sub.textContent = "Soccer · en orden de juego · hora CDMX"; main.innerHTML = table(socRows, socRow); }
+  if (t === "nba") { title.textContent = "Mis pronósticos"; sub.textContent = "NBA · props · hora CDMX"; main.innerHTML = table(nbaRows, nbaRow); }
+  if (t === "grade") { title.textContent = "La calificación"; sub.textContent = "Sin maquillaje: modelo contra casa y contra tirar una moneda"; main.innerHTML = `<div class="empty">Calculando…</div>`; main.innerHTML = await grade(); } }
+document.addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (b) return show(b.dataset.t);
+  const rs = e.target.closest("[data-s]"), rn = e.target.closest("[data-n]"), sh = document.getElementById("sheet");
+  if (rs) { document.getElementById("card").innerHTML = socCard(socRows[+rs.dataset.s]); sh.classList.add("on"); return; }
+  if (rn) { document.getElementById("card").innerHTML = nbaCard(nbaRows[+rn.dataset.n]); sh.classList.add("on"); return; }
+  if (e.target.closest("[data-close]") || e.target === sh) sh.classList.remove("on"); });
+document.getElementById("kick").textContent = "Picks · " + new Date().toLocaleDateString("es-MX", {weekday: "long", day: "numeric", month: "short", timeZone: TZ});
+document.getElementById("foot").textContent = "Datos de las " + new Date(L.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ}) + " · boceto v2";
+show("soc");
+</script>
+</body>
+</html>
