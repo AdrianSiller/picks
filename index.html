@@ -288,6 +288,7 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
     <div class="src" id="src"></div>
     <div class="refresh"><button class="rbtn" id="refresh" type="button">↻ Actualizar</button><span class="rstat" id="rstat"></span></div>
     <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="t-today" aria-selected="false">Hoy</button>
       <button class="tab" role="tab" id="t-picks" aria-selected="true">Top 10</button>
       <button class="tab" role="tab" id="t-games" aria-selected="false">Partidos</button>
       <button class="tab" role="tab" id="t-parlays" aria-selected="false">Parlays</button>
@@ -297,12 +298,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 6 nov 12:55 p.m. · diseño v2</footer>
-<script src="model.js?v=20261106-1255"></script>
+<footer class="ver">Versión de la app: 6 nov 3:05 p.m. · diseño v2</footer>
+<script src="model.js?v=20261106-1505"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261106-1255";
+const APP_VERSION = "20261106-1505";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1276,11 +1277,46 @@ function safeHtml() {
 // ↻ Actualizar also starts the full recalculation (momios, lesiones, alineaciones, modelo) on the server, ~5 min
 async function rebuild() { try { const r = await fetch("https://picks-bot.adrian-rmzsiller.workers.dev/rebuild", {method: "POST"}); const j = await r.json();
   const n = document.getElementById("rnote") || Object.assign(document.createElement("div"), {id: "rnote", className: "lead"}); n.textContent = "🔄 " + j.msg; document.querySelector(".refresh").after(n); } catch (e) {} }
+// ---- Hoy: every pick of today (all sports), with live score and whether it is hitting, or ✅ / ❌ when the game is over ----
+const SLUG = {"Liga MX": "mex.1", "La Liga": "esp.1", "Premier": "eng.1", "Bundesliga": "ger.1", "Serie A": "ita.1", "Ligue 1": "fra.1", "Champions": "uefa.champions", "Europa": "uefa.europa"};
+async function viewToday() {
+  const it = (SNAP_TODAY.items || []).slice().sort((a, b) => new Date(a.d) - new Date(b.d)); if (!it.length) return `<div class="card meta" style="cursor:default">Todavía no hay picks registrados hoy.</div>`;
+  const now = new Date(), ids = [...new Set(it.filter(x => new Date(x.d) <= now).map(x => x.sport + "|" + x.g + "|" + (x.lg || "")))], live = {};
+  await Promise.all(ids.map(async k => { const [sp, id, lg] = k.split("|"), path = sp === "SOC" ? `soccer/${SLUG[lg] || "all"}` : sp === "NBA" ? "basketball/nba" : "football/nfl";
+    const j = await getRaw(`https://site.api.espn.com/apis/site/v2/sports/${path}/summary?event=${id}`).catch(() => null); if (!j || !j.header) return;
+    const c = j.header.competitions[0], H = c.competitors.find(x => x.homeAway === "home"), A = c.competitors.find(x => x.homeAway === "away"), st = c.status.type;
+    const pl = {}; if (sp === "SOC") for (const r of j.rosters || []) for (const p of r.roster || []) { const v = n => { const z = (p.stats || []).find(x => x.name === n); return z ? +z.value : 0; }; if (p.athlete) pl[p.athlete.id] = {sot: v("shotsOnTarget"), sh: v("totalShots"), g: v("totalGoals")}; }
+    else for (const t of (j.boxscore && j.boxscore.players) || []) for (const grp of t.statistics || []) { const L = grp.labels || grp.keys || []; for (const a of grp.athletes || []) { const val = lb => { const i = L.indexOf(lb); return i < 0 || !a.stats[i] ? null : a.stats[i]; };
+      pl[a.athlete.id] = {PTS: +val("PTS"), REB: +val("REB"), AST: +val("AST"), "3PM": val("3PT") ? +String(val("3PT")).split("-")[0] : null}; } }
+    live[id] = {h: +H.score || 0, a: +A.score || 0, ha: H.team.abbreviation, aa: A.team.abbreviation, done: st.completed, clock: st.shortDetail, pl, H: H.team, A: A.team}; }));
+  const judge = x => { const L = live[x.g]; if (!L) return null; const h = L.h, a = L.a;
+    if (x.sport === "SOC") { const my = x.team === "H" ? h : a;
+      if (x.k === "tt") return x.side === "O" ? my > x.line : my < x.line; if (x.k === "tot") return x.side === "O" ? h + a > x.line : h + a < x.line;
+      if (x.k === "btts") return h > 0 && a > 0; if (x.k === "1x2") return x.side === "H" ? h > a : x.side === "A" ? a > h : h === a; if (x.k === "dc") return x.side === "1X" ? h >= a : a >= h;
+      if (["psot", "pshot", "pgoal"].includes(x.k)) { const p = L.pl[x.aid]; if (!p) return null; const v = x.k === "psot" ? p.sot : x.k === "pshot" ? p.sh : p.g; return v >= (x.line || 1); } return null; }
+    if (x.kind === "prop") { const p = L.pl[x.aid]; if (!p || p[x.m] == null) return null; return x.s === "over" ? p[x.m] > x.l : p[x.m] < x.l; }
+    if (x.bet === "ml") return x.side === "H" ? h > a : a > h; if (x.bet === "sp") return (x.side === "H" ? h - a : a - h) + x.line > 0; if (x.bet === "tot") return x.side === "O" ? h + a > x.line : h + a < x.line; return null; };
+  const val = x => { const L = live[x.g]; if (!L) return ""; if (x.kind === "prop") { const p = L.pl[x.aid]; return p && p[x.m] != null ? ` · lleva ${p[x.m]}` : ""; } if (["psot", "pshot", "pgoal"].includes(x.k)) { const p = L.pl[x.aid]; return p ? ` · lleva ${x.k === "psot" ? p.sot : x.k === "pshot" ? p.sh : p.g}` : ""; } return ""; };
+  let W = 0, F = 0;
+  const rowsHtml = it.map(x => { const L = live[x.g], started = new Date(x.d) <= now, res = x.res && x.res.hit != null ? x.res.hit : null, j = res != null ? !!res : started ? judge(x) : null, done = res != null || (L && L.done);
+    if (done && j != null) j ? W++ : F++;
+    const st = !started ? `<span class="chip" style="background:var(--accent-soft)">🔜 ${esc(new Date(x.d).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ}))}</span>`
+      : done ? (j == null ? `<span class="chip">➖ terminado</span>` : j ? `<span class="chip c-good">✅ pegó</span>` : `<span class="chip" style="background:#f2d8d4;color:var(--bad)">❌ falló</span>`)
+      : `<span class="chip" style="background:${j == null ? "var(--accent-soft)" : j ? "var(--good-soft)" : "var(--warn-soft)"}">⏳ ${j == null ? "en juego" : j ? "va pegando" : "todavía no"}</span>`;
+    const score = L ? `${esc(L.aa)} ${L.a} · ${esc(L.ha)} ${L.h} · ${esc(L.clock || "")}` : esc(x.kind === "prop" ? (x.t || "") : (x.n || ""));
+    const lbl = x.kind === "prop" ? `${x.n} ${x.lbl}` : x.lbl, sp = x.sport === "SOC" ? "soc" : x.sport.toLowerCase();
+    const cr = L ? `<span class="crs2">${crest({abbr: L.aa, logo: L.A.logo}, sp, "")}${crest({abbr: L.ha, logo: L.H.logo}, sp, "")}</span>` : "";
+    return `<div class="sp"><span><b>${x.safe ? "🛡️ " : ""}${esc(lbl)}</b><small>${cr}${score}${esc(val(x))}</small></span><span class="px">${st}<br><span style="font-size:12px">${fx(x.p)} · ${Math.round(x.pr * 100)}%</span></span></div>`; });
+  return `<div class="safebox"><h3>📋 Picks de hoy</h3><p class="lead">Todos los picks registrados hoy (NBA, NFL y soccer), con el marcador en vivo. ⏳ = provisional mientras se juega.</p>
+    <div class="gbig" style="margin:8px 0"><div><b>${W}</b><small>pegaron</small></div><div class="${F > W ? "warn" : ""}"><b>${F}</b><small>fallaron</small></div></div>
+    ${rowsHtml.join("")}<p class="lead" style="margin-top:8px"><button class="rbtn" id="t-re" type="button">↻ Revisar marcadores</button></p></div>`;
+}
 let curTab = "picks", curSport = "nba";
 function show(name) {
   curTab = name;
-  ["picks", "games", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).setAttribute("aria-selected", String(n === name)));
+  ["today", "picks", "games", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).setAttribute("aria-selected", String(n === name)));
   const v = document.getElementById("view");
+  if (name === "today") { v.innerHTML = `<div class="loading">Revisando marcadores…</div>`; viewToday().then(h => { if (curTab === "today") { v.innerHTML = h; const b = v.querySelector("#t-re"); if (b) b.addEventListener("click", () => show("today")); } }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "grade") { v.innerHTML = `<div class="loading">Calculando…</div>`; viewGrade().then(h => { if (curTab === "grade") v.innerHTML = h; }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "perf") { v.innerHTML = viewPerf(); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "games" && quick && !filt.game) { v.innerHTML = changesHtml() + filterBar() + quickToggle() + quickHtml(); wireFilters(v); wireQuick(v); try { localStorage.setItem("tab", name); } catch (e) {} return; }
@@ -1297,12 +1333,12 @@ function wireQuick(v) {
 function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""};
   // Soccer opens on today's matches (or the next day with matches); other days only when picked
   { const d0 = dayKey(new Date()), gs = key === "soc" ? SOC_DATA.games : ((SPORTS[key].data || {}).games || []), ds = [...new Set(gs.filter(g => new Date(g.date) > Date.now() - 3 * 36e5).map(g => dayKey(g.date)))].sort(); filt.day = ds.includes(d0) ? d0 : ds[0] || ""; } setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Revisado en vivo a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
-["picks", "games", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
+["today", "picks", "games", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
 ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).addEventListener("click", () => sport(k)));
 try { curTab = localStorage.getItem("tab") || "picks"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
 // v2 design: the app opens on the match blocks (Partidos · vista rápida) the first time, like the mockup
 try { if (!localStorage.getItem("v2open")) { curTab = "games"; quick = true; localStorage.setItem("v2open", "1"); localStorage.setItem("quick", "1"); } } catch (e) { curTab = "games"; }
-if (!views[curTab] && curTab !== "perf") curTab = "picks"; if (!SPORTS[curSport]) curSport = "nba";
+if (!views[curTab] && !["perf", "grade", "today"].includes(curTab)) curTab = "picks"; if (!SPORTS[curSport]) curSport = "nba";
 sport(curSport);
 })();</script>
 </body>
