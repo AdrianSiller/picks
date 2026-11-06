@@ -415,6 +415,13 @@ export default {
       const r = await fetch(t.toString(), {headers: {"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36", "accept": "text/html,application/json,*/*", "x-requested-with": url.searchParams.get("x") ? "XMLHttpRequest" : ""}});
       return new Response(r.body, {status: r.status, headers: {"content-type": r.headers.get("content-type") || "text/plain"}});
     }
+    // Live scores for the app (ESPN does not always allow phones to read it directly): only ESPN's summary / scoreboard, nothing else
+    if (url.pathname === "/espn") {
+      const pth = url.searchParams.get("p") || "", cors = {"access-control-allow-origin": "*", "content-type": "application/json", "cache-control": "max-age=20"};
+      if (!/^(soccer|basketball|football)\/[a-z0-9._]+\/(summary|scoreboard)(\?[a-z0-9=&]*)?$/i.test(pth)) return new Response("{}", {status: 400, headers: cors});
+      const r = await fetch("https://site.api.espn.com/apis/site/v2/sports/" + pth, {cf: {cacheTtl: 20}});
+      return new Response(r.body, {status: r.status, headers: cors});
+    }
     // "⟳ Recalcular todo" from the app: starts the full build on GitHub (at most once every 10 minutes for everyone)
     if (url.pathname === "/rebuild") {
       const cors = {"access-control-allow-origin": "*", "content-type": "application/json"};
