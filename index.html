@@ -297,12 +297,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 6 nov 12:25 p.m. · diseño v2</footer>
-<script src="model.js?v=20261106-1225"></script>
+<footer class="ver">Versión de la app: 6 nov 12:30 p.m. · diseño v2</footer>
+<script src="model.js?v=20261106-1230"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261106-1225";
+const APP_VERSION = "20261106-1230";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1253,13 +1253,13 @@ const quickToggle = () => `<div class="qtog"><button data-q="1" class="${quick ?
 // ---- 🛡️ Más seguros (top of Top 10): strict rules, plus the best 2- and 3-leg parlays ----
 function safeHtml() {
   const soon = d => new Date(d) > Date.now() && new Date(d) - Date.now() < 30 * 36e5, list = [];
-  if (S.custom) { for (const g of SOC_DATA.games.filter(g => soon(g.date) && inDay(g) && (!filt.lg || g.lg === filt.lg))) for (const c of M.socSafe(SOC.cands.filter(c => c.g === g.id), socModel[g.id], g)) list.push({...c, d: g.date, m2: `${g.away.abbr} @ ${g.home.abbr} · ${g.lg}`, lbl2: qShort(c.lbl), why: M.socWhy(SOC_DATA.teams, g, c, socModel[g.id]).lines[0] || ""}); }
+  if (S.custom) { for (const g of SOC_DATA.games.filter(g => soon(g.date) && inDay(g) && (!filt.lg || g.lg === filt.lg))) for (const c of M.socSafe(SOC.cands.filter(c => c.g === g.id), socModel[g.id], g)) list.push({...c, d: g.date, ta: g.away, th: g.home, sp2: "soc", m2: `${g.away.abbr} @ ${g.home.abbr} · ${g.lg}`, lbl2: qShort(c.lbl), why: M.socWhy(SOC_DATA.teams, g, c, socModel[g.id]).lines[0] || ""}); }
   else if (S.name === "NBA") { const per = new Set(); for (const c of M.nbaSafe(DATA.cands.filter(c => games[c.g] && soon(games[c.g].date) && inDay(games[c.g])))) { if (per.has(c.aid) || per.size >= 6) continue; per.add(c.aid); const g = games[c.g];
-    list.push({...c, d: g.date, m2: `${g.away.abbr} @ ${g.home.abbr}`, lbl2: `${c.n} menos de ${c.l} ${MK[c.m].lbl}`, why: c.h10 ? `Pasó ${c.h10[0]} de ${c.h10[1]} · lo normal en él: ${c.md10}` : ""}); } }
+    list.push({...c, d: g.date, ta: g.away, th: g.home, sp2: "nba", m2: `${g.away.abbr} @ ${g.home.abbr}`, lbl2: `${c.n} menos de ${c.l} ${MK[c.m].lbl}`, why: c.h10 ? `Pasó ${c.h10[0]} de ${c.h10[1]} · lo normal en él: ${c.md10}` : ""}); } }
   if (!list.length) return "";
   list.sort((a, b) => new Date(a.d) - new Date(b.d)); const par = M.safeParlays(list);
   return `<div class="safebox"><h3>🛡️ Más seguros</h3><p class="lead">Mercados de bajo riesgo · 72%+ · modelo y casa de acuerdo · historial completo · sin suplentes</p>
-    ${list.map(c => `<div class="sp"><span><b>${esc(c.lbl2)}</b><small>${esc(c.m2)} · ${esc(new Date(c.d).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ}))}${c.why ? " · " + esc(c.why) : ""}</small></span><span class="px">${fx(c.p)}<br>${Math.round(c.pr * 100)}%</span></div>`).join("")}
+    ${list.map(c => `<div class="sp"><span><b><span class="crs2">${crest(c.ta, c.sp2, "")}${crest(c.th, c.sp2, "")}</span>${esc(c.lbl2)}</b><small>${esc(c.m2)} · ${esc(new Date(c.d).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: TZ}))}${c.why ? " · " + esc(c.why) : ""}</small></span><span class="px">${fx(c.p)}<br>${Math.round(c.pr * 100)}%</span></div>`).join("")}
     ${par.length ? `<div class="sp" style="border-top:1.5px solid var(--ink)"><span><b>🧮 Parlays (máximo 3 patas)</b></span></div>` + par.map(x => `<div class="sp"><span><b>${x.legs.length} patas</b><small>${x.legs.map(c => esc(c.lbl2)).join(" + ")}</small></span><span class="px">${fx(x.p)}<br>${Math.round(x.pr * 100)}%</span></div>`).join("") : ""}
     <p class="lead" style="margin-top:6px">Pagan poco: un fallo se come 3 o 4 aciertos. Sueltos o parlays cortos, monto fijo.</p></div>`;
 }
