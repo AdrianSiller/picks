@@ -188,7 +188,7 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
 .why2 li::before{position:absolute;left:0;font-weight:700}
 .why2 li.ry::before{content:"+";color:var(--good)}.why2 li.rx::before{content:"−";color:var(--bad)}.why2 li.rn::before{content:"•";color:var(--muted)}
 .why2.full{margin-bottom:10px}
-.refresh{display:flex;align-items:center;gap:10px;margin-top:8px}
+.refresh{display:flex;align-items:center;gap:8px 10px;margin-top:8px;flex-wrap:wrap}
 .rbtn{border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:6px 14px;font:600 13px var(--f-body);cursor:pointer}
 .rbtn[disabled]{opacity:.6;cursor:wait}
 .rstat{font-size:12px;color:var(--muted)}
@@ -286,7 +286,7 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
       <button class="sport" role="tab" id="s-soc" aria-selected="false">Soccer</button>
     </div>
     <div class="src" id="src"></div>
-    <div class="refresh"><button class="rbtn" id="refresh" type="button">↻ Actualizar</button><span class="rstat" id="rstat"></span></div>
+    <div class="refresh"><button class="rbtn" id="refresh" type="button">↻ Actualizar</button><button class="rbtn" id="rebuild" type="button">⟳ Recalcular todo</button><span class="rstat" id="rstat"></span></div>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="t-picks" aria-selected="true">Top 10</button>
       <button class="tab" role="tab" id="t-games" aria-selected="false">Partidos</button>
@@ -297,12 +297,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 6 nov 12:35 p.m. · diseño v2</footer>
-<script src="model.js?v=20261106-1235"></script>
+<footer class="ver">Versión de la app: 6 nov 12:50 p.m. · diseño v2</footer>
+<script src="model.js?v=20261106-1250"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261106-1235";
+const APP_VERSION = "20261106-1250";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1272,6 +1272,9 @@ function safeHtml() {
     ${par.length ? `<div class="sp" style="border-top:1.5px solid var(--ink)"><span><b>🧮 Parlays (máximo 3 patas)</b></span></div>` + par.map(x => `<div class="sp"><span><b>${x.legs.length} patas</b><small>${x.legs.map(c => esc(c.lbl2)).join(" + ")}</small></span><span class="px">${fx(x.p)}<br>${Math.round(x.pr * 100)}%</span></div>`).join("") : ""}
     <p class="lead" style="margin-top:6px">Pagan poco: un fallo se come 3 o 4 aciertos. Sueltos o parlays cortos, monto fijo.</p></div>`;
 }
+// ⟳ Recalcular todo: asks the bot's server to start the full build (momios, lesiones, alineaciones, modelo)
+document.getElementById("rebuild").addEventListener("click", async () => { const st = document.getElementById("rstat"); st.textContent = "Pidiendo…";
+  try { const r = await fetch("https://picks-bot.adrian-rmzsiller.workers.dev/rebuild", {method: "POST"}); const j = await r.json(); st.textContent = j.msg; } catch (e) { st.textContent = "No se pudo; intenta en un rato."; } });
 let curTab = "picks", curSport = "nba";
 function show(name) {
   curTab = name;

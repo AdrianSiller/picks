@@ -24,6 +24,7 @@ function intent(t) {
   if (/ligue|franc/.test(t)) return "soc:fra";
   if (/champions|ucl/.test(t)) return "soc:ucl";
   if (/soccer|futbol/.test(t)) return "soc";
+  if (/recalcul|actualiza/.test(t)) return "recalc";
   if (/segur/.test(t)) return "safe";
   if (/mis apuestas|apuestas|aposte/.test(t)) return "mine";
   if (/picks de hoy|de hoy|hoy/.test(t)) return "hoy";
@@ -324,10 +325,10 @@ function tools(env, B, v, key) {
 }
 
 // Data older than 40 min: start a rebuild on GitHub (at most once every 15 min) and tell you when it is done
-async function freshen(env, chat, B, key) {
+async function freshen(env, chat, B, key, force = false) {
   const age = (Date.now() - new Date(B.generatedAt)) / 6e4, at = new Date(B.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: "America/Mexico_City"});
   let upd = false;
-  if (age > 40 && env.GH_TOKEN && env.BETS) {
+  if ((age > 40 || force) && env.GH_TOKEN && env.BETS) {
     upd = !!(await env.BETS.get("upd"));
     if (!upd) { const r = await fetch("https://api.github.com/repos/AdrianSiller/picks/actions/workflows/update.yml/dispatches", {method: "POST", headers: {authorization: `Bearer ${env.GH_TOKEN}`, accept: "application/vnd.github+json", "user-agent": "picks-bot", "content-type": "application/json"}, body: JSON.stringify({ref: "main"})});
       if (r.status === 204) { upd = true; await env.BETS.put("upd", B.generatedAt, {expirationTtl: 900}); } }
@@ -339,6 +340,7 @@ async function freshen(env, chat, B, key) {
 async function handle(env, chat, key, editId) {
   const B = await getJSON(DATA + "bot.json");
   if (!B || !(B.v >= 2)) return tg(env, "sendMessage", {chat_id: chat, text: `No pude leer los picks ahorita. Ábrelos en la app: ${APP}`});
+  if (key === "recalc") { try { await freshen(env, chat, B, "home", true); } catch (e) {} return tg(env, "sendMessage", {chat_id: chat, parse_mode: "HTML", text: `🔄 Recalculando todo: momios, lesiones, alineaciones y modelo.\n${B.foot}`, reply_markup: HOME}); }
   if (!key || !/^(bm|b|bk|bx|bd|bdl|cm|c|pa|pc|pb|av|acc|den|rmu):|^mine$|^av$/.test(key)) { try { await freshen(env, chat, B, key); } catch (e) {} }
   if (key && /^(bm|b|bk|bx|bd|bdl):|^mine$/.test(key)) return betAction(env, chat, key === "mine" ? "mine:" : key, editId, B);
   if (key && /^(cm|c|pa|pc|pb):/.test(key)) return env.BETS ? toolAction(env, chat, key, editId, B) : tg(env, "sendMessage", {chat_id: chat, text: "No disponible todavía.", reply_markup: HOME});
@@ -412,6 +414,16 @@ export default {
       if (!["understat.com", "www.fotmob.com", "fbref.com"].includes(t.hostname)) return new Response("host", {status: 400});
       const r = await fetch(t.toString(), {headers: {"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36", "accept": "text/html,application/json,*/*", "x-requested-with": url.searchParams.get("x") ? "XMLHttpRequest" : ""}});
       return new Response(r.body, {status: r.status, headers: {"content-type": r.headers.get("content-type") || "text/plain"}});
+    }
+    // "⟳ Recalcular todo" from the app: starts the full build on GitHub (at most once every 10 minutes for everyone)
+    if (url.pathname === "/rebuild") {
+      const cors = {"access-control-allow-origin": "*", "content-type": "application/json"};
+      if (req.method === "OPTIONS") return new Response("", {headers: {...cors, "access-control-allow-methods": "POST", "access-control-allow-headers": "content-type"}});
+      if (!env.GH_TOKEN || !env.BETS) return new Response(JSON.stringify({ok: false, msg: "no disponible"}), {headers: cors});
+      if (await env.BETS.get("upd")) return new Response(JSON.stringify({ok: true, msg: "Ya se está recalculando; en unos minutos recarga la app."}), {headers: cors});
+      const r = await fetch("https://api.github.com/repos/AdrianSiller/picks/actions/workflows/update.yml/dispatches", {method: "POST", headers: {authorization: `Bearer ${env.GH_TOKEN}`, accept: "application/vnd.github+json", "user-agent": "picks-bot", "content-type": "application/json"}, body: JSON.stringify({ref: "main"})});
+      if (r.status === 204) await env.BETS.put("upd", new Date().toISOString(), {expirationTtl: 600});
+      return new Response(JSON.stringify({ok: r.status === 204, msg: r.status === 204 ? "Listo: recalculando todo (~5 min). Recarga la app después." : "No se pudo iniciar."}), {headers: cors});
     }
     // Called by the GitHub build when it finishes: tells whoever was waiting that the new data is in
     if (url.pathname === "/done") {
