@@ -297,11 +297,11 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
 <footer class="ver">Versión de la app: 6 nov 11:30 a.m. · diseño v2</footer>
-<script src="model.js?v=20261106-1145"></script>
+<script src="model.js?v=20261106-1150"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261106-1145";
+const APP_VERSION = "20261106-1150";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1286,6 +1286,8 @@ function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""};
 ["picks", "games", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
 ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).addEventListener("click", () => sport(k)));
 try { curTab = localStorage.getItem("tab") || "picks"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
+// v2 design: the app opens on the match blocks (Partidos · vista rápida) the first time, like the mockup
+try { if (!localStorage.getItem("v2open")) { curTab = "games"; quick = true; localStorage.setItem("v2open", "1"); localStorage.setItem("quick", "1"); } } catch (e) { curTab = "games"; }
 if (!views[curTab] && curTab !== "perf") curTab = "picks"; if (!SPORTS[curSport]) curSport = "nba";
 sport(curSport);
 })();</script>
