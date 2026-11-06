@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#d9561a">
+<meta name="theme-color" content="#f2ece1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon.svg">
 <title>Picks del Día</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 /* Layout: one narrow column like a bet slip; sticky header with tabs; cards expand in place for detail */
 :root{
@@ -196,6 +196,56 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
 .changes ul{margin:6px 0 0;padding-left:18px;font-size:13px}.changes li{margin:3px 0}
 .ver{text-align:center;font-size:11px;color:var(--muted);padding:8px 0 24px}
 .loading{padding:40px 0;text-align:center;color:var(--muted)}
+/* ===== v2 · "papel": the editorial look (paper, grid, ink, brown for confidence) on top of everything above ===== */
+:root{--bg:#f2ece1;--surface:rgba(247,242,233,.92);--ink:#29241d;--muted:#857a6b;--line:#d9cfbf;--accent:#6b553d;--accent-soft:#ece3d4;--team:#4d3f2f;
+  --good:#3f6b3a;--good-soft:#e1ead9;--warn:#8a6a1f;--warn-soft:#f1e7cc;--bad:#9b2226;--mid:#c8c4e2;--grid:rgba(90,70,40,.07);
+  --f-display:"Space Grotesk",Inter,system-ui,sans-serif;--f-body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1b1814;--surface:rgba(38,33,27,.94);--ink:#efe7da;--muted:#a69a88;--line:#3b342b;--accent:#c9a77c;--accent-soft:#2f281f;--team:#e0c9a6;
+  --good:#8fbf86;--good-soft:#22301f;--warn:#d9b260;--warn-soft:#332a17;--bad:#e07a7a;--mid:#6f6a99;--grid:rgba(255,240,210,.04);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1b1814;--surface:rgba(38,33,27,.94);--ink:#efe7da;--muted:#a69a88;--line:#3b342b;--accent:#c9a77c;--accent-soft:#2f281f;--team:#e0c9a6;--good:#8fbf86;--good-soft:#22301f;--warn:#d9b260;--warn-soft:#332a17;--bad:#e07a7a;--mid:#6f6a99;--grid:rgba(255,240,210,.04);color-scheme:dark}
+body{background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px;-webkit-font-smoothing:antialiased}
+body::before{background:var(--bg)}
+header{background:var(--bg);border-bottom:1.5px solid var(--ink)}
+h1{font-family:var(--f-display);text-transform:none;font-size:30px;letter-spacing:-.01em}
+h1 span{color:var(--accent)}
+.date,.src{font-family:var(--f-mono)}
+.sports{background:transparent;gap:6px}
+.sport{border:1px solid var(--line);font:600 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:6px 14px}
+.sport[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tabs{overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;white-space:nowrap;padding:10px 9px;font:600 11.5px var(--f-mono);letter-spacing:.05em;text-transform:uppercase}
+.tab[aria-selected="true"]{border-bottom-color:var(--ink)}
+.rbtn{border-color:var(--ink);background:transparent;color:var(--ink);font-family:var(--f-mono);font-size:12px;letter-spacing:.04em}
+.card{background:var(--surface);border-color:var(--line);border-radius:10px}
+.pick,.team,.gpick-main span{font-family:var(--f-display);text-transform:none;letter-spacing:0}
+.pick{font-size:19px;font-weight:700}
+.price b,.gpick-main b{color:var(--ink)}
+.bar{height:8px;border-radius:0;background:#e6dece}.bar i{background:var(--accent);border-radius:0}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .bar{background:#3a332a}}
+.gpick{background:var(--accent-soft);border-color:var(--line);border-radius:8px}
+.gpick-h{color:var(--accent);font-family:var(--f-mono);letter-spacing:.08em}
+.gpick .bk.ok{color:var(--good)}.gpick .bk.mk{color:var(--warn)}
+h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
+/* team crests */
+.crest{width:38px;height:38px;object-fit:contain;display:block;margin-bottom:4px}
+.team[style*="right"] .crest{margin-left:auto}
+.team{font-size:22px}
+/* grade (Calificación) */
+.gt{width:100%;border-collapse:collapse;font:500 14px var(--f-mono);margin:6px 0}
+.gt th{font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:right;padding:6px 4px;border-bottom:1.5px solid var(--ink)}
+.gt th:first-child,.gt td:first-child{text-align:left;font-family:var(--f-body);font-weight:600}
+.gt td{text-align:right;padding:9px 4px;border-bottom:1px solid var(--line)}
+.gbig{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gbig div{text-align:center;padding:10px;border:1px solid var(--line);background:var(--surface);border-radius:8px}
+.gbig b{font:700 32px var(--f-display);display:block}.gbig small{font:600 10.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.gbig .warn{border-color:var(--bad)}.gbig .warn b{color:var(--bad)}
+.rel{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px;align-items:end;height:180px;border-bottom:1.5px solid var(--ink);margin-top:22px}
+.rel .c{position:relative;height:100%;display:flex;align-items:flex-end;justify-content:center}
+.rel .act{width:70%;background:#cfc5b4}.rel .act.bad{background:var(--bad)}
+.rel .prom{position:absolute;left:8%;right:8%;border-top:2px solid var(--ink)}
+.rel .lab{position:absolute;left:0;right:0;text-align:center;font:600 12px var(--f-mono)}
+.relx{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px;text-align:center;font:500 11px var(--f-mono);color:var(--muted);margin-top:6px}.relx b{display:block;color:var(--ink)}
+.gh{font:700 22px var(--f-display);text-align:center;margin:18px 0 2px}.ghs{text-align:center;color:var(--muted);font-size:12.5px}
 </style>
 </head>
 <body>
@@ -217,23 +267,24 @@ table.perf td{font-size:13px}table.perf td:first-child{white-space:normal}
       <button class="tab" role="tab" id="t-games" aria-selected="false">Partidos</button>
       <button class="tab" role="tab" id="t-parlays" aria-selected="false">Parlays</button>
       <button class="tab" role="tab" id="t-perf" aria-selected="false">Rendimiento</button>
+      <button class="tab" role="tab" id="t-grade" aria-selected="false">Calificación</button>
     </div>
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 4 nov 9:15 a.m.</footer>
-<script src="model.js?v=20261105-1005"></script>
+<footer class="ver">Versión de la app: 6 nov 11:30 a.m. · diseño v2</footer>
+<script src="model.js?v=20261106-1130"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261105-1005";
+const APP_VERSION = "20261106-1130";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
 }).catch(() => {});
 </script>
 <script>(async () => {
-const TZ = "America/Mexico_City";
+const TZ = "America/Monterrey";
 // Reasons under a soccer pick + whether our stats back it or it only leans on the market
 const whyBox = (g, c, m, tier) => { const w = window.M.socWhy(SOC_DATA.teams, g, c, m);
   const tag = w.back === "ok" ? `<div class="bk ok">✅ Respaldado: nuestras estadísticas y el mercado coinciden</div>` : w.back === "form" ? `<div class="bk ok">✅ Respaldado por la racha (el modelo de goles es más conservador que el mercado)</div>` : w.back === "far" ? `<div class="bk mk">⚠️ El modelo lo ve muy por encima de la casa: probablemente nos falta información</div>` : w.back === "market" ? `<div class="bk mk">⚠️ Sin respaldo propio: lo sostiene el mercado, nuestro modelo lo ve menos probable</div>` : "";
@@ -396,9 +447,9 @@ function socViewGames() {
       const cl = g.cl && g.cl.length ? g.cl[Math.floor(g.cl.length / 2)] : null;
       return `<div class="card game" style="cursor:default">
         <div class="teams">
-          <div class="team">${g.away.abbr}<small>${esc(g.away.name)} · ${g.away.record || ""}</small></div>
+          <div class="team">${crest(g.away, "soc")}${g.away.abbr}<small>${esc(g.away.name)} · ${g.away.record || ""}</small></div>
           <div class="vs">@<br>${socWhen(g.date)}</div>
-          <div class="team" style="text-align:right">${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record || ""}</small></div>
+          <div class="team" style="text-align:right">${crest(g.home, "soc")}${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record || ""}</small></div>
         </div>
         ${top ? `<div class="gpick">
           <div class="gpick-h">${gp.tier === "solid" ? "Pick sólido" : "Pick del partido · paga lo justo"}</div>
@@ -967,9 +1018,9 @@ function viewGames() {
     const formRow = (t, F, side) => `<tr><th>${t.abbr}<small>${side}</small></th><td>${rec(F)}</td><td>${fmtDiff(F.diff)}</td><td>${F.prevW}-${F.prevL} <span class="meta">(${fmtDiff(F.prevDiff)})</span></td><td class="dots">${F.last.slice(0, 5).map(r => `<i class="${r[3] > r[4] ? "w" : "l"}" title="${r[2]} ${r[1]} ${r[3]}-${r[4]}">${r[3] > r[4] ? "G" : r[3] < r[4] ? "P" : "E"}</i>`).join("")}</td></tr>`;
     return `<div class="card game" style="cursor:default">
       <div class="teams">
-        <div class="team">${g.away.abbr}<small>${esc(g.away.name)} · ${g.away.record}</small></div>
+        <div class="team">${crest(g.away, S.name.toLowerCase())}${g.away.abbr}<small>${esc(g.away.name)} · ${g.away.record}</small></div>
         <div class="vs">@<br>${time(g.date)}</div>
-        <div class="team" style="text-align:right">${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record}</small></div>
+        <div class="team" style="text-align:right">${crest(g.home, S.name.toLowerCase())}${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record}</small></div>
       </div>
       ${B ? gamePickBox(g, M) : ""}
       ${M.tot ? `<div class="gpick${M.tot.play ? "" : " pass"}" style="margin-top:8px"><div class="gpick-h">${M.tot.play ? "Total (over/under)" : "Total: sin pick"}</div>
@@ -1120,11 +1171,35 @@ function wireFilters(v) {
   v.querySelectorAll(".dayb").forEach(b => b.addEventListener("click", () => { filt.day = b.dataset.day; filt.game = ""; show(curTab); }));
   v.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => { filt.game = b.dataset.go; show("games"); window.scrollTo(0, 0); }));
 }
+// Team crests: ESPN's (in the data), FotMob's by team id for soccer, ESPN by abbreviation for NBA / NFL
+const FMT = (await getData("data/fm/teams.json")) || {};
+const crest = (T, sp) => { const u = T.logo || (sp === "soc" ? (FMT[T.abbr] ? `https://images.fotmob.com/image_resources/logo/teamlogo/${FMT[T.abbr].id}.png` : "") : `https://a.espncdn.com/i/teamlogos/${sp}/500/${String(T.abbr).toLowerCase()}.png`);
+  return u ? `<img class="crest" src="${u}" alt="" loading="lazy" onerror="this.remove()">` : ""; };
+// Calificación: our model vs the book vs a coin (all graded candidates), and "when to believe it" (our picks by confidence)
+async function viewGrade() {
+  const days = []; for (let i = 1; i <= 10; i++) { const d = new Date(Date.now() - i * 864e5).toLocaleDateString("en-CA", {timeZone: TZ}); const j = await getData(`data/cands/${d}.json`); if (j) days.push(j); }
+  const items = days.flatMap(d => d.items).filter(x => x.res && (x.res.hit === 0 || x.res.hit === 1) && x.p && x.pm != null && (x.mk != null || x.mkB != null));
+  const mkOf = x => x.mk != null ? x.mk : x.mkB, br = f => items.length ? items.reduce((s, x) => s + (f(x) - x.res.hit) ** 2, 0) / items.length : NaN;
+  const picks = RESULTS.days.flatMap(d => d.items).filter(x => x.hit === 0 || x.hit === 1), hits = picks.filter(x => x.hit).length, P = x => Math.round(x * 100) + "%";
+  const bins = [[0.5, 0.6, "50–60%"], [0.6, 0.7, "60–70%"], [0.7, 0.8, "70–80%"], [0.8, 1.01, "80%+"]].map(([a, b, l]) => { const p = picks.filter(x => x.pr >= a && x.pr < b); return {l, n: p.length, w: p.filter(x => x.hit).length, prom: p.length ? p.reduce((s, x) => s + x.pr, 0) / p.length : (a + b) / 2}; });
+  const lo = bins[0], hi = bins.slice(1).reduce((s, b) => ({n: s.n + b.n, w: s.w + b.w}), {n: 0, w: 0}), safe = picks.filter(x => x.safe), sw = safe.filter(x => x.hit).length;
+  return `<div class="gh">¿Qué tan bueno es el modelo?</div><div class="ghs">Todos los candidatos calificados de los últimos 10 días · ${items.length} apuestas</div>
+    <table class="gt"><tr><th></th><th>Modelo</th><th>Casa</th><th>Moneda</th></tr><tr><td>Brier</td><td>${br(x => x.pm).toFixed(3)}</td><td>${br(mkOf).toFixed(3)}</td><td>0.250</td></tr></table>
+    <p class="lead">Brier mide qué tan cerca quedó cada probabilidad de lo que pasó; más bajo es mejor. Si el modelo no le gana a la casa, no aporta.</p>
+    <table class="gt"><tr><th></th><th>Pegaron</th><th>%</th></tr><tr><td>Nuestros picks</td><td>${hits} de ${picks.length}</td><td>${picks.length ? P(hits / picks.length) : "—"}</td></tr>
+      <tr><td>🛡️ Más seguros</td><td>${safe.length ? `${sw} de ${safe.length}` : "—"}</td><td>${safe.length ? P(sw / safe.length) : "desde el 5 nov"}</td></tr></table>
+    <div class="gh">¿Cuándo hay que creerle?</div><div class="ghs">Si el modelo dice 70%, ¿el pick pega 70% de las veces?</div>
+    <div class="gbig" style="margin-top:10px"><div><b>${hi.n ? P(hi.w / hi.n) : "—"}</b><small>acierta cuando dice 60%+ · ${hi.w}-${hi.n - hi.w}</small></div><div class="${lo.n && lo.w / lo.n < 0.5 ? "warn" : ""}"><b>${lo.n ? P(lo.w / lo.n) : "—"}</b><small>acierta cuando dice 50–60% · ${lo.w}-${lo.n - lo.w}</small></div></div>
+    <div class="rel">${bins.map(b => { const a = b.n ? b.w / b.n : 0; return `<div class="c"><div class="act ${b.n && a < b.prom - 0.1 ? "bad" : ""}" style="height:${a * 100}%"></div><div class="prom" style="bottom:${b.prom * 100}%"></div><div class="lab" style="bottom:${Math.max(a, b.prom) * 100 + 2}%">${b.n ? P(a) : ""}</div></div>`; }).join("")}</div>
+    <div class="relx">${bins.map(b => `<span><b>${b.w}-${b.n - b.w}</b>${b.l}<br>${b.n} picks</span>`).join("")}</div>
+    <p class="lead" style="text-align:center;margin-top:8px">Barra = lo que acertó · línea = lo que prometió. Rojo: pega bastante menos de lo que dice.</p>`;
+}
 let curTab = "picks", curSport = "nba";
 function show(name) {
   curTab = name;
-  ["picks", "games", "parlays", "perf"].forEach(n => document.getElementById("t-" + n).setAttribute("aria-selected", String(n === name)));
+  ["picks", "games", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).setAttribute("aria-selected", String(n === name)));
   const v = document.getElementById("view");
+  if (name === "grade") { v.innerHTML = `<div class="loading">Calculando…</div>`; viewGrade().then(h => { if (curTab === "grade") v.innerHTML = h; }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "perf") { v.innerHTML = viewPerf(); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (S.custom) { v.innerHTML = changesHtml() + filterBar() + S.views[name]() + socMethod(); socWire(v); }
   else { v.innerHTML = changesHtml() + filterBar() + views[name]() + methodHtml(); wire(v); }
@@ -1134,7 +1209,7 @@ function show(name) {
 function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""};
   // Soccer opens on today's matches (or the next day with matches); other days only when picked
   if (key === "soc") { const d0 = dayKey(new Date()), ds = [...new Set(SOC_DATA.games.map(g => dayKey(g.date)))].sort(); filt.day = ds.includes(d0) ? d0 : ds[0] || ""; } setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Revisado en vivo a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
-["picks", "games", "parlays", "perf"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
+["picks", "games", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
 ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).addEventListener("click", () => sport(k)));
 try { curTab = localStorage.getItem("tab") || "picks"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
 if (!views[curTab] && curTab !== "perf") curTab = "picks"; if (!SPORTS[curSport]) curSport = "nba";
