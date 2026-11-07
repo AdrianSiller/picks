@@ -292,7 +292,9 @@ function soccer(S, now, hours, day, started = []) {
       const m = GM[g.id], ok = B.cands.filter(c => c.g === g.id && M.socOk(c)).sort((a, b) => (!!b.p - !!a.p) || M.socScore(b) - M.socScore(a)).slice(0, 5);
       const L = [`<b>${esc(g.away.name)} @ ${esc(g.home.name)}</b>`, `${lg} · ${hora(g.date)}`, ""];
       // One pick per match: solid, or the most likely fair one, or a clear 1 Up
-      const gps = M.socGamePicks(B.cands.filter(c => c.g === g.id), m), extras = gps.slice(1).map(x => x.c);
+      // Same main pick as the app: the 🛡️ safest one first when there is one
+      const gps0 = M.socGamePicks(B.cands.filter(c => c.g === g.id), m), sf = M.socSafe(B.cands.filter(c => c.g === g.id), m, g)[0];
+      const gps = sf ? [{c: sf, tier: "solid"}, ...gps0.filter(x => x.c !== sf)] : gps0, extras = gps.slice(1).map(x => x.c).filter(Boolean).slice(0, 3);
       const gp = gps[0] || null, best = gp && gp.c, TIER = {solid: "✅ Pick sólido", fair: "🟡 Pick del partido", up1: "🟡 Pick del partido"};
       const upTxt = gp && gp.up1 ? `1 Up ${gp.up1.side === "H" ? g.home.abbr : g.away.abbr} · ${pct(gp.up1.pr)} · momio estimado ≈${fx(up1Price(gp.up1.pr))} (conviene desde ${fx(1 / gp.up1.pr)})` : null;
       if (gp) L.push(`🎯 <b>${TIER[gp.tier]}</b>: ${best ? `${esc(best.lbl)} · <b>${(best.est ? "≈" : "") + fx(best.p)}</b> · ${pct(best.pr)}` : esc(upTxt)}`,

@@ -297,12 +297,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 6 nov 3:20 p.m. · diseño v2</footer>
-<script src="model.js?v=20261106-1520"></script>
+<footer class="ver">Versión de la app: 7 nov 12:30 a.m. · diseño v2</footer>
+<script src="model.js?v=20261107-0030"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261106-1520";
+const APP_VERSION = "20261107-0030";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -476,7 +476,9 @@ function socViewGames() {
     return `<h3 class="sub" style="margin:4px 0 -2px">${lg}</h3>` + gs.map(g => {
       const m = socModel[g.id], L = g.lines || {};
       const props = SOC.cands.filter(c => c.g === g.id && socOk(c)).sort((a, b) => (!!b.p - !!a.p) || socScore(b) - socScore(a)).slice(0, 5);
-      const gp = M.socGamePick(SOC.cands.filter(c => c.g === g.id), m), top = gp && gp.c, extras = M.socGamePicks(SOC.cands.filter(c => c.g === g.id), m).map(x => x.c).filter(c => c && c !== top), others = props.filter(c => c !== top && !extras.includes(c));
+      // Same main pick everywhere: the 🛡️ safest one when there is one, otherwise the pick of the match
+      const sf = M.socSafe(SOC.cands.filter(c => c.g === g.id), m, g)[0], gp0 = M.socGamePick(SOC.cands.filter(c => c.g === g.id), m), gp = sf ? {c: sf, tier: "safe"} : gp0, top = gp && gp.c;
+      const extras = [...(gp0 && gp0.c && gp0.c !== top ? [gp0.c] : []), ...M.socGamePicks(SOC.cands.filter(c => c.g === g.id), m).map(x => x.c)].filter((c, i, a) => c && c !== top && a.indexOf(c) === i).slice(0, 3), others = props.filter(c => c !== top && !extras.includes(c));
       const form = t => { const rows = SOC.rowsOf(t.abbr).slice(0, 5).reverse(); return rows.map(r => `<i class="${r[4] > r[5] ? "w" : "l"}" title="${dateLbl(r[0])} ${r[3] === "h" ? "vs" : "@"} ${r[2]} ${r[4]}-${r[5]}">${r[4] > r[5] ? "G" : r[4] < r[5] ? "P" : "E"}</i>`).join(""); };
       const cl = g.cl && g.cl.length ? g.cl[Math.floor(g.cl.length / 2)] : null;
       return `<div class="card game" style="cursor:default">
@@ -486,7 +488,7 @@ function socViewGames() {
           <div class="team" style="text-align:right">${crest(g.home, "soc")}${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record || ""}</small></div>
         </div>
         ${top ? `<div class="gpick">
-          <div class="gpick-h">${gp.tier === "solid" ? "Pick sólido" : "Pick del partido · paga lo justo"}</div>
+          <div class="gpick-h">${gp.tier === "safe" ? "🛡️ Más seguro" : gp.tier === "solid" ? "Pick sólido" : "Pick del partido · paga lo justo"}</div>
           <div class="gpick-main"><span>${esc(top.lbl)}</span><b>${top.p ? (top.est ? "≈" : "") + fx(top.p) : "—"}</b></div>
           <div class="probtxt"><span>Probabilidad estimada <b>${pct(top.pr)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / top.pr)}</b> o más</span></div>
           ${whyBox(g, top, m, gp.tier)}
