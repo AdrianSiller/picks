@@ -1,16 +1,16 @@
-[6s] NBA ok
-[13s] NFL ok
-fotmob xG: 102 de 104 equipos
+[4s] NBA ok
+[10s] NFL ok
+fotmob xG: 98 de 100 equipos
 fotmob partido a partido: 122 equipos con xG de sus últimos partidos
-[59s] Soccer ok
-[63s] SGO NFL ok
-[63s] SGO NFL priced 209
-[63s] SGO UCL ok
-[63s] SGO UCL matched 0
-[63s] calibración {"_n":692,"NBA|prop|over":0.006,"NBA|prop|under":0.05,"NBA|game":0.015,"NFL|prop|over":-0.021,"NFL|prop|under":-0.004,"NFL|game":-0.018,"SOC|soc":-0.015,"SOC|1x2":-0.032,"SOC|dc":-0.038,"SOC|hc":0.025,"SOC|dc1h":0.001,"SOC|tot":0.019,"SOC|tt":0.021,"SOC|btts":-0.056,"SOC|psot":-0.007,"SOC|pshot":-0.059,"SOC|tc":-0.015,"SOC|cor":0.006,"SOC|pgoal":-0.026}
-[63s] peso de la casa aprendido {"NBA":{"w":0.47,"raw":0.45,"n":364},"NFL":{"w":0.5,"n":12}}
-[63s] latest.json 1009 KB NBA 9 games/113 props · NFL 14/219 · soccer 52
-[64s] candidatos guardados 3956
-[65s] grade 2026-11-06 ok
-[66s] bot.json ok
-[66s] done
+[45s] Soccer ok
+[48s] SGO NFL ok
+[48s] SGO NFL priced 207
+[48s] SGO UCL ok
+[48s] SGO UCL matched 0
+[48s] calibración {"_n":692,"NBA|prop|over":0.006,"NBA|prop|under":0.05,"NBA|game":0.015,"NFL|prop|over":-0.021,"NFL|prop|under":-0.004,"NFL|game":-0.018,"SOC|soc":-0.015,"SOC|1x2":-0.032,"SOC|dc":-0.038,"SOC|hc":0.025,"SOC|dc1h":0.001,"SOC|tot":0.019,"SOC|tt":0.021,"SOC|btts":-0.056,"SOC|psot":-0.007,"SOC|pshot":-0.059,"SOC|tc":-0.015,"SOC|cor":0.006,"SOC|pgoal":-0.026}
+[48s] peso de la casa aprendido {"NBA":{"w":0.47,"raw":0.45,"n":364},"NFL":{"w":0.5,"n":12}}
+[48s] latest.json 949 KB NBA 7 games/88 props · NFL 14/218 · soccer 50
+[50s] candidatos guardados 3827
+[55s] grade 2026-11-06 ok
+[56s] bot.json ok
+[56s] done
