@@ -40,6 +40,22 @@ const teamResults = (s, ab) => ((s && s.events) || []).filter(e => e.competition
   return {id: e.id, row: [md(e.date), op.team.abbreviation, me.homeAway === "home" ? "vs" : "@", sc(me), sc(op)]};
 });
 
+// Snap counts (nflverse, free, weekly): % of offensive plays each player is on the field. With the depth chart idea:
+// who is really playing as a starter lately, not just who used to. Key "TEAM|name".
+const NV_TEAM = {LA: "LAR", WAS: "WSH"};
+const nname = x => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\b(jr|sr|ii|iii|iv|v)\b\.?/g, "").replace(/[^a-z]/g, "");
+async function snapCounts(season) {
+  try {
+    const r = await fetch(`https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_${season}.csv`); if (!r.ok) return {};
+    const lines = (await r.text()).trim().split("\n"), H = lines.shift().split(","), ix = k => H.indexOf(k);
+    const iT = ix("team"), iP = ix("player"), iW = ix("week"), iG = ix("game_type"), iO = ix("offense_pct"), out = {};
+    for (const l of lines) { const c = l.split(","); if (c[iG] !== "REG") continue; const k = (NV_TEAM[c[iT]] || c[iT]) + "|" + nname(c[iP]);
+      (out[k] = out[k] || []).push([+c[iW], +c[iO]]); }
+    for (const k in out) out[k].sort((a, b) => b[0] - a[0]);
+    return out;
+  } catch (e) { return {}; }
+}
+
 export async function buildNFL(now = new Date()) {
   const sb = await J(`${SITE}/scoreboard`);
   if (!sb) throw new Error("ESPN NFL scoreboard unavailable");
@@ -173,6 +189,7 @@ export async function buildNFL(now = new Date()) {
   }
   const TU = {}; games.forEach(g => [g.home.abbr, g.away.abbr].forEach(ab => { TU[ab] = teamUsage(ab); }));
   games.forEach(g => { const nh = TU[g.home.abbr] && TU[g.home.abbr].notes, na = TU[g.away.abbr] && TU[g.away.abbr].notes; if ((nh && nh.length) || (na && na.length)) g.usage = {h: nh || [], a: na || []}; });
+  const SN = await snapCounts(PREV + 1);
   const G = Object.fromEntries(games.map(g => [g.id, g])), all = [];
   for (const p of props) {
     const R = roster[p.aid], L = logs[p.aid]; if (!R || !L || !(POSOK[p.m] || []).includes(R.pos)) continue;
@@ -209,6 +226,20 @@ export async function buildNFL(now = new Date()) {
       // Role: main = starting QB, WR/TE with 5+ targets a game (3.5+ for unders: a steady small role is a predictable under), RB with 12+ carries (or 8+ carries and 3.5+ targets for catching props)
       const tgA = c.tg, crA = c.cr; c.role = R.pos === "QB" ? (avg(cur.map(r => r[7])) >= 12 ? 1 : 0) : ["WR", "TE"].includes(R.pos) ? (tgA >= 5 || (s === "under" && tgA >= 3.5) ? 1 : 0)
         : (crA >= 12 || (["REC", "RECYDS"].includes(p.m) && crA >= 8 && tgA >= 3.5) ? 1 : 0);
+      // Depth chart in practice (snap %) + recent volume. Last 3 games vs his season:
+      // - lost his role (15+ points fewer snaps): his season numbers overstate him -> no overs
+      // - took over a starting role (15+ points more, 60%+ of snaps) with real recent volume -> counts as a role even if his season average is low
+      // - starter on the field (60%+ of snaps) whose small volume is steady -> his under is not a backup's under (e.g. a blocking TE)
+      // - backup (under 35% of snaps): his under depends on the starter staying healthy -> no
+      const sn = SN[R.t + "|" + nname(R.n)];
+      if (sn && sn.length >= 3 && ["WR", "TE", "RB"].includes(R.pos)) {
+        const mean = a => a.reduce((x, y) => x + y, 0) / (a.length || 1), sR = mean(sn.slice(0, 3).map(x => x[1])), sS = mean(sn.map(x => x[1])), r3 = cur.slice(0, 3), tg3 = mean(r3.map(r => r[10])), cr3 = mean(r3.map(r => r[5]));
+        Object.assign(c, {snR: +sR.toFixed(2), snS: +sS.toFixed(2), tg3: +tg3.toFixed(1), cr3: +cr3.toFixed(1)});
+        if (s === "over" && sR <= sS - 0.15) { c.role = 0; c.snap = "down"; }
+        else if (s === "over" && sR >= sS + 0.15 && sR >= 0.6 && (R.pos === "RB" ? cr3 >= 10 || (tg3 >= 4 && ["REC", "RECYDS"].includes(p.m)) : tg3 >= 4)) { c.role = 1; c.snap = "up"; }
+        else if (s === "under" && sR >= 0.6 && (R.pos === "RB" ? cr3 <= crB + 1 : tg3 <= tgB + 0.5)) { c.role = 1; c.snap = "steady"; }
+        else if (s === "under" && sR < 0.35) c.role = 0;
+      }
       if (!best || c.pr > best.pr) best = c;
     }
     if (best && best.pr >= 0.55) all.push(best);
@@ -218,6 +249,7 @@ export async function buildNFL(now = new Date()) {
     if ((perG[c.g] || 0) >= 16 || (perP[c.aid] || 0) >= 2) continue; perG[c.g] = (perG[c.g] || 0) + 1; perP[c.aid] = (perP[c.aid] || 0) + 1; cands.push(c);
   }
   cands.forEach(c => { const L = logs[c.aid]; out.logs[c.aid] = L.c.concat(L.p).slice(0, 8); });
+  out.snapN = Object.keys(SN).length;
   const inPlay = new Set(games.flatMap(g => [g.home.abbr, g.away.abbr]));
   out.usageDebug = Object.fromEntries(Object.entries(TU).filter(([, v]) => v).map(([k, v]) => [k, {sumT: v.sumT, sumC: v.sumC, players: v.dbg}]));
   Object.assign(out, {games, cands, teams: Object.fromEntries(Object.entries(teams).filter(([k]) => inPlay.has(k))), mu: Object.fromEntries(Object.entries(mu).map(([k, v]) => [k, {a: v.a, r: v.r}]))});

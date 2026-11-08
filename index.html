@@ -297,12 +297,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 8 nov 5:15 a.m. · diseño v2</footer>
-<script src="model.js?v=20261108-0515"></script>
+<footer class="ver">Versión de la app: 8 nov 5:45 a.m. · diseño v2</footer>
+<script src="model.js?v=20261108-0545"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261108-0515";
+const APP_VERSION = "20261108-0545";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -701,6 +701,8 @@ function reasons(c) {
     R.push({w: 2, ok, t: `Rival: ${esc(c.o)} permite ${Math.abs(p)}% ${p > 0 ? "más" : "menos"} ${st} de lo normal a ${POSPL[c.pos] || c.pos}`}); }
   if (c.envAdj >= 0.015 || c.envAdj <= -0.015) { const ok = c.envAdj > 0, env = g.env;
     R.push({w: 2, ok, t: c.blow && !ok ? "Spread grande: riesgo de paliza y menos minutos al final" : `Tipo de partido: ${env ? (S.name === "NBA" ? `total ${env.total} contra ${env.avg} de promedio` : `su equipo espera ${(c.h ? env.h : env.a)} puntos`) : ""}, ${ok ? "ayuda" : "pesa en contra"}`}); }
+  if (c.snR != null) { const sp = x => Math.round(x * 100) + "%", vol = ["CAR", "RUSHYDS"].includes(c.m) ? `${c.cr3} acarreos` : `${c.tg3} targets`;
+    R.push({w: c.snap ? 3 : 1, ok: c.snap ? true : null, t: c.snap === "up" ? `Asumió rol de titular: está en ${sp(c.snR)} de las jugadas en sus últimos 3 (temporada ${sp(c.snS)}), con ${vol} por juego` : c.snap === "steady" ? `Titular en el campo (${sp(c.snR)} de las jugadas en sus últimos 3) pero con poco volumen estable: ${vol} por juego` : c.snap === "down" ? `Perdió rol: ${sp(c.snR)} de las jugadas en sus últimos 3 contra ${sp(c.snS)} en la temporada` : `En el campo: ${sp(c.snR)} de las jugadas en sus últimos 3 (temporada ${sp(c.snS)}), ${vol} por juego`}); }
   if (c.hh && c.hh[1] >= 2) R.push({w: 1, ok: c.hh[0] / c.hh[1] >= 0.5, t: `Contra ${esc(c.o)}: ${c.hh[0]} de ${c.hh[1]}`});
   // Teammates out or back: they change his minutes (NBA) or his share of targets and carries (NFL)
   const un = g.usage ? (c.h ? g.usage.h : g.usage.a) : [];
