@@ -201,9 +201,9 @@ export async function buildNFL(now = new Date()) {
     for (const [T, O] of [[g.home.abbr, g.away.abbr], [g.away.abbr, g.home.abbr]]) { if (!offA[T] || !mu[O]) continue;
       for (const [k, dk, w, wd] of [["RUSH", "RBRUSHYDS", "corre bien", "la corrida"], ["PASS", "QBPASSYDS", "lanza bien", "el pase"]]) {
         const or = offR[T][k], dr = mu[O].r[dk], ov = Math.round(offA[T][k]), dv = Math.round(mu[O].a[dk]);
-        if (or <= 10 && dr <= 10) N.push({s: 22 - or - dr, ok: 1, t: `${nick(T)} ${w} (#${or}, ${ov} yds/j) y ${nick(O)} es de las peores contra ${wd} (permite ${dv}, #${33 - dr} de 32)`});
+        if (or <= 10 && dr <= 10) N.push({s: 22 - or - dr, ok: 1, t: `${nick(T)} ${w} (#${or}, ${ov} yds/j) y ${nick(O)} es de las peores contra ${wd} (permite ${dv} yds/j, la #${dr} que más permite)`});
         else if (or <= 6 && dr >= 27) N.push({s: 10 - or + dr - 32, ok: 0, t: `Choque: ${nick(T)} ${w} (#${or}) pero ${nick(O)} es de las mejores contra ${wd} (permite ${dv})`});
-        else if (dr <= 3) N.push({s: 4 - dr, ok: 1, t: `${nick(O)} es de las peores contra ${wd} (permite ${dv} yds/j)`}); } }
+        else if (dr <= 3) N.push({s: 4 - dr, ok: 1, t: `La defensa de ${nick(O)} es de las que más permiten contra ${wd} (${dv} yds/j, #${dr})`}); } }
     if (N.length) g.mx = N.sort((a, b) => b.s - a.s).slice(0, 2).map(({ok, t}) => ({ok, t})); }
   const SN = await snapCounts(PREV + 1);
   const G = Object.fromEntries(games.map(g => [g.id, g])), all = [];
@@ -268,6 +268,6 @@ export async function buildNFL(now = new Date()) {
   out.snapN = Object.keys(SN).length;
   const inPlay = new Set(games.flatMap(g => [g.home.abbr, g.away.abbr]));
   out.usageDebug = Object.fromEntries(Object.entries(TU).filter(([, v]) => v).map(([k, v]) => [k, {sumT: v.sumT, sumC: v.sumC, players: v.dbg}]));
-  Object.assign(out, {games, cands, teams: Object.fromEntries(Object.entries(teams).filter(([k]) => inPlay.has(k))), mu: Object.fromEntries(Object.entries(mu).map(([k, v]) => [k, {a: v.a, r: v.r}]))});
+  Object.assign(out, {games, cands, teams: Object.fromEntries(Object.entries(teams).filter(([k]) => inPlay.has(k))), mu: Object.fromEntries(Object.entries(mu).map(([k, v]) => [k, {a: v.a, r: v.r, o: offA[k] && {RUSH: Math.round(offA[k].RUSH), PASS: Math.round(offA[k].PASS)}, ro: offR[k]}]))});
   return out;
 }
