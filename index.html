@@ -297,12 +297,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 7 nov 12:30 a.m. · diseño v2</footer>
-<script src="model.js?v=20261107-0030"></script>
+<footer class="ver">Versión de la app: 7 nov 11:00 p.m. · diseño v2</footer>
+<script src="model.js?v=20261107-2300"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261107-0030";
+const APP_VERSION = "20261107-2300";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1193,7 +1193,8 @@ const allGames = () => S.custom ? SOC_DATA.games : DATA.games;
 const inDay = g => !filt.day || dayKey(g.date) === filt.day;
 function filterBar() {
   const base = S.custom ? SOC_DATA.games.filter(g => !filt.lg || g.lg === filt.lg) : DATA.games;
-  const days = [...new Set(base.map(g => dayKey(g.date)))].sort();
+  const spK = S.custom ? "SOC" : S.name, hasToday = (SNAP_TODAY.items || []).some(x => x.sport === spK && (!S.custom || !filt.lg || x.lg === filt.lg));
+  const days = [...new Set([...base.map(g => dayKey(g.date)), ...(hasToday ? [dayKey(new Date())] : [])])].sort();
   if (filt.day && !days.includes(filt.day)) filt.day = "";
   const gs = base.filter(inDay);
   const dchips = days.length > 1 ? `<div class="lgs">${[""].concat(days).map(d => `<button class="lgb dayb" data-day="${d}" aria-pressed="${filt.day === d}">${d ? dayLbl(d) : "Todos los días"}</button>`).join("")}</div>` : "";
@@ -1334,7 +1335,10 @@ function wireQuick(v) {
 }
 function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""};
   // Soccer opens on today's matches (or the next day with matches); other days only when picked
-  { const d0 = dayKey(new Date()), gs = key === "soc" ? SOC_DATA.games : ((SPORTS[key].data || {}).games || []), ds = [...new Set(gs.filter(g => new Date(g.date) > Date.now() - 3 * 36e5).map(g => dayKey(g.date)))].sort(); filt.day = ds.includes(d0) ? d0 : ds[0] || ""; } setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Revisado en vivo a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
+  { const d0 = dayKey(new Date()), gs = key === "soc" ? SOC_DATA.games : ((SPORTS[key].data || {}).games || []), spK = key === "soc" ? "SOC" : SPORTS[key].name;
+    // Today stays the default while it has picks (even if every game already started or ended); otherwise the next day with games
+    const ds = [...new Set(gs.filter(g => new Date(g.date) > Date.now() - 3 * 36e5).map(g => dayKey(g.date)))].sort(), hasToday = (SNAP_TODAY.items || []).some(x => x.sport === spK);
+    filt.day = ds.includes(d0) || hasToday ? d0 : ds[0] || ""; } setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Revisado en vivo a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
 ["picks", "games", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
 ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).addEventListener("click", () => sport(k)));
 try { curTab = localStorage.getItem("tab") || "picks"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
