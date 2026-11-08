@@ -170,8 +170,11 @@
     // No solid one: the pick of the game is the most likely option (62%+) that only costs the book's usual commission, as long as
     // our model does not see it clearly below the book (8+ points) — same idea as soccer's "fair" tier, so every game can have a pick
     const fair = solid ? null : opts2.filter(o => o.p >= 0.62 && o.mk != null && o.price * o.mk >= 0.93 && o.pm >= o.mk - 0.08).sort((a, b) => b.p - a.p)[0] || null;
-    const best = solid || fair || opts2.slice().sort((a, b) => b.e - a.e)[0];
-    return {H, A, margin, opts: opts2, best, play: !!(solid || fair), tier: solid ? "solid" : fair ? "fair" : null, value: fair ? null : value, tot: M.totalModel(g, ctx, H, A)};
+    // Still nothing: the most probable side (53%+) where our own model is not clearly against the book (within 3 points).
+    // It is a "trend" pick, not a value one: e.g. a 1.57 favorite at 58%, or an underdog +5.5 when we see a closer game than the book
+    const prob = solid || fair ? null : opts2.filter(o => o.p >= 0.53 && o.mk != null && o.pm >= o.mk - 0.03 && o.price * o.mk >= 0.9).sort((a, b) => b.p - a.p)[0] || null;
+    const best = solid || fair || prob || opts2.slice().sort((a, b) => b.e - a.e)[0];
+    return {H, A, margin, opts: opts2, best, play: !!(solid || fair || prob), tier: solid ? "solid" : fair ? "fair" : prob ? "prob" : null, value: fair || prob ? null : value, tot: M.totalModel(g, ctx, H, A)};
   };
 
   /* ---------- soccer ---------- */
