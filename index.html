@@ -297,12 +297,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 7 nov 11:00 p.m. · diseño v2</footer>
-<script src="model.js?v=20261107-2300"></script>
+<footer class="ver">Versión de la app: 7 nov 11:10 p.m. · diseño v2</footer>
+<script src="model.js?v=20261107-2310"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261107-2300";
+const APP_VERSION = "20261107-2310";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1286,7 +1286,6 @@ const SLUG = {"Liga MX": "mex.1", "La Liga": "esp.1", "Premier": "eng.1", "Bunde
 async function liveBlocks() {
   const spK = S.custom ? "SOC" : S.name, now = new Date();
   const it = (SNAP_TODAY.items || []).filter(x => x.sport === spK && new Date(x.d) <= now && (!S.custom || !filt.lg || x.lg === filt.lg)).sort((a, b) => new Date(a.d) - new Date(b.d));
-  if (!it.length) return "";
   const live = {};
   await Promise.all([...new Set(it.map(x => x.g + "|" + (x.lg || "")))].map(async k => { const [id, lg] = k.split("|"), path = spK === "SOC" ? `soccer/${SLUG[lg] || "all"}` : spK === "NBA" ? "basketball/nba" : "football/nfl";
     const j = (await getRaw(`https://site.api.espn.com/apis/site/v2/sports/${path}/summary?event=${id}`)) || (await getRaw(`https://picks-bot.adrian-rmzsiller.workers.dev/espn?p=${encodeURIComponent(`${path}/summary?event=${id}`)}`)); if (!j || !j.header) return;
@@ -1304,6 +1303,13 @@ async function liveBlocks() {
     if (x.bet === "ml") return x.side === "H" ? h > a : a > h; if (x.bet === "sp") return (x.side === "H" ? h - a : a - h) + x.line > 0; if (x.bet === "tot") return x.side === "O" ? h + a > x.line : h + a < x.line; return null; };
   const lleva = x => { const L = live[x.g], p = L && L.pl[x.aid]; if (!p) return ""; const v = x.kind === "prop" ? p[x.m] : x.k === "psot" ? p.sot : x.k === "pshot" ? p.sh : x.k === "pgoal" ? p.g : null; return v == null ? "" : ` · lleva ${v}`; };
   const by = {}; for (const x of it) (by[x.g] = by[x.g] || []).push(x);
+  // Every game of today that already started, with or without a pick (ESPN scoreboards of our leagues)
+  const ymd = dayKey(new Date()).replace(/-/g, ""), boards = spK === "SOC" ? Object.entries(SLUG).filter(([lg]) => !filt.lg || lg === filt.lg).map(([lg, sl]) => [lg, `soccer/${sl}`]) : [[S.name, spK === "NBA" ? "basketball/nba" : "football/nfl"]];
+  const extra = [];
+  await Promise.all(boards.map(async ([lg, path]) => { const q = `${path}/scoreboard?dates=${ymd}`;
+    const j = (await getRaw(`https://site.api.espn.com/apis/site/v2/sports/${q}`)) || (await getRaw(`https://picks-bot.adrian-rmzsiller.workers.dev/espn?p=${encodeURIComponent(q)}`)); if (!j) return;
+    for (const e of j.events || []) { const c = e.competitions[0], st = c.status.type; if (st.state === "pre" || by[e.id]) continue; const H = c.competitors.find(x => x.homeAway === "home"), A = c.competitors.find(x => x.homeAway === "away");
+      extra.push({id: e.id, lg, d: e.date, done: st.completed, clock: st.shortDetail, h: +H.score || 0, a: +A.score || 0, H: H.team, A: A.team}); } }));
   const sec = {live: [], done: []}, sp = S.custom ? "soc" : S.name.toLowerCase(); let W = 0, F = 0;
   for (const [id, xs] of Object.entries(by)) { const L = live[id], x0 = xs[0], done = xs.every(x => x.res && x.res.hit != null) || (L && L.done);
     const head = L ? `<div class="m-top"><span>${esc(L.clock || "")}</span><span>${esc(x0.lg || S.name)}</span></div><div class="m-vs"><span class="tm">${crest({abbr: L.A.abbreviation, logo: L.A.logo}, sp)}<b>${esc(L.A.abbreviation)}</b></span><span class="vx" style="font:700 22px var(--f-display);color:var(--ink)">${L.a} - ${L.h}</span><span class="tm r"><b>${esc(L.H.abbreviation)}</b>${crest({abbr: L.H.abbreviation, logo: L.H.logo}, sp)}</span></div>`
@@ -1313,6 +1319,10 @@ async function liveBlocks() {
       const chip = done ? (r == null ? "➖" : r ? `<i class="t-ok" style="background:var(--good);color:var(--bg)">✅ pegó</i>` : `<i style="background:var(--bad);color:#fff">❌ falló</i>`) : `<i class="${r ? "t-ok" : "t-mid"}" style="${r ? "background:var(--good);color:var(--bg)" : ""}">${r == null ? "⏳ en juego" : r ? "⏳ va pegando" : "⏳ todavía no"}</i>`;
       return `<div class="m-pick"><span class="k">Pick</span><b>${x.safe ? "🛡️ " : ""}${esc(x.kind === "prop" ? x.n + " " + x.lbl : qShort(x.lbl))}${esc(lleva(x))}</b><span class="px">${fx(x.p)}</span></div><div class="m-conf"><span class="k">Estado</span>${chip}<span></span><span class="pct">${Math.round(x.pr * 100)}%</span></div>`; }).join("");
     sec[done ? "done" : "live"].push(`<div class="blk" style="cursor:default">${head}${rows}</div>`); }
+  for (const e of extra.sort((a, b) => new Date(a.d) - new Date(b.d))) {
+    const head = `<div class="m-top"><span>${esc(e.clock || "")}</span><span>${esc(e.lg)}</span></div><div class="m-vs"><span class="tm">${crest({abbr: e.A.abbreviation, logo: e.A.logo}, sp)}<b>${esc(e.A.abbreviation)}</b></span><span class="vx" style="font:700 22px var(--f-display);color:var(--ink)">${e.a} - ${e.h}</span><span class="tm r"><b>${esc(e.H.abbreviation)}</b>${crest({abbr: e.H.abbreviation, logo: e.H.logo}, sp)}</span></div>`;
+    sec[e.done ? "done" : "live"].push(`<div class="blk off" style="cursor:default">${head}<div class="m-pick"><span class="k">Pick</span><b class="no">Sin pick en este partido</b></div></div>`); }
+  if (!sec.live.length && !sec.done.length) return "";
   return (sec.live.length ? `<div class="qday">⏳ En vivo (${sec.live.length})</div>${sec.live.join("")}` : "") + (sec.done.length ? `<div class="qday">🏁 Finalizados hoy (${sec.done.length}) · ${W} pegaron, ${F} fallaron</div>${sec.done.join("")}` : "");
 }
 let curTab = "picks", curSport = "nba";
