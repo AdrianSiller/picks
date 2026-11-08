@@ -189,7 +189,10 @@ export async function buildNFL(now = new Date()) {
     let sf = ["CAR", "RUSHYDS"].includes(p.m) ? rushF : ["CMP", "PASSYDS", "REC", "RECYDS"].includes(p.m) ? passF : p.m === "RRY" ? (crB + tgB ? (rushF * crB + passF * tgB) / (crB + tgB) : 1) : 1;
     if (Math.abs(sf - 1) < 0.02) sf = 1;
     const V0 = VAL[p.m], V = r => V0(r) * vm * sf, vc = cur.map(V), vp = prev.map(V), vo = both.filter(r => r[1] === o).map(V);
-    const mk = muKey(R.pos, p.m), d = mk && mu[o], f = d ? M.defFactor(d.a[mk] / lgAvg[mk], d.n, 6) : 1;
+    // Defense weight by position, from this season's games (actual vs the player's own median): what a defense allows clearly
+    // moves QBs (0.88x vs good pass D, 1.06x vs bad) and RBs (rushing 0.97x vs 1.13x; catches too), but barely WRs or TEs
+    const dw = R.pos === "QB" || R.pos === "RB" ? 1.5 : 0.5;
+    const mk = muKey(R.pos, p.m), d = mk && mu[o], f = d ? M.clamp(1 + (M.defFactor(d.a[mk] / lgAvg[mk], d.n, 6) - 1) * dw, 0.7, 1.3) : 1;
     let best = null;
     for (const s of ["over", "under"]) {
       const hs = M.hitStats(vc, vp, vo, p.l, s), wind = (g.wx && g.wx.wind) || 0;
