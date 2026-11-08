@@ -109,6 +109,12 @@ export async function buildNFL(now = new Date()) {
     const val = ab => k === "RBTOT" ? allowed[ab].a.RBRUSHYDS + allowed[ab].a.RBRECYDS : allowed[ab].a[k];
     Object.keys(allowed).sort((x, y) => val(y) - val(x)).forEach((ab, i) => { const m = mu[ab] = mu[ab] || {a: {}, r: {}, n: allowed[ab].n}; m.a[k] = r1(val(ab)); m.r[k] = i + 1; });
   }
+  // What each offense produces (same box scores) -> matchup notes for the game list: strong run game vs weak run defense, etc.
+  const offA = {};
+  for (const [ab, ids] of Object.entries(played)) { let n = 0, ru = 0, pa = 0;
+    for (const id of ids) { const b = box[id]; if (!b || !b[ab]) continue; n++; ru += b[ab].RBRUSHYDS; pa += b[ab].QBPASSYDS; }
+    if (n) offA[ab] = {RUSH: ru / n, PASS: pa / n}; }
+  const offR = {}; for (const k of ["RUSH", "PASS"]) Object.keys(offA).sort((x, y) => offA[y][k] - offA[x][k]).forEach((ab, i) => { (offR[ab] = offR[ab] || {})[k] = i + 1; });
   const lgAvg = Object.fromEntries(MUKEYS.concat(["RBTOT"]).map(k => [k, Object.values(mu).reduce((s, m) => s + m.a[k], 0) / (Object.keys(mu).length || 1)]));
   const muKey = (pos, m) => m === "RRY" ? (pos === "RB" ? "RBTOT" : null) : ["CAR", "RUSHYDS"].includes(m) ? (pos === "RB" ? "RBRUSHYDS" : null)
     : ["CMP", "PASSYDS"].includes(m) ? "QBPASSYDS" : m === "REC" ? pos + "REC" : m === "RECYDS" ? pos + "RECYDS" : null;
@@ -189,6 +195,16 @@ export async function buildNFL(now = new Date()) {
   }
   const TU = {}; games.forEach(g => [g.home.abbr, g.away.abbr].forEach(ab => { TU[ab] = teamUsage(ab); }));
   games.forEach(g => { const nh = TU[g.home.abbr] && TU[g.home.abbr].notes, na = TU[g.away.abbr] && TU[g.away.abbr].notes; if ((nh && nh.length) || (na && na.length)) g.usage = {h: nh || [], a: na || []}; });
+  // Matchup notes per game (rank 1 = best offense / defense that allows the most; out of 32)
+  const nick = ab => { const t = teamList.find(x => x.abbreviation === ab); return (t && (t.shortDisplayName || t.name)) || ab; };
+  for (const g of games) { const N = [];
+    for (const [T, O] of [[g.home.abbr, g.away.abbr], [g.away.abbr, g.home.abbr]]) { if (!offA[T] || !mu[O]) continue;
+      for (const [k, dk, w, wd] of [["RUSH", "RBRUSHYDS", "corre bien", "la corrida"], ["PASS", "QBPASSYDS", "lanza bien", "el pase"]]) {
+        const or = offR[T][k], dr = mu[O].r[dk], ov = Math.round(offA[T][k]), dv = Math.round(mu[O].a[dk]);
+        if (or <= 10 && dr <= 10) N.push({s: 22 - or - dr, ok: 1, t: `${nick(T)} ${w} (#${or}, ${ov} yds/j) y ${nick(O)} es de las peores contra ${wd} (permite ${dv}, #${33 - dr} de 32)`});
+        else if (or <= 6 && dr >= 27) N.push({s: 10 - or + dr - 32, ok: 0, t: `Choque: ${nick(T)} ${w} (#${or}) pero ${nick(O)} es de las mejores contra ${wd} (permite ${dv})`});
+        else if (dr <= 3) N.push({s: 4 - dr, ok: 1, t: `${nick(O)} es de las peores contra ${wd} (permite ${dv} yds/j)`}); } }
+    if (N.length) g.mx = N.sort((a, b) => b.s - a.s).slice(0, 2).map(({ok, t}) => ({ok, t})); }
   const SN = await snapCounts(PREV + 1);
   const G = Object.fromEntries(games.map(g => [g.id, g])), all = [];
   for (const p of props) {

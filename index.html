@@ -240,6 +240,7 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
 .m-pick,.m-conf{display:grid;grid-template-columns:78px 1fr auto;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--line)}
 .m-conf{grid-template-columns:78px auto 1fr 44px}
 .m-pick .k,.m-conf .k{font:600 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.m-mx{display:flex;flex-direction:column;gap:3px;padding:6px 0 2px;border-top:1px dashed var(--line);font:500 12.5px var(--f-body);color:var(--muted);text-align:left;line-height:1.35}
 .m-pick b{font:600 15.5px var(--f-body);line-height:1.25}.m-pick b.no{font-weight:500;color:var(--muted);font-size:13.5px}
 .m-pick .px{font:600 15px var(--f-mono)}
 .m-conf i{font-style:normal;font:600 10.5px var(--f-mono);padding:2px 6px;border-radius:3px;white-space:nowrap}
@@ -297,12 +298,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 8 nov 5:45 a.m. · diseño v2</footer>
-<script src="model.js?v=20261108-0545"></script>
+<footer class="ver">Versión de la app: 8 nov 6:00 a.m. · diseño v2</footer>
+<script src="model.js?v=20261108-0600"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261108-0545";
+const APP_VERSION = "20261108-0600";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1060,6 +1061,7 @@ function viewGames() {
         <div class="vs">@<br>${time(g.date)}</div>
         <div class="team" style="text-align:right">${crest(g.home, S.name.toLowerCase())}${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record}</small></div>
       </div>
+      ${mxHtml(g)}
       ${B ? gamePickBox(g, M) : ""}
       ${M.tot ? `<div class="gpick${M.tot.play ? "" : " pass"}" style="margin-top:8px"><div class="gpick-h">${M.tot.play ? "Total (over/under)" : "Total: sin pick"}</div>
         ${M.tot.play ? `<div class="gpick-main"><span>${esc(M.tot.best.lbl)}</span><b>${fx(M.tot.best.price)}</b></div><div class="probtxt"><span>Probabilidad estimada <b>${pct(M.tot.best.p)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / M.tot.best.p)}</b> o más</span></div>` : ""}
@@ -1243,6 +1245,8 @@ const qPick = (lbl, price, pr, tier) => { const [tc, tt] = QT[tier]; return `<di
 const qHead = (g, sp, lg) => `<div class="m-top"><span>${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}</span><span>${esc(lg || "")}</span></div>
   <div class="m-vs"><span class="tm">${crest(g.away, sp)}<b>${esc(g.away.abbr)}</b></span><span class="vx">vs</span><span class="tm r"><b>${esc(g.home.abbr)}</b>${crest(g.home, sp)}</span></div>`;
 const qShort = l => String(l).replace(" tiros a puerta", " a puerta").replace("Ambos anotan: Sí", "Ambos anotan");
+// Matchup notes (offense vs defense) built in nfl.mjs: 📊 favorable, 🧱 tough matchup
+const mxHtml = g => g.mx && g.mx.length ? `<div class="m-mx">${g.mx.map(x => `<span>${x.ok ? "📊" : "🧱"} ${esc(x.t)}</span>`).join("")}</div>` : "";
 function quickHtml() {
   const out = [], days = {};
   if (S.custom) {
@@ -1260,7 +1264,7 @@ function quickHtml() {
         if (m.play) parts.push(qPick(m.best.lbl.replace(" (moneyline)", " (ML)"), fx(m.best.price), m.best.p, m.tier === "solid" ? "ok" : "mid"));
         if (m.tot && m.tot.play) parts.push(qPick(`Total ${m.tot.best.lbl.replace("Over", "más de").replace("Under", "menos de")}`, fx(m.tot.best.price), m.tot.best.p, "ok")); }
       for (const c of [...top, ...prob].filter(c => c.g === g.id).sort((a, b) => b.pr - a.pr).slice(0, 3)) parts.push(qPick(`${c.n} ${c.m === "ATD" ? "anota TD" : (c.s === "over" ? "más de " : "menos de ") + c.l + " " + MK[c.m].lbl}`, fx(c.p), c.pr, safe.includes(c) ? "safe" : top.includes(c) ? "ok" : "mid"));
-      (days[dayKey(g.date)] = days[dayKey(g.date)] || []).push(`<button class="blk${parts.length ? "" : " off"}" data-qg="${g.id}">${qHead(g, sp, S.name)}${parts.join("") || `<div class="m-pick"><span class="k">Pick</span><b class="no">Sin pick: nada pasa los filtros</b></div>`}</button>`); }
+      (days[dayKey(g.date)] = days[dayKey(g.date)] || []).push(`<button class="blk${parts.length ? "" : " off"}" data-qg="${g.id}">${qHead(g, sp, S.name)}${parts.join("") || `<div class="m-pick"><span class="k">Pick</span><b class="no">Sin pick: nada pasa los filtros</b></div>`}${mxHtml(g)}</button>`); }
   }
   const today = dayKey(new Date()), showLive = !filt.day || filt.day === today;
   for (const [k, arr] of Object.entries(days).sort()) out.push(`<div class="qday">${k === today ? "🔜 Por iniciar · hoy" : esc(dayLbl(k))}</div>`, ...arr);

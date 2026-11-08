@@ -203,7 +203,7 @@ function players(sp, D, now, hours, started = []) {
     if (m && m.play) mlRows.push(`🎯 ${esc(tag)} (${hora(g.date)}): <b>${esc(gameLbl(m.best.lbl))}</b> · ${fx(m.best.price)} · ${pct(m.best.p)}`);
     const props = []; const seen = new Set();
     for (const c of D.cands.filter(c => c.g === g.id && !M.fails(c, sp)).sort((a, b) => M.score(b, sp) - M.score(a, sp))) { if (seen.has(c.aid)) continue; seen.add(c.aid); props.push(c); if (props.length === 8) break; }
-    const L = [`<b>${esc(g.away.name)} @ ${esc(g.home.name)}</b>`, hora(g.date), ""];
+    const L = [`<b>${esc(g.away.name)} @ ${esc(g.home.name)}</b>`, hora(g.date), ...(g.mx || []).map(x => `${x.ok ? "📊" : "🧱"} ${esc(x.t)}`), ""];
     if (m && m.play) L.push(`🎯 <b>Pick de partido</b>${m.tier === "fair" ? " 🟡 paga lo justo" : m.tier === "prob" ? " 🔵 tendencia" : ""}: ${esc(gameLbl(m.best.lbl))} · <b>${fx(m.best.price)}</b> · ${pct(m.best.p)}`, ...whyGame(g, m));
     else if (m) L.push(`🎯 Sin pick sólido de ML o spread`, ...whyNo(g, m));
     if (m) L.push(...totLine(g, m.tot));
