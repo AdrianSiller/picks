@@ -60,7 +60,7 @@
     // When our raw model sits far above the book (10+ points) those props have hit much less: they rank lower, not excluded
     const far = c.pm != null && c.mkB != null ? Math.max(0, c.pm - c.mkB - 0.08) : 0;
     return c.pr * 0.8 + clamp(marg, -0.2, 0.4) * 0.5 - far * 1.5 - (c.sm ? 0.06 : 0) - (c.q ? 0.04 : 0) - (M.lowRole(c, sport) ? 0.05 : 0) - (c.b2b && c.s === "over" ? 0.02 : 0); };
-  M.CFG = {NBA: {sp: "NBA", perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {sp: "NFL", perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 13.5, prevW: 0.5, prevK: 6}};
+  M.CFG = {NBA: {sp: "NBA", perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {sp: "NFL", perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 12, prevW: 0.5, prevK: 6}};
   // Why a prop doesn't qualify (same filters for the top 10 and for each game's list); "" = it qualifies
   M.fails = (c, sport) => { const cfg = M.CFG[sport];
     return c.out ? "no juega" : !c.p ? "sin momio en la casa" : c.role === 0 ? "fuera de su rol" : c.pr < cfg.minPr ? `probabilidad baja (${Math.round(c.pr * 100)}%)` : c.e < -0.02 ? "momio caro para lo que estimamos" : ""; };
@@ -157,7 +157,7 @@
     const mk = [pn.h && pn.a ? nv(pn.h, pn.a) : nv(L.mlHome, L.mlAway), pn.h && pn.a ? nv(pn.a, pn.h) : nv(L.mlAway, L.mlHome),
       pinSp ? nv(pn.spr.ph, pn.spr.pa) : nv(L.spreadHomeOdds, L.spreadAwayOdds), pinSp ? nv(pn.spr.pa, pn.spr.ph) : nv(L.spreadAwayOdds, L.spreadHomeOdds)];
     const cal = M.calAdj(`${ctx.sp || ctx.name}|game`), spN = ctx.sp || ctx.name, ea = M.EARLY[spN];
-    opts.forEach((o, i) => { o.pm = o.p; if (mk[i] != null) o.p = 0.5 * o.p + 0.5 * mk[i];
+    opts.forEach((o, i) => { o.pm = o.p; o.mk = mk[i]; if (mk[i] != null) o.p = 0.5 * o.p + 0.5 * mk[i];
       // Early payout (your books pay the moneyline as won if the lead reaches 20 in NBA / 17 in NFL): the extra chance it adds
       if (o.kind === "ml" && ea) { const mu = o.side === "H" ? margin : -margin, up = M.winOrLead(mu, ctx.sd, ea) - M.phi(mu / ctx.sd); o.early = +up.toFixed(3); o.p += up; }
       o.p = clamp(o.p + cal, 0.02, 0.98); o.cal = cal; });
@@ -167,8 +167,11 @@
     // Solid = the most likely option with 60%+ whose price is fair or better (at most 2 points below our estimate)
     const solid = opts2.filter(o => o.p >= 0.60 && o.e >= -0.02).sort((a, b) => b.p - a.p)[0];
     const value = solid ? null : opts2.filter(o => o.p < 0.60 && o.e >= 0.04).sort((a, b) => b.e - a.e)[0] || null;
-    const best = solid || opts2.slice().sort((a, b) => b.e - a.e)[0];
-    return {H, A, margin, opts: opts2, best, play: !!solid, value, tot: M.totalModel(g, ctx, H, A)};
+    // No solid one: the pick of the game is the most likely option (62%+) that only costs the book's usual commission, as long as
+    // our model does not see it clearly below the book (8+ points) — same idea as soccer's "fair" tier, so every game can have a pick
+    const fair = solid ? null : opts2.filter(o => o.p >= 0.62 && o.mk != null && o.price * o.mk >= 0.93 && o.pm >= o.mk - 0.08).sort((a, b) => b.p - a.p)[0] || null;
+    const best = solid || fair || opts2.slice().sort((a, b) => b.e - a.e)[0];
+    return {H, A, margin, opts: opts2, best, play: !!(solid || fair), tier: solid ? "solid" : fair ? "fair" : null, value: fair ? null : value, tot: M.totalModel(g, ctx, H, A)};
   };
 
   /* ---------- soccer ---------- */

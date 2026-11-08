@@ -297,12 +297,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 7 nov 11:10 p.m. · diseño v2</footer>
-<script src="model.js?v=20261107-2310"></script>
+<footer class="ver">Versión de la app: 8 nov 12:10 a.m. · diseño v2</footer>
+<script src="model.js?v=20261108-0010"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261107-2310";
+const APP_VERSION = "20261108-0010";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1113,7 +1113,8 @@ function gamePickBox(g, M) {
     </div>`;
   const team = B.side === "H" ? g.home : g.away, isFav = team === fav;
   let why;
-  if (B.kind === "sp" && isFav && B.line > 0) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, y además la casa le da ${"+" + B.line}: cubre si gana o si pierde por menos de ${B.line}.`;
+  if (M.tier === "fair") why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos y la casa coincide (${pct(B.mk)}). Es el resultado más probable del partido (${pct(B.p)}), pero el momio paga lo justo, no de más: pick de favorito, mejor sencillo o como una pata de parlay de 2.`;
+  else if (B.kind === "sp" && isFav && B.line > 0) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, y además la casa le da ${"+" + B.line}: cubre si gana o si pierde por menos de ${B.line}.`;
   else if (B.kind === "sp" && !isFav && B.line < 0) why = `Proyectamos un partido cerrado (${esc(fav.name)} por unos ${mg}), pero el momio de ${esc(team.name)} ${B.line} paga más de lo que debería según nuestra estimación.`;
   else if (B.kind === "sp" && isFav) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, más de los ${Math.abs(B.line)} que le pide el spread.`;
   else if (B.kind === "sp") why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos, pero con ${B.line > 0 ? "+" : ""}${B.line} ${esc(team.name)} cubre aunque pierda, siempre que sea por menos de ${B.line}.`;
@@ -1121,7 +1122,7 @@ function gamePickBox(g, M) {
   else if (isFav) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos; es la opción con más probabilidad de pegar.`;
   else why = `Ojo: proyectamos que ${esc(fav.name)} gana (por unos ${mg} puntos), pero la casa lo ve todavía más claro. ${esc(team.name)} pierde más veces de las que gana, pero su momio paga más de lo que debería: es una apuesta de valor, no de favorito.`;
   return `<div class="gpick">
-      <div class="gpick-h">Pick sólido</div>
+      <div class="gpick-h">${M.tier === "fair" ? "Pick del partido · 🟡 paga lo justo" : "Pick sólido"}</div>
       <div class="gpick-main"><span>${esc(B.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", ""))}</span><b>${fx(B.price)}</b></div>
       <div class="probtxt"><span>Probabilidad estimada <b>${pct(B.p)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / B.p)}</b> o más</span></div>
       <div class="gpick-why">${why} ${B.e >= 0.01 ? `Supera a la casa por ${Math.round(B.e * 100)} puntos.` : "Su momio es justo para esa probabilidad."}</div>
@@ -1253,7 +1254,7 @@ function quickHtml() {
     const top = M.topPicks(DATA.cands, S.name), prob = M.probables(DATA.cands, S.name, 6, top), safe = S.name === "NBA" ? M.nbaSafe(DATA.cands) : [];
     for (const g of list) { const parts = [];
       if (S.teams && S.teams[g.home.abbr] && S.teams[g.away.abbr]) { const m = gameModel(g);
-        if (m.play) parts.push(qPick(m.best.lbl.replace(" (moneyline)", " (ML)"), fx(m.best.price), m.best.p, "ok"));
+        if (m.play) parts.push(qPick(m.best.lbl.replace(" (moneyline)", " (ML)"), fx(m.best.price), m.best.p, m.tier === "fair" ? "mid" : "ok"));
         if (m.tot && m.tot.play) parts.push(qPick(`Total ${m.tot.best.lbl.replace("Over", "más de").replace("Under", "menos de")}`, fx(m.tot.best.price), m.tot.best.p, "ok")); }
       for (const c of [...top, ...prob].filter(c => c.g === g.id).sort((a, b) => b.pr - a.pr).slice(0, 3)) parts.push(qPick(`${c.n} ${c.m === "ATD" ? "anota TD" : (c.s === "over" ? "más de " : "menos de ") + c.l + " " + MK[c.m].lbl}`, fx(c.p), c.pr, safe.includes(c) ? "safe" : top.includes(c) ? "ok" : "mid"));
       (days[dayKey(g.date)] = days[dayKey(g.date)] || []).push(`<button class="blk${parts.length ? "" : " off"}" data-qg="${g.id}">${qHead(g, sp, S.name)}${parts.join("") || `<div class="m-pick"><span class="k">Pick</span><b class="no">Sin pick: nada pasa los filtros</b></div>`}</button>`); }
