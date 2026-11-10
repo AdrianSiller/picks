@@ -62,7 +62,10 @@
     return c.pr * 0.8 + clamp(marg, -0.2, 0.4) * 0.5 - far * 1.5 - (c.sm ? 0.06 : 0) - (c.q ? 0.04 : 0) - (M.lowRole(c, sport) ? 0.05 : 0) - (c.b2b && c.s === "over" ? 0.02 : 0); };
   M.CFG = {NBA: {sp: "NBA", perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {sp: "NFL", perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 12, prevW: 0.5, prevK: 6}};
   // Why a prop doesn't qualify (same filters for the top 10 and for each game's list); "" = it qualifies
+  M.NFL_PROPS_OFF = true;
   M.fails = (c, sport) => { const cfg = M.CFG[sport];
+    // NFL player props paused since Nov 10: 13/32 (41%) in the log when their prices needed 56%. Game picks (ML/spread) stay.
+    if (sport === "NFL" && M.NFL_PROPS_OFF) return "props de NFL en pausa (41% en el registro)";
     return c.out ? "no juega" : !c.p ? "sin momio en la casa" : c.role === 0 ? "fuera de su rol" : c.pr < cfg.minPr ? `probabilidad baja (${Math.round(c.pr * 100)}%)` : c.e < -0.02 ? "momio caro para lo que estimamos" : ""; };
   M.topPicks = (cands, sport, n = 10) => {
     const cfg = M.CFG[sport], out = [], per = {};
@@ -77,6 +80,7 @@
 
   // Second level: probable props that only pay what they are worth (58%+, at most 6 points under fair), so the top never goes empty
   M.probables = (cands, sport, n = 6, skip = []) => { const out = [], per = new Set(skip.map(c => c.aid));
+    if (sport === "NFL" && M.NFL_PROPS_OFF) return out;
     for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
       if (c.out || !c.p || c.role === 0 || c.pr < 0.58 || c.e < -0.06 || per.has(c.aid) || !M.fails(c, sport)) continue;
       per.add(c.aid); out.push(c); if (out.length === n) break; }
@@ -354,7 +358,8 @@
   };
   // Soccer picks need support too: priced ones must hit at least 52% (value alone is not enough)
   // Our model far ABOVE the book (8+ points) is a warning, not support: the book usually knows something we do not
-  M.socOk = c => !c.thin && c.al !== 0 && (c.gap == null || (c.gap >= -M.SOC.gap && c.gap <= M.SOC.hi)) && (c.p ? (c.p >= M.SOC.minP && c.e >= M.SOC.eMin && c.pr >= M.SOC.minPr) : (c.pr >= 0.62 && c.pr <= 0.75));
+  // Soccer totals and half-time double chance out since Nov 10 (5/13 and 1/4 in the log)
+  M.socOk = c => c.k !== "tot" && c.k !== "dc1h" && !c.thin && c.al !== 0 && (c.gap == null || (c.gap >= -M.SOC.gap && c.gap <= M.SOC.hi)) && (c.p ? (c.p >= M.SOC.minP && c.e >= M.SOC.eMin && c.pr >= M.SOC.minPr) : (c.pr >= 0.62 && c.pr <= 0.75));
   // Ranked by probability; value adds at most 5 points, and picks without a price start a bit lower
   M.socScore = c => c.pr + (c.p ? 0 : -0.03);
   // Top lists only take picks with a price in hand (real or estimated)
@@ -455,7 +460,8 @@
   // book within 4 points (nobody "sees more"), full history of both teams and no real substitutes on the side the pick depends on
   M.socSafe = (cands, gi, g) => { if (!gi || !gi.H || !gi.A || Math.min(gi.H.n, gi.A.n) < 6) return [];
     const subs = k => { const x = g && g.xi && g.xi[k]; return x ? x.miss.length - (x.depth || 0) : 0; }, fav = gi.fav;
-    return cands.filter(c => c.p && c.p >= 1.18 && c.pr >= 0.72 && c.mk != null && Math.abs(c.pm - c.mk) <= 0.04 && !c.thin && c.al !== 0 && M.socAligned(c, fav) &&
+    // Since Nov 10: at 1.18-1.29 a pick must hit 80%+ to win money and they were hitting 75%: only 1.30+ or a very high estimate (78%+)
+    return cands.filter(c => c.p && c.p >= 1.18 && c.pr >= 0.72 && (c.p >= 1.3 || c.pr >= 0.78) && c.mk != null && Math.abs(c.pm - c.mk) <= 0.04 && !c.thin && c.al !== 0 && M.socAligned(c, fav) &&
       ((c.k === "dc" && subs(c.side === "1X" ? "h" : "a") < 3) || (c.k === "tt" && ((c.side === "U" && subs(c.team === "H" ? "h" : "a") < 6) || (c.side === "O" && c.line === 0.5 && subs(c.team === "H" ? "h" : "a") < 3)))))
       .sort((a, b) => b.pr - a.pr).slice(0, 1); };
   // NBA: unders of main-role players, 66%+, model and book within 5 points, not questionable, the usual (median) well under the line
