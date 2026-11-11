@@ -1,12 +1,12 @@
-[4s] NBA ok
-[4s] NFL ok
+[5s] NBA ok
+[5s] NFL ok
 fotmob xG: 2 de 2 equipos
 fotmob partido a partido: 122 equipos con xG de sus últimos partidos
-[26s] Soccer ok
-[26s] calibración {"_n":2210,"NBA|prop|over":0,"NBA|prop|under":0.027,"NBA|game":-0.002,"NFL|prop|over":-0.014,"NFL|prop|under":-0.011,"NFL|game":0.033,"SOC|soc":-0.012,"SOC|dc":0.005,"SOC|dc1h":0.041,"SOC|tot":-0.007,"SOC|tt":0.037,"SOC|tc":-0.069,"SOC|psot":-0.034,"SOC|pshot":-0.053,"SOC|btts":-0.036,"SOC|1x2":0.013,"SOC|cor":0.036,"SOC|hc":0.011,"SOC|pgoal":-0.044}
-[26s] peso de la casa aprendido {"NBA":{"w":0.71,"raw":0.8,"n":717},"NFL":{"w":0.61,"raw":0.8,"n":170}}
-[26s] latest.json 154 KB NBA 6 games/66 props · NFL 0/0 · soccer 1
-[26s] candidatos guardados 123
-[26s] grade 2026-11-10 ok
-[26s] bot.json ok
-[26s] done
+[25s] Soccer ok
+[25s] calibración {"_n":2210,"NBA|prop|over":0,"NBA|prop|under":0.027,"NBA|game":-0.002,"NFL|prop|over":-0.014,"NFL|prop|under":-0.011,"NFL|game":0.033,"SOC|soc":-0.012,"SOC|dc":0.005,"SOC|dc1h":0.041,"SOC|tot":-0.007,"SOC|tt":0.037,"SOC|tc":-0.069,"SOC|psot":-0.034,"SOC|pshot":-0.053,"SOC|btts":-0.036,"SOC|1x2":0.013,"SOC|cor":0.036,"SOC|hc":0.011,"SOC|pgoal":-0.044}
+[25s] peso de la casa aprendido {"NBA":{"w":0.71,"raw":0.8,"n":717},"NFL":{"w":0.61,"raw":0.8,"n":170}}
+[25s] latest.json 166 KB NBA 6 games/71 props · NFL 0/0 · soccer 1
+[25s] candidatos guardados 110
+[25s] grade 2026-11-10 ok
+[25s] bot.json ok
+[25s] done
