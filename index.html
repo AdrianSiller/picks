@@ -298,12 +298,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 10 nov 4:00 p.m. · diseño v2</footer>
-<script src="model.js?v=20261110-1600"></script>
+<footer class="ver">Versión de la app: 11 nov 2:00 p.m. · diseño v2</footer>
+<script src="model.js?v=20261111-1400"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261110-1600";
+const APP_VERSION = "20261111-1400";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);

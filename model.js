@@ -62,10 +62,12 @@
     return c.pr * 0.8 + clamp(marg, -0.2, 0.4) * 0.5 - far * 1.5 - (c.sm ? 0.06 : 0) - (c.q ? 0.04 : 0) - (M.lowRole(c, sport) ? 0.05 : 0) - (c.b2b && c.s === "over" ? 0.02 : 0); };
   M.CFG = {NBA: {sp: "NBA", perPlayer: 1, minPr: 0.62, hca: 2.5, sd: 12.5, prevW: 0.6, prevK: 10}, NFL: {sp: "NFL", perPlayer: 1, minPr: 0.62, hca: 1.5, sd: 12, prevW: 0.5, prevK: 6}};
   // Why a prop doesn't qualify (same filters for the top 10 and for each game's list); "" = it qualifies
-  M.NFL_PROPS_OFF = true;
+  M.NFL_PROPS_OFF = true; M.NBA_OVERS_OFF = true;
   M.fails = (c, sport) => { const cfg = M.CFG[sport];
     // NFL player props paused since Nov 10: 13/32 (41%) in the log when their prices needed 56%. Game picks (ML/spread) stay.
     if (sport === "NFL" && M.NFL_PROPS_OFF) return "props de NFL en pausa (41% en el registro)";
+    // NBA overs paused since Nov 11, except points: triples, rebounds and assists overs were 25/50 when their prices needed ~61%. Unders stay.
+    if (sport === "NBA" && M.NBA_OVERS_OFF && c.s === "over" && c.m !== "PTS") return "overs de NBA en pausa (50% en el registro)";
     return c.out ? "no juega" : !c.p ? "sin momio en la casa" : c.role === 0 ? "fuera de su rol" : c.pr < cfg.minPr ? `probabilidad baja (${Math.round(c.pr * 100)}%)` : c.e < -0.02 ? "momio caro para lo que estimamos" : ""; };
   M.topPicks = (cands, sport, n = 10) => {
     const cfg = M.CFG[sport], out = [], per = {};
@@ -81,6 +83,7 @@
   // Second level: probable props that only pay what they are worth (58%+, at most 6 points under fair), so the top never goes empty
   M.probables = (cands, sport, n = 6, skip = []) => { const out = [], per = new Set(skip.map(c => c.aid));
     if (sport === "NFL" && M.NFL_PROPS_OFF) return out;
+    if (sport === "NBA" && M.NBA_OVERS_OFF) cands = cands.filter(c => c.s !== "over" || c.m === "PTS");
     for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
       if (c.out || !c.p || c.role === 0 || c.pr < 0.58 || c.e < -0.06 || per.has(c.aid) || !M.fails(c, sport)) continue;
       per.add(c.aid); out.push(c); if (out.length === n) break; }
@@ -169,14 +172,16 @@
     // Solid pick first: the most likely option (55%+) that also pays at least a little more than it should.
     // An underdog that only has value (wins less than 55%) is shown apart as a risky option, never as the pick.
     // Solid = the most likely option with 60%+ whose price is fair or better (at most 2 points below our estimate)
-    const solid = opts2.filter(o => o.p >= 0.60 && o.e >= -0.02).sort((a, b) => b.p - a.p)[0];
+    // NBA spreads out of the picks since Nov 11 (3/8 in the log, −2.5 u); the NBA moneyline stays (27/37)
+    const pickable = ctx.sp === "NBA" ? opts2.filter(o => o.kind === "ml") : opts2;
+    const solid = pickable.filter(o => o.p >= 0.60 && o.e >= -0.02).sort((a, b) => b.p - a.p)[0];
     const value = solid ? null : opts2.filter(o => o.p < 0.60 && o.e >= 0.04).sort((a, b) => b.e - a.e)[0] || null;
     // No solid one: the pick of the game is the most likely option (62%+) that only costs the book's usual commission, as long as
     // our model does not see it clearly below the book (8+ points) — same idea as soccer's "fair" tier, so every game can have a pick
-    const fair = solid ? null : opts2.filter(o => o.p >= 0.62 && o.mk != null && o.price * o.mk >= 0.93 && o.pm >= o.mk - 0.08).sort((a, b) => b.p - a.p)[0] || null;
+    const fair = solid ? null : pickable.filter(o => o.p >= 0.62 && o.mk != null && o.price * o.mk >= 0.93 && o.pm >= o.mk - 0.08).sort((a, b) => b.p - a.p)[0] || null;
     // Still nothing: the most probable side (53%+) where our own model is not clearly against the book (within 3 points).
     // It is a "trend" pick, not a value one: e.g. a 1.57 favorite at 58%, or an underdog +5.5 when we see a closer game than the book
-    const prob = solid || fair ? null : opts2.filter(o => o.p >= 0.53 && o.mk != null && o.pm >= o.mk - 0.03 && o.price * o.mk >= 0.9).sort((a, b) => b.p - a.p)[0] || null;
+    const prob = solid || fair ? null : pickable.filter(o => o.p >= 0.53 && o.mk != null && o.pm >= o.mk - 0.03 && o.price * o.mk >= 0.9).sort((a, b) => b.p - a.p)[0] || null;
     const best = solid || fair || prob || opts2.slice().sort((a, b) => b.e - a.e)[0];
     return {H, A, margin, opts: opts2, best, play: !!(solid || fair || prob), tier: solid ? "solid" : fair ? "fair" : prob ? "prob" : null, value: fair || prob ? null : value, tot: M.totalModel(g, ctx, H, A)};
   };
