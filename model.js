@@ -454,6 +454,7 @@
   // and after the team markets that also pass
   M.isPl = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal";
   M.socGamePicks = (cands, gi, max = 3) => {
+    cands = cands.filter(c => M.gateOn(`SOC|${c.k}`)); // paused types never show (not even as "fair")
     const main = M.socGamePick(cands, gi);
     // No team pick: the backed player picks (if any) still show, so the match list and the top never disagree
     if (!main) { if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return []; const seen = new Set(), out = [];
@@ -465,7 +466,7 @@
     return out; };
   // 🛡️ Safest picks: only low-risk markets (double chance, a team scoring / a team under its goal line), 72%+, our model and the
   // book within 4 points (nobody "sees more"), full history of both teams and no real substitutes on the side the pick depends on
-  M.socSafe = (cands, gi, g) => { if (!gi || !gi.H || !gi.A || Math.min(gi.H.n, gi.A.n) < 6) return [];
+  M.socSafe = (cands, gi, g) => { if (!gi || !gi.H || !gi.A || Math.min(gi.H.n, gi.A.n) < 6) return []; cands = cands.filter(c => M.gateOn(`SOC|${c.k}`));
     const subs = k => { const x = g && g.xi && g.xi[k]; return x ? x.miss.length - (x.depth || 0) : 0; }, fav = gi.fav;
     // Since Nov 10: at 1.18-1.29 a pick must hit 80%+ to win money and they were hitting 75%: only 1.30+ or a very high estimate (78%+)
     return cands.filter(c => c.p && c.p >= 1.18 && c.pr >= 0.72 && (c.p >= 1.3 || c.pr >= 0.78) && c.mk != null && Math.abs(c.pm - c.mk) <= 0.04 && !c.thin && c.al !== 0 && M.socAligned(c, fav) &&
