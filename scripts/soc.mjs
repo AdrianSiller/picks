@@ -5,12 +5,14 @@ import {fotmobXG, fotmobRows} from "./fotmob.mjs";
 
 const SITE = "https://site.api.espn.com/apis/site/v2/sports/soccer";
 const CORE = "https://sports.core.api.espn.com/v2/sports/soccer/leagues";
-const LEAGUES = [["mex.1", "Liga MX"], ["esp.1", "La Liga"], ["eng.1", "Premier"], ["ger.1", "Bundesliga"], ["ita.1", "Serie A"], ["fra.1", "Ligue 1"], ["uefa.champions", "Champions"], ["uefa.europa", "Europa"]];
+const LEAGUES = [["mex.1", "Liga MX"], ["esp.1", "La Liga"], ["eng.1", "Premier"], ["ger.1", "Bundesliga"], ["ita.1", "Serie A"], ["fra.1", "Ligue 1"], ["uefa.champions", "Champions"], ["uefa.europa", "Europa"], ["uefa.nations", "Nations League"], ["concacaf.nations.league", "Concacaf NL"]];
 const CODE = {"mex.1": "LMX", "esp.1": "LL", "uefa.champions": "UCL", "uefa.europa": "UEL", "uefa.europa.conf": "UECL", "eng.1": "PL", "ger.1": "BUN", "ita.1": "SA", "fra.1": "L1",
   "por.1": "POR", "ned.1": "ERE", "tur.1": "TUR", "bel.1": "BEL", "aut.1": "AUT", "gre.1": "GRE", "nor.1": "NOR", "sco.1": "SCO", "den.1": "DEN", "sui.1": "SUI", "cze.1": "CZE",
-  "concacaf.leagues.cup": "LC", "concacaf.champions": "CC", "usa.1": "MLS"};
+  "concacaf.leagues.cup": "LC", "uefa.nations": "UNL", "concacaf.nations.league": "CNL", "fifa.world": "WC", "uefa.euro": "EURO", "conmebol.america": "CA", "concacaf.gold": "GOLD", "concacaf.champions": "CC", "usa.1": "MLS"};
 // Domestic cups, qualifiers and friendlies are often against much weaker teams: the model leaves them out
-const klass = slug => /friendly/.test(slug) ? "FRI" : /qual/.test(slug) ? "QUAL" : (/^(uefa|concacaf)\./.test(slug) || /\.\d$/.test(slug)) ? "" : "CUP";
+// National teams play few matches: World Cup, qualifiers, Euro, Copa América, Gold Cup and Nations League all count as real matches for them
+const NATC = /^(fifa\.world|fifa\.worldq|uefa\.(nations|euro|euroq)|conmebol\.america|concacaf\.(nations|gold))/;
+const klass = slug => NATC.test(slug) ? "" : /friendly/.test(slug) ? "FRI" : /qual/.test(slug) ? "QUAL" : (/^(uefa|concacaf)\./.test(slug) || /\.\d$/.test(slug)) ? "" : "CUP";
 const days = (now, n) => Array.from({length: n}, (_, i) => ymd(dloc(new Date(now.getTime() + i * 864e5).toISOString(), "America/Mexico_City")));
 
 export async function buildSOC(now = new Date(), nDays = 6) {

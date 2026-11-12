@@ -9,7 +9,7 @@ const rows = (list, n) => { const out = []; for (let i = 0; i < list.length; i +
 const HOME = {inline_keyboard: [[btn("🛡️ Más seguros", "safe")], [btn("🏀 NBA", "nba"), btn("🏈 NFL", "nfl"), btn("⚽ Soccer", "soc")], [btn("📊 Cómo nos fue", "res"), btn("🧾 Mis apuestas", "mine")], [btn("📋 Picks de hoy", "hoy"), btn("🔎 Buscar", "find")], [btn("🔔 Avisos", "av")]]};
 // Fixed buttons under the text box (always there, no need to type)
 const KB = {keyboard: [[{text: "🛡️ Más seguros"}, {text: "🔥 Top de hoy"}], [{text: "⚽ Soccer"}, {text: "🏀 NBA"}, {text: "🏈 NFL"}], [{text: "🧾 Mis apuestas"}, {text: "📊 Cómo vamos"}]], resize_keyboard: true, is_persistent: true};
-const LGN = {mx: "🇲🇽 Liga MX", esp: "🇪🇸 La Liga", eng: "🏴 Premier", ger: "🇩🇪 Bundesliga", ita: "🇮🇹 Serie A", fra: "🇫🇷 Ligue 1", ucl: "⭐ Champions", uel: "🟠 Europa League"};
+const LGN = {mx: "🇲🇽 Liga MX", esp: "🇪🇸 La Liga", eng: "🏴 Premier", ger: "🇩🇪 Bundesliga", ita: "🇮🇹 Serie A", fra: "🇫🇷 Ligue 1", ucl: "⭐ Champions", uel: "🟠 Europa League", unl: "🌍 Nations League", cnl: "🌎 Concacaf Nations League"};
 
 // Free text -> menu key; null = main menu
 function intent(t) {

@@ -1,7 +1,7 @@
 // The Odds API (free plan, 500 credits a month): Pinnacle, the sharpest book, as the reference probability, plus the best
 // price among several books. Once per Mexico City day; cost ≈ 1 credit per soccer league and 2-3 for NBA / NFL.
 const API = "https://api.the-odds-api.com/v4/sports";
-const SOC = {"Liga MX": "soccer_mexico_ligamx", "La Liga": "soccer_spain_la_liga", "Premier": "soccer_epl", "Bundesliga": "soccer_germany_bundesliga", "Serie A": "soccer_italy_serie_a", "Ligue 1": "soccer_france_ligue_one", "Champions": "soccer_uefa_champs_league", "Europa": "soccer_uefa_europa_league"};
+const SOC = {"Liga MX": "soccer_mexico_ligamx", "La Liga": "soccer_spain_la_liga", "Premier": "soccer_epl", "Bundesliga": "soccer_germany_bundesliga", "Serie A": "soccer_italy_serie_a", "Ligue 1": "soccer_france_ligue_one", "Champions": "soccer_uefa_champs_league", "Europa": "soccer_uefa_europa_league", "Nations League": "soccer_uefa_nations_league"};
 const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\b(fc|cf|ac|sc|afc|ssc|sv|vfb|vfl|rc|cd|ud|sl|as|og|club|de|the)\b/g, " ").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
 const sim = (a, b) => { const A = new Set(norm(a).split(" ").filter(w => w.length > 2)), B = new Set(norm(b).split(" ").filter(w => w.length > 2)); let n = 0; for (const w of A) if (B.has(w) || [...B].some(x => x.startsWith(w) || w.startsWith(x))) n++; return n / Math.max(1, Math.min(A.size, B.size)); };
 

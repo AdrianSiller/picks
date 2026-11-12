@@ -14,7 +14,7 @@ const gameLbl = l => l.replace(" (moneyline)", " ML").replace(" (spread)", "");
 const bestLine = g => { const b = g.best; if (!b || !(b.h || b.a)) return null;
   const it = [["h", g.home.abbr], ["d", "Empate"], ["a", g.away.abbr]].filter(([k]) => b[k]).map(([k, n]) => `${esc(n)} ${b[k].p.toFixed(2)} (${esc(b[k].bk)})`);
   return `💰 Mejor momio del mercado: ${it.join(" · ")}`; };
-export const LG = {"Liga MX": "mx", "La Liga": "esp", "Premier": "eng", "Bundesliga": "ger", "Serie A": "ita", "Ligue 1": "fra", "Champions": "ucl", "Europa": "uel"};
+export const LG = {"Liga MX": "mx", "La Liga": "esp", "Premier": "eng", "Bundesliga": "ger", "Serie A": "ita", "Ligue 1": "fra", "Champions": "ucl", "Europa": "uel", "Nations League": "unl", "Concacaf NL": "cnl"};
 
 // Bets you can mark from the bot: each pick gets a short stable ref (same pick = same ref across builds) and the fields grading needs
 let BETS = {};
@@ -268,7 +268,7 @@ function soccer(S, now, hours, day, started = []) {
   const games = S.games.filter(g => new Date(g.date) > now && dlocMx(g.date) === day);
   if (!games.length && !started.length) return null;
   const B = M.buildSoccer(S), G = Object.fromEntries(S.games.map(g => [g.id, g])), GM = Object.fromEntries(B.games.map(x => [x.id, x]));
-  const FLAG = {"Liga MX": "🇲🇽", "La Liga": "🇪🇸", Premier: "🏴", Bundesliga: "🇩🇪", "Serie A": "🇮🇹", "Ligue 1": "🇫🇷", Champions: "⭐", Europa: "🟠"};
+  const FLAG = {"Liga MX": "🇲🇽", "La Liga": "🇪🇸", Premier: "🏴", Bundesliga: "🇩🇪", "Serie A": "🇮🇹", "Ligue 1": "🇫🇷", Champions: "⭐", Europa: "🟠", "Nations League": "🌍", "Concacaf NL": "🌎"};
   const short = l => l.replace(" tiros a puerta", " a puerta").replace("Ambos anotan: Sí", "Ambos anotan");
   const row = c => { const g = G[c.g], br = brief(S, g, c, GM[g.id]); return [`${br.b} <b>${esc(short(c.lbl))}</b> · ${c.p ? (c.est ? "≈" : "") + fx(c.p) : "sin momio"} · ${pct(c.pr)}`, `   ↳ ${esc(br.t)}`].join("\n"); };
   // Picks grouped by match (best match first), each match with its header
@@ -362,7 +362,7 @@ function record(R) {
 // Soccer record by league (last 7 days and everything), each with its markets
 function recordSoc(R) {
   const days = (R.days || []).filter(d => d.items.some(x => x.sport === "SOC" && (x.hit === 0 || x.hit === 1))); if (!days.length) return "Todavía no hay resultados de soccer calificados.";
-  const FLAG = {"Liga MX": "🇲🇽", "La Liga": "🇪🇸", Premier: "🏴", Bundesliga: "🇩🇪", "Serie A": "🇮🇹", "Ligue 1": "🇫🇷", Champions: "⭐", Europa: "🟠"};
+  const FLAG = {"Liga MX": "🇲🇽", "La Liga": "🇪🇸", Premier: "🏴", Bundesliga: "🇩🇪", "Serie A": "🇮🇹", "Ligue 1": "🇫🇷", Champions: "⭐", Europa: "🟠", "Nations League": "🌍", "Concacaf NL": "🌎"};
   const SK = {"1x2": "Resultado", dc: "Doble oport.", dc1h: "Doble oport. 1T", hc: "Handicap", tot: "Goles", btts: "Ambos anotan", cor: "Corners", tt: "Goles por equipo"};
   const fmt = arr => { const w = arr.filter(x => x.hit).length, u = arr.reduce((s, x) => s + (x.hit ? (x.p || 1.91) - 1 : -1), 0); return {w, n: arr.length, u}; };
   const block = (title, items) => {
@@ -440,7 +440,7 @@ function safeView(latest, now) {
   const S = latest.soc; if (S && S.games.length) { const B = M.buildSoccer(S), GM = Object.fromEntries(B.games.map(x => [x.id, x]));
     for (const g of S.games.filter(g => soon(g.date))) for (const c of M.socSafe(B.cands.filter(c => c.g === g.id), GM[g.id], g)) {
       const w = M.socWhy(S.teams, g, c, GM[g.id]), br = brief(S, g, c, GM[g.id]);
-      list.push({...c, sport: "SOC", g: g.id, d: g.date, head: `${g.lg === "Europa" ? "🟠" : g.lg === "Champions" ? "⭐" : "⚽"} ${g.away.abbr} @ ${g.home.abbr} · ${hora(g.date)}`, lbl: c.lbl, why: [br.t, w.lines.find(x => x.startsWith("Nuestro modelo"))].filter(Boolean), bet: socBet(g, c)}); } }
+      list.push({...c, sport: "SOC", g: g.id, d: g.date, head: `${g.lg === "Europa" ? "🟠" : g.lg === "Nations League" ? "🌍" : g.lg === "Concacaf NL" ? "🌎" : g.lg === "Champions" ? "⭐" : "⚽"} ${g.away.abbr} @ ${g.home.abbr} · ${hora(g.date)}`, lbl: c.lbl, why: [br.t, w.lines.find(x => x.startsWith("Nuestro modelo"))].filter(Boolean), bet: socBet(g, c)}); } }
   const D = latest.nba; if (D && D.cands) { const G = Object.fromEntries(D.games.map(g => [g.id, g])), per = new Set();
     for (const c of M.nbaSafe(D.cands.filter(c => G[c.g] && soon(G[c.g].date)))) { if (per.has(c.aid) || per.size >= 6) continue; per.add(c.aid); const g = G[c.g];
       list.push({...c, sport: "NBA", d: g.date, head: `🏀 ${g.away.abbr} @ ${g.home.abbr} · ${hora(g.date)}`, lbl: `${c.n} ${c.s === "over" ? "Over" : "Under"} ${c.l} ${SH[c.m] || c.m}`, why: [shortProp("NBA", c, D, g, 1)[0] ? shortProp("NBA", c, D, g, 1)[0].replace(/^- /, "") : "", `Modelo ${pct(c.pm)} · casa ${pct(c.mkB)}`].filter(Boolean), bet: propBet("NBA", c, g.date)}); } }

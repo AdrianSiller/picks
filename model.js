@@ -190,6 +190,8 @@
   M.SOC_SKIP = new Set(["CUP", "QUAL", "FRI"]);
   // Continental competitions: teams from leagues of very different level (league-level adjustment, more weight to the book)
   M.UEFA = new Set(["Champions", "Europa"]);
+  // National teams: thin, mixed-level history (qualifiers vs small countries, a World Cup months ago) -> lean more on the market, like in UEFA cups
+  M.NAT = new Set(["Nations League", "Concacaf NL"]);
   // "1 Up": the bet pays as a win if the team goes ahead by k (=1) goals at any moment of the match.
   // Goals arrive minute by minute (Poisson); we follow the score difference and stop when it reaches +k.
   M.everAhead = (lt, lo, k = 1, steps = 180) => {
@@ -279,12 +281,12 @@
       const nv2 = (a, b) => a && b ? (1 / a) / (1 / a + 1 / b) : null;
       // 1 Up anchored to the book: the goals each team is expected to score according to its 1X2 and total prices,
       // then the same minute-by-minute walk; mixed with the model's like every other market
-      const wM0 = M.UEFA.has(g.lg) ? M.SOC.wCL : M.SOC.w, mkL = M.mktLambdas(pn ? {...L, mlHome: pn.h, draw: pn.d, mlAway: pn.a} : L, pois);
+      const wM0 = (M.UEFA.has(g.lg) || M.NAT.has(g.lg)) ? M.SOC.wCL : M.SOC.w, mkL = M.mktLambdas(pn ? {...L, mlHome: pn.h, draw: pn.d, mlAway: pn.a} : L, pois);
       const up = (a, b) => M.everAhead(a, b, 1), u1H = mkL ? wM0 * up(lh, la) + (1 - wM0) * up(mkL.h, mkL.a) : up(lh, la), u1A = mkL ? wM0 * up(la, lh) + (1 - wM0) * up(mkL.a, mkL.h) : up(la, lh);
       const gi = {id: g.id, fav: M.socFav(L), lh, la, lc, pH, pD, pA, pBTTS: P((i, j) => i > 0 && j > 0), H, A, up1H: u1H, up1A: u1A, mkL};
       games.push(gi);
       // Model weight vs the market: lower in Champions, where teams come from leagues of very different level
-      const wM = M.UEFA.has(g.lg) ? M.SOC.wCL : M.SOC.w;
+      const wM = (M.UEFA.has(g.lg) || M.NAT.has(g.lg)) ? M.SOC.wCL : M.SOC.w;
       const cal0 = M.calAdj("SOC|soc");
       const add = o => { const cal = M.CALIB["SOC|" + o.k] != null ? M.CALIB["SOC|" + o.k] : cal0, blend = clamp((o.mk != null ? wM * o.pm + (1 - wM) * o.mk : 0.5 + (o.pm - 0.5) * 0.7) + cal, 0.02, 0.98); cands.push({g: g.id, ...o, pr: +blend.toFixed(3), imp: o.p ? +(1 / o.p).toFixed(3) : null, e: o.p ? +(blend - 1 / o.p).toFixed(3) : null, cal, ucl: M.UEFA.has(g.lg) ? 1 : 0, al: M.socAligned(o, M.socFav(L)) ? 1 : 0, thin: Math.min(H.n, A.n) < 6 ? 1 : 0, gap: o.mk != null ? +(o.pm - o.mk).toFixed(3) : null}); };
       const hN = g.home.abbr, aN = g.away.abbr;
