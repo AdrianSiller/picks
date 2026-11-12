@@ -11,6 +11,7 @@ import {dloc} from "./lib.mjs";
 import {botData} from "./botdata.mjs";
 import {oddsApi} from "./oddsapi.mjs";
 import M from "../model.js";
+import {gates} from "./gates.mjs";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const DATA = path.join(ROOT, "data");
@@ -61,6 +62,11 @@ const calItems = [];
 for (let i = 1; i <= 30; i++) { const d = dloc(new Date(now.getTime() - i * 864e5).toISOString(), "America/Mexico_City"), s = read(`cands/${d}.json`, null);
   if (s) for (const x of s.items) if (x.res && x.p && x.pr - (x.cal || 0) >= 0.55) calItems.push({date: d, sport: x.sport, kind: x.kind, s: x.s, k: x.k, pr: x.pr, cal: x.cal || 0, hit: x.res.hit}); }
 M.CALIB = M.calibrate(calItems);
+// Gates: types of pick that turn themselves off / on from the log (see scripts/gates.mjs)
+const G0 = gates({R: read("results.json", {days: []}), read, dloc, now, prev});
+M.GATES = G0.gates;
+const gateLog = (prev.gateLog || []).concat(G0.changes).slice(-40);
+log("gates", Object.entries(M.GATES).filter(([, v]) => !v.on).map(([k]) => k).join(", "), "cambios:", G0.changes.map(c => c.k + (c.on ? " ON" : " OFF")).join(", "));
 log("calibración", JSON.stringify(M.CALIB));
 // Learn how much to trust the book vs our model from every graded prop of the last 14 days (all candidates, not only picks).
 // Before Nov 4 the stored probability was the model's own (minus calibration); since then pm / mkB are stored explicitly.
@@ -92,7 +98,7 @@ for (const g of soc.games) { const L = g.lines || {}; if (!L.mlHome) continue; c
 for (const k of Object.keys(open)) if (!seenK.has(k) && now - new Date(open[k].at) > 2 * 864e5) delete open[k];
 write("open.json", open);
 
-const latest = {generatedAt: now.toISOString(), calib: M.CALIB, learn: learned, sgoAt: runSgo && key ? now.toISOString() : prev.sgoAt, oddsAt: prev.oddsAtNew || prev.oddsAt, nba, nfl, soc};
+const latest = {generatedAt: now.toISOString(), calib: M.CALIB, learn: learned, gates: M.GATES, gateLog, sgoAt: runSgo && key ? now.toISOString() : prev.sgoAt, oddsAt: prev.oddsAtNew || prev.oddsAt, nba, nfl, soc};
 write("latest.json", latest);
 log("latest.json", (JSON.stringify(latest).length / 1024).toFixed(0) + " KB", `NBA ${nba.games.length} games/${nba.cands.length} props · NFL ${nfl.games.length}/${nfl.cands.length} · soccer ${soc.games.length}`);
 

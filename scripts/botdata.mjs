@@ -330,6 +330,10 @@ function soccer(S, now, hours, day, started = []) {
 }
 
 // Record per sport, split by kind of pick: last graded day, last 7 days and everything kept
+const GATE_NAME = {"NFL|prop": "Props de jugadores NFL", "NBA|3PM|over": "Overs de triples NBA", "NBA|3PM|under": "Unders de triples NBA", "NBA|REB|over": "Overs de rebotes NBA", "NBA|REB|under": "Unders de rebotes NBA", "NBA|AST|over": "Overs de asistencias NBA", "NBA|AST|under": "Unders de asistencias NBA", "NBA|PTS|over": "Overs de puntos NBA", "NBA|PTS|under": "Unders de puntos NBA", "NBA|game|ml": "ML NBA", "NBA|game|sp": "Spread NBA", "NBA|game|tot": "Total NBA", "NFL|game|ml": "ML NFL", "NFL|game|sp": "Spread NFL", "NFL|game|tot": "Total NFL", "SOC|dc": "Doble oportunidad", "SOC|dc1h": "Doble oportunidad 1T", "SOC|tot": "Goles del partido", "SOC|tt": "Goles por equipo", "SOC|pshot": "Tiros de jugador", "SOC|psot": "Tiros a puerta de jugador", "SOC|pgoal": "Gol de jugador", "SOC|1x2": "Resultado", "SOC|hc": "Handicap", "SOC|btts": "Ambos anotan", "SOC|tc": "Corners de equipo", "SOC|cor": "Corners"};
+let LATEST_G = {};
+const learnLines = () => { const off = Object.entries(LATEST_G).filter(([, v]) => !v.on); if (!off.length) return [];
+  return ["", "<b>🧠 En pausa (se reactivan solos si vuelven a pegar)</b>", ...off.map(([k, v]) => `⏸️ ${esc(GATE_NAME[k] || k)}: ${esc(v.why || "")}`)]; };
 function record(R) {
   const days = (R.days || []).filter(d => d.items.some(x => x.hit === 0 || x.hit === 1)); if (!days.length) return "Todavía no hay resultados calificados.";
   const NAME = {NBA: "🏀 NBA", NFL: "🏈 NFL", SOC: "⚽ Soccer"}, SK = {"1x2": "resultado", dc: "doble oport.", dc1h: "doble oport. 1T", hc: "handicap", tot: "goles", btts: "ambos anotan", cor: "corners", tt: "goles por equipo"};
@@ -352,7 +356,7 @@ function record(R) {
   const flat = ds => ds.flatMap(d => d.items), last7 = days.filter(d => (new Date(day.date) - new Date(d.date)) / 864e5 < 7), oldest = days[days.length - 1].date;
   const safeAll = flat(days).filter(x => x.safe), sf = fmt(safeAll);
   return ["<b>📊 Cómo nos fue</b>", ...(sf.d.length ? ["", `<b>🛡️ Más seguros: ${sf.txt}</b> · ${sf.u >= 0 ? "+" : ""}${sf.u.toFixed(1)} u <i>(desde que existe la sección)</i>`] : []), "", block(`Último día (${when(day.date)})`, day.items), "", block("Últimos 7 días", flat(last7)), ...(days.length > last7.length ? ["", block(`Desde el ${when(oldest)}`, flat(days))] : []),
-    "", "<i>u = unidades: 1 por pick con el momio de DraftKings.</i>"].filter(x => x != null).join("\n");
+    ...learnLines(), "", "<i>u = unidades: 1 por pick con el momio de DraftKings.</i>"].filter(x => x != null).join("\n");
 }
 
 // Soccer record by league (last 7 days and everything), each with its markets
@@ -452,6 +456,7 @@ function safeView(latest, now) {
 }
 
 export function botData(latest, R, now, snap) {
+  LATEST_G = latest.gates || {};
   const at = new Date(latest.generatedAt).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ});
   BETS = {};
   const startedOf = sp => ((snap && snap.items) || []).filter(x => x.sport === sp && new Date(x.d) <= now);

@@ -298,12 +298,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 11 nov 2:00 p.m. · diseño v2</footer>
-<script src="model.js?v=20261111-1400"></script>
+<footer class="ver">Versión de la app: 11 nov 9:30 p.m. · diseño v2</footer>
+<script src="model.js?v=20261111-2130"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261111-1400";
+const APP_VERSION = "20261111-2130";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -330,6 +330,7 @@ const RAW = "https://raw.githubusercontent.com/AdrianSiller/picks/main/";
 const getData = async f => (await getJSON(RAW + f)) || getJSON(f);
 const LATEST = await getData("data/latest.json");
 window.M.CALIB = LATEST.calib || {};
+window.M.GATES = LATEST.gates || {};
 if (LATEST.learn) window.M.PROP_W = {NBA: (LATEST.learn.NBA || {}).w ?? 0.5, NFL: (LATEST.learn.NFL || {}).w ?? 0.5};
 const RESULTS = (await getData("data/results.json")) || {days: []};
 // Today's picks as they were before each game started (so they stay visible after kickoff, with their result)
@@ -854,6 +855,16 @@ function resultsHtml() {
 }
 
 /* ---------- Performance: how the graded picks are doing, cut by sport, market, confidence, price and role ---------- */
+// 🧠 What the model is learning: types of pick paused / back on by themselves from the log (scripts/gates.mjs)
+const GATE_NAME = {"NFL|prop": "Props de jugadores NFL", "NBA|3PM|over": "Overs de triples NBA", "NBA|3PM|under": "Unders de triples NBA", "NBA|REB|over": "Overs de rebotes NBA", "NBA|REB|under": "Unders de rebotes NBA", "NBA|AST|over": "Overs de asistencias NBA", "NBA|AST|under": "Unders de asistencias NBA", "NBA|PTS|over": "Overs de puntos NBA", "NBA|PTS|under": "Unders de puntos NBA", "NBA|game|ml": "ML NBA", "NBA|game|sp": "Spread NBA", "NBA|game|tot": "Total NBA", "NFL|game|ml": "ML NFL", "NFL|game|sp": "Spread NFL", "NFL|game|tot": "Total NFL", "SOC|dc": "Doble oportunidad", "SOC|dc1h": "Doble oportunidad 1T", "SOC|tot": "Goles del partido", "SOC|tt": "Goles por equipo", "SOC|pshot": "Tiros de jugador", "SOC|psot": "Tiros a puerta de jugador", "SOC|pgoal": "Gol de jugador", "SOC|1x2": "Resultado", "SOC|hc": "Handicap", "SOC|btts": "Ambos anotan", "SOC|tc": "Corners de equipo", "SOC|cor": "Corners"};
+function learnHtml() {
+  const G = LATEST.gates || {}, off = Object.entries(G).filter(([, v]) => !v.on), L = (LATEST.gateLog || []).slice(-6).reverse(); if (!off.length && !L.length) return "";
+  const nm = k => GATE_NAME[k] || k, sh = v => v.S && v.S.n ? ` · en la sombra: ${v.S.h} de ${v.S.n} desde la pausa (necesita ${Math.round((v.S.be || 0) * 100)}%)` : "";
+  return `<div class="card" style="cursor:default"><h3 class="sub" style="margin-top:0">🧠 Qué está aprendiendo</h3>
+    <div class="note" style="margin-top:0">Cada actualización revisa cada tipo de pick contra su momio. Si pierde claramente (no solo un mal día), se pausa solo; sigue calculándose "en la sombra" y regresa solo cuando vuelve a pegar lo que el momio pide.</div>
+    ${off.length ? `<div class="tablewrap"><table class="opts perf"><tbody>${off.map(([k, v]) => `<tr><td>⏸️ ${esc(nm(k))}</td><td colspan="3">${esc(v.why || "")}${esc(sh(v))}</td></tr>`).join("")}</tbody></table></div>` : ""}
+    ${L.length ? `<div class="note">Cambios recientes: ${L.map(c => `${c.on ? "▶️ regresó" : "⏸️ pausado"} ${esc(nm(c.k))} (${new Date(c.at).toLocaleDateString("es-MX", {day: "numeric", month: "short", timeZone: "America/Monterrey"})})`).join(" · ")}</div>` : ""}</div>`;
+}
 function viewPerf() {
   const sp = S.name === "Soccer" ? "SOC" : S.name, days = RESULTS.days || [];
   const done = x => x.hit === 0 || x.hit === 1;
@@ -875,7 +886,7 @@ function viewPerf() {
     return `<div class="note">Calibración: estos picks prometían en promedio <b>${pct(exp)}</b> y pegaron <b>${pct(t.pct)}</b>.${t.pct < exp - 0.05 ? " El modelo sigue optimista; si se mantiene, se ajusta." : t.pct > exp + 0.05 ? " El modelo está siendo conservador." : " Bien calibrado."}</div>`; })();
   const dname = d => new Date(d + "T12:00:00").toLocaleDateString("es-MX", {weekday: "short", day: "numeric", month: "short"});
   if (!all.length) return `<div class="card meta" style="cursor:default">Todavía no hay picks calificados.</div>`;
-  return `<div class="card" style="cursor:default">
+  return learnHtml() + `<div class="card" style="cursor:default">
       <div class="perf-top"><div><small>${esc(S.name)}</small><b>${ME.w} de ${ME.n}</b><span>${Math.round(ME.pct * 100)}% · <span class="${ME.u >= 0 ? "pos" : "neg"}">${uTxt(ME.u)}</span></span></div>
       <div><small>Todos los deportes</small><b>${ALL.w} de ${ALL.n}</b><span>${Math.round(ALL.pct * 100)}% · <span class="${ALL.u >= 0 ? "pos" : "neg"}">${uTxt(ALL.u)}</span></span></div></div>
       <div class="note">Unidades: 1 a cada pick (sin momio se toma 1.91). Con momios de 1.50–1.80 hay que pegar 55–67% para ganar. Desde el ${dname(days[days.length - 1].date)}; con pocos días, toma las tendencias con calma.</div>
