@@ -1,14 +1,20 @@
-[3s] NBA ok
-[8s] NFL ok
+[5s] NBA ok
+[10s] NFL ok
 fotmob historial: 0 de 2 equipos con poco historial: 
 fotmob xG: 3 de 88 equipos
 fotmob partido a partido: 124 equipos con xG de sus últimos partidos
-[30s] Soccer ok
-[30s] gates NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
-[30s] calibración {"_n":2351,"NBA|prop|over":0.015,"NBA|prop|under":0.012,"NBA|game":-0.004,"NFL|prop|over":-0.014,"NFL|prop|under":-0.011,"NFL|game":0.033,"SOC|soc":-0.012,"SOC|dc":0.005,"SOC|dc1h":0.041,"SOC|tot":-0.007,"SOC|tt":0.037,"SOC|tc":-0.069,"SOC|psot":-0.034,"SOC|pshot":-0.053,"SOC|btts":-0.036,"SOC|1x2":0.013,"SOC|cor":0.036,"SOC|hc":0.011,"SOC|pgoal":-0.044}
-[30s] peso de la casa aprendido {"NBA":{"w":0.73,"raw":0.8,"n":905},"NFL":{"w":0.61,"raw":0.8,"n":170}}
-[30s] latest.json 612 KB NBA 4 games/50 props · NFL 14/203 · soccer 71
-[31s] candidatos guardados 1286
-[31s] grade 2026-11-12 ok
-[32s] bot.json ok
-[32s] done
+[32s] Soccer ok
+[39s] SGO NFL ok
+[39s] SGO NFL priced 184
+[39s] SGO UCL ok
+[39s] SGO UCL matched 0
+[39s] OddsAPI ok
+[39s] OddsAPI {"calls":4,"left":"416"}
+[39s] gates NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
+[39s] calibración {"_n":2544,"NBA|prop|over":0.016,"NBA|prop|under":0.011,"NBA|game":-0.001,"NFL|prop|over":-0.014,"NFL|prop|under":-0.022,"NFL|game":0.013,"SOC|soc":-0.012,"SOC|dc":0.015,"SOC|dc1h":0.038,"SOC|tt":0.036,"SOC|tc":-0.061,"SOC|1x2":0.029,"SOC|tot":0.006,"SOC|psot":-0.032,"SOC|pshot":-0.061,"SOC|btts":-0.033,"SOC|cor":0.027,"SOC|hc":0.001,"SOC|pgoal":-0.035}
+[40s] peso de la casa aprendido {"NBA":{"w":0.69,"raw":0.75,"n":954},"NFL":{"w":0.65,"raw":0.9,"n":181}}
+[40s] latest.json 752 KB NBA 9 games/104 props · NFL 13/191 · soccer 70
+[40s] candidatos guardados 1723
+[40s] grade 2026-11-13 ok
+[41s] bot.json ok
+[41s] done
