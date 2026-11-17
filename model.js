@@ -426,10 +426,13 @@
           : `Nuestro modelo solo ${pc(pm)} · ${src} ${pc(mk)}: se apoya en el mercado, no en nuestras estadísticas`); } }
     return {lines: out.length > 4 ? [...out.slice(0, 3), out[out.length - 1]] : out, back, pm, mk};
   };
+  // Main markets (result, handicap) carry the book's lowest commission (~3% vs 6-8% on team goals, shots, both-score):
+  // when two options are close, the pick of the match goes to the main one (Nov 17 review of every graded candidate)
+  const pri = c => ["1x2", "hc"].includes(c.k) ? 0.03 : 0;
   M.socGamePick = (cands, gi) => {
     // Too few matches of either team in the data (e.g. a league ESPN does not cover): no pick
     if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return null;
-    const fav = gi && gi.fav, cs = cands.filter(c => c.p && M.socAligned(c, fav) && !M.isPl(c)), solid = cs.filter(c => M.socOk(c)).sort((a, b) => M.socScore(b) - M.socScore(a))[0];
+    const fav = gi && gi.fav, cs = cands.filter(c => c.p && M.socAligned(c, fav) && !M.isPl(c)), solid = cs.filter(c => M.socOk(c)).sort((a, b) => M.socScore(b) + pri(b) - M.socScore(a) - pri(a))[0];
     if (solid) return {c: solid, tier: "solid"};
     // The model must not see it as less likely than the book (it only confirms; it never rides on the book alone)
     // "Pays what it's worth": the book's commission on this price is the usual one (up to 8% over its own fair price), and our
@@ -439,7 +442,7 @@
     // up to 15 points under the book; everywhere else it must not be under the book
     const onFav = c => fav && ((["1x2", "hc"].includes(c.k) && c.side === fav.side) || (["dc", "dc1h"].includes(c.k) && c.side === (fav.side === "H" ? "1X" : "X2")) || (c.k === "tt" && c.team === fav.side && c.side === "O"));
     const lo = c => c.ucl && onFav(c) ? -0.15 : -0.05;
-    const fair = cs.filter(c => c.p >= 1.25 && c.pr >= 0.6 && okPrice(c) && (c.gap == null || (c.gap >= lo(c) && c.gap <= M.SOC.hi))).sort((a, b) => b.pr - a.pr)[0];
+    const fair = cs.filter(c => c.p >= 1.25 && c.pr >= 0.6 && okPrice(c) && (c.gap == null || (c.gap >= lo(c) && c.gap <= M.SOC.hi))).sort((a, b) => b.pr + pri(b) - a.pr - pri(a))[0];
     let u = gi ? (gi.up1H >= gi.up1A ? {side: "H", pr: gi.up1H} : {side: "A", pr: gi.up1A}) : null;
     if (u && gi.mkL) { const hS = u.side === "H", pm = hS ? M.everAhead(gi.lh, gi.la, 1) : M.everAhead(gi.la, gi.lh, 1), mk = hS ? M.everAhead(gi.mkL.h, gi.mkL.a, 1) : M.everAhead(gi.mkL.a, gi.mkL.h, 1); if (pm - mk > M.SOC.hi) u = null; }
     // A pick with a price first; 1 Up (no price in the source) only when there is nothing else
