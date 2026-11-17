@@ -49,8 +49,12 @@ jobs:
           git config user.email "picks-bot@users.noreply.github.com"
           git add data
           git commit -m "Datos $(date -u '+%Y-%m-%d %H:%M') UTC" || exit 0
-          git pull --rebase origin main
-          git push
+          # Another run (or the FotMob job) may have pushed data meanwhile: on a conflict keep this run's files (they are newer)
+          for i in 1 2 3; do
+            git pull --rebase -X theirs origin main && git push && exit 0
+            git rebase --abort 2>/dev/null || true; sleep $((i * 5))
+          done
+          exit 1
       - name: Avisar al bot
         if: always()
         env:
