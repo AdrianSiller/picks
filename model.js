@@ -69,6 +69,8 @@
   M.gateOn = k => !(M.GATES[k] && M.GATES[k].on === false);
   M.fails = (c, sport) => { const cfg = M.CFG[sport];
     const gk = M.gateKey(c, sport); if (!M.gateOn(gk)) return `en pausa: ${M.GATES[gk].why || "va perdiendo en el registro"}`;
+    // NBA: when our model sees 10+ points more than the book, the book is usually right (Nov 2026 log: 46-50% hit, -8% to -18%)
+    if (sport === "NBA" && c.pm != null && c.mkB != null && c.pm - c.mkB > 0.10) return `el modelo ve mucho más que la casa (${Math.round(c.pm * 100)}% contra ${Math.round(c.mkB * 100)}%): en el registro esos fallan`;
     return c.out ? "no juega" : !c.p ? "sin momio en la casa" : c.role === 0 ? "fuera de su rol" : c.pr < cfg.minPr ? `probabilidad baja (${Math.round(c.pr * 100)}%)` : c.e < -0.02 ? "momio caro para lo que estimamos" : ""; };
   M.topPicks = (cands, sport, n = 10) => {
     const cfg = M.CFG[sport], out = [], per = {};
