@@ -110,6 +110,11 @@ for (const [d, its] of Object.entries(byDay)) {
   const snap = read(`snap/${d}.json`, null);
   // Picks of games that already started stay as they were; the rest are replaced by this run's version
   const kept = snap ? snap.items.filter(x => !its.some(y => y.sport === x.sport && y.g === x.g) && !(looked.has(x.g) && new Date(x.d) > now)) : [];
+  // Closing line: each pick keeps the price (and line) it had when the app first proposed it (p0, l0, t0); its p keeps being
+  // refreshed until kickoff, so at grading p is ~the closing price. p0 > p = we got a better price than the close (good sign).
+  const idOf = x => [x.sport, x.g, x.kind, x.m || x.k || x.bet, x.s || x.side, x.team || "", x.aid || ""].join("|");
+  const prevById = new Map((snap ? snap.items : []).map(x => [idOf(x), x]));
+  for (const y of its) { const x = prevById.get(idOf(y)); y.p0 = x ? (x.p0 ?? x.p) : y.p; y.l0 = x ? (x.l0 ?? x.l ?? x.line) : (y.l ?? y.line); y.t0 = x ? (x.t0 || now.toISOString()) : now.toISOString(); }
   write(`snap/${d}.json`, {date: d, items: kept.concat(its)});
 }
 // Days where this run had games but no pick left: still drop the stale picks of games not started
@@ -144,7 +149,7 @@ for (let i = 0; i < 10; i++) {
   const d = dloc(new Date(now.getTime() - i * 864e5).toISOString(), "America/Mexico_City"), s = read(`snap/${d}.json`, null);
   if (!s) continue;
   if (s.items.some(x => x.res == null)) { await step(`grade ${d}`, () => grade(s.items)); write(`snap/${d}.json`, s); }
-  days.push({date: d, items: s.items.map(x => ({sport: x.sport, lg: x.lg, kind: x.kind, safe: x.safe, n: x.n, t: x.t, lbl: x.lbl, p: x.p, g: x.g, m: x.m, s: x.s, k: x.k, side: x.side, bet: x.bet, pr: x.pr, cal: x.cal, role: x.role, mv: x.mv, hit: x.res ? x.res.hit : undefined, act: x.res ? x.res.act : undefined}))});
+  days.push({date: d, items: s.items.map(x => ({sport: x.sport, lg: x.lg, kind: x.kind, safe: x.safe, n: x.n, t: x.t, lbl: x.lbl, p: x.p, p0: x.p0, l0: x.l0, ln: x.l ?? x.line, g: x.g, m: x.m, s: x.s, k: x.k, side: x.side, bet: x.bet, pr: x.pr, cal: x.cal, role: x.role, mv: x.mv, hit: x.res ? x.res.hit : undefined, act: x.res ? x.res.act : undefined}))});
 }
 // Days graded before this pipeline existed (or whose snapshot is gone) stay in the file
 const oldDays = read("results.json", {days: []}).days.filter(d => !days.some(x => x.date === d.date));

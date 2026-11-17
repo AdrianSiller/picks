@@ -298,12 +298,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 12 nov 11:00 a.m. · diseño v2</footer>
-<script src="model.js?v=20261112-1100"></script>
+<footer class="ver">Versión de la app: 17 nov 3:45 p.m. · diseño v2</footer>
+<script src="model.js?v=20261117-1545"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261112-1100";
+const APP_VERSION = "20261117-1545";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -865,6 +865,14 @@ function learnHtml() {
     ${off.length ? `<div class="tablewrap"><table class="opts perf"><tbody>${off.map(([k, v]) => `<tr><td>⏸️ ${esc(nm(k))}</td><td colspan="3">${esc(v.why || "")}${esc(sh(v))}</td></tr>`).join("")}</tbody></table></div>` : ""}
     ${L.length ? `<div class="note">Cambios recientes: ${L.map(c => `${c.on ? "▶️ regresó" : "⏸️ pausado"} ${esc(nm(c.k))} (${new Date(c.at).toLocaleDateString("es-MX", {day: "numeric", month: "short", timeZone: "America/Monterrey"})})`).join(" · ")}</div>` : ""}</div>`;
 }
+// 📉 Against the closing price: the price when the app first proposed each pick (p0) vs the last one before kickoff (p).
+// Getting better prices than the close, again and again, is the fastest sign that a model sees something before the market.
+function closeHtml(sp) {
+  const r = (RESULTS.days || []).flatMap(d => d.items).filter(x => x.sport === sp && x.p0 && x.p && (x.l0 == null || x.l0 === x.ln));
+  if (r.length < 5) return `<div class="note">📉 <b>Contra el cierre</b>: se empezó a medir el 17 de noviembre; aparece aquí en cuanto haya 5 picks de ${esc(S.name)} con precio inicial y de cierre.</div>`;
+  const clv = r.reduce((s, x) => s + (x.p0 / x.p - 1), 0) / r.length, up = r.filter(x => x.p0 > x.p + 0.005).length, dn = r.filter(x => x.p0 < x.p - 0.005).length;
+  return `<div class="note">📉 <b>Contra el cierre</b> (${r.length} picks): en promedio el precio cuando la app propuso el pick fue <b class="${clv >= 0 ? "pos" : "neg"}">${clv >= 0 ? "+" : ""}${(clv * 100).toFixed(1)}%</b> contra el de cierre. ${up} cerraron más bajo (la casa terminó dándonos la razón), ${dn} cerraron más alto. Si este número se mantiene positivo, el modelo está viendo algo antes que el mercado.</div>`;
+}
 function viewPerf() {
   const sp = S.name === "Soccer" ? "SOC" : S.name, days = RESULTS.days || [];
   const done = x => x.hit === 0 || x.hit === 1;
@@ -886,7 +894,7 @@ function viewPerf() {
     return `<div class="note">Calibración: estos picks prometían en promedio <b>${pct(exp)}</b> y pegaron <b>${pct(t.pct)}</b>.${t.pct < exp - 0.05 ? " El modelo sigue optimista; si se mantiene, se ajusta." : t.pct > exp + 0.05 ? " El modelo está siendo conservador." : " Bien calibrado."}</div>`; })();
   const dname = d => new Date(d + "T12:00:00").toLocaleDateString("es-MX", {weekday: "short", day: "numeric", month: "short"});
   if (!all.length) return `<div class="card meta" style="cursor:default">Todavía no hay picks calificados.</div>`;
-  return learnHtml() + `<div class="card" style="cursor:default">
+  return learnHtml() + `<div class="card" style="cursor:default">${closeHtml(sp)}
       <div class="perf-top"><div><small>${esc(S.name)}</small><b>${ME.w} de ${ME.n}</b><span>${Math.round(ME.pct * 100)}% · <span class="${ME.u >= 0 ? "pos" : "neg"}">${uTxt(ME.u)}</span></span></div>
       <div><small>Todos los deportes</small><b>${ALL.w} de ${ALL.n}</b><span>${Math.round(ALL.pct * 100)}% · <span class="${ALL.u >= 0 ? "pos" : "neg"}">${uTxt(ALL.u)}</span></span></div></div>
       <div class="note">Unidades: 1 a cada pick (sin momio se toma 1.91). Con momios de 1.50–1.80 hay que pegar 55–67% para ganar. Desde el ${dname(days[days.length - 1].date)}; con pocos días, toma las tendencias con calma.</div>
