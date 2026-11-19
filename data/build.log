@@ -1,22 +1,18 @@
 [6s] NBA ok
-[10s] NFL ok
+[11s] NFL ok
 fotmob historial: 1 de 1 equipos con poco historial: MUN=Bayern München
 fotmob xG: 112 de 114 equipos
 fotmob partido a partido: 124 equipos con xG de sus últimos partidos
-[32s] Soccer ok
-[34s] SGO NFL ok
-[34s] SGO NFL priced 138
-[34s] SGO UCL ok
-[34s] SGO UCL matched 0
-[35s] OddsAPI ok
-[35s] OddsAPI {"calls":8,"left":"378"}
-[35s] gates SOC|1x2, SOC|tt, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
-[35s] calibración {"_n":3549,"NBA|prop|over":-0.007,"NBA|prop|under":-0.006,"NBA|game":-0.034,"NFL|prop|over":-0.05,"NFL|prop|under":-0.05,"NFL|game":0.003,"SOC|soc":-0.02,"SOC|dc":0.01,"SOC|dc1h":0.025,"SOC|tt":0.018,"SOC|btts":-0.021,"SOC|1x2":0.05,"SOC|tot":0.001,"SOC|hc":0.022,"SOC|tc":-0.08,"SOC|psot":-0.034,"SOC|pshot":-0.076,"SOC|cor":0.028,"SOC|pgoal":-0.043}
-[35s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1132},"NFL":{"w":0.7,"raw":0.9,"n":306}}
-[35s] latest.json 1033 KB NBA 12 games/126 props · NFL 13/143 · soccer 57
-[37s] grade all 2026-11-17 ok
-[37s] candidatos guardados 4101
-[37s] grade 2026-11-18 ok
-[37s] grade 2026-11-17 ok
-[38s] bot.json ok
-[38s] done
+[41s] Soccer ok
+[45s] SGO NFL ok
+[45s] SGO NFL priced 140
+[45s] SGO UCL ok
+[45s] SGO UCL matched 0
+[45s] gates SOC|1x2, SOC|tt, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
+[45s] calibración {"_n":3794,"NBA|prop|over":-0.009,"NBA|prop|under":-0.002,"NBA|game":-0.041,"NFL|prop|over":-0.05,"NFL|prop|under":-0.05,"NFL|game":0.003,"SOC|soc":-0.018,"SOC|dc":0.016,"SOC|dc1h":0.018,"SOC|tt":0.021,"SOC|btts":-0.012,"SOC|1x2":0.05,"SOC|hc":0.03,"SOC|tot":0.002,"SOC|psot":-0.023,"SOC|pshot":-0.08,"SOC|tc":-0.08,"SOC|cor":0.029,"SOC|pgoal":-0.041}
+[45s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1194},"NFL":{"w":0.7,"raw":0.9,"n":306}}
+[45s] latest.json 1100 KB NBA 12 games/141 props · NFL 13/145 · soccer 57
+[46s] candidatos guardados 4329
+[47s] grade 2026-11-18 ok
+[47s] bot.json ok
+[47s] done
