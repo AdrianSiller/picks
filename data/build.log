@@ -1,14 +1,22 @@
-[6s] NBA ok
-[12s] NFL ok
-fotmob historial: 1 de 1 equipos con poco historial: MUN=Bayern München
-fotmob xG: 112 de 114 equipos
+[3s] NBA ok
+[9s] NFL ok
+fotmob historial: 2 de 2 equipos con poco historial: MUN=Bayern München, SLB=Slovan Bratislava
+fotmob xG: 118 de 122 equipos
 fotmob partido a partido: 124 equipos con xG de sus últimos partidos
-[43s] Soccer ok
-[43s] gates SOC|1x2, SOC|tt, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
-[43s] calibración {"_n":3794,"NBA|prop|over":-0.009,"NBA|prop|under":-0.002,"NBA|game":-0.041,"NFL|prop|over":-0.05,"NFL|prop|under":-0.05,"NFL|game":0.003,"SOC|soc":-0.018,"SOC|dc":0.016,"SOC|dc1h":0.018,"SOC|tt":0.021,"SOC|btts":-0.012,"SOC|1x2":0.05,"SOC|hc":0.03,"SOC|tot":0.002,"SOC|psot":-0.023,"SOC|pshot":-0.08,"SOC|tc":-0.08,"SOC|cor":0.029,"SOC|pgoal":-0.041}
-[43s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1194},"NFL":{"w":0.7,"raw":0.9,"n":306}}
-[43s] latest.json 1110 KB NBA 12 games/146 props · NFL 13/149 · soccer 57
-[44s] candidatos guardados 4146
-[45s] grade 2026-11-18 ok
-[46s] bot.json ok
-[46s] done
+[47s] Soccer ok
+[49s] SGO NFL ok
+[49s] SGO NFL priced 151
+[50s] SGO UCL ok
+[50s] SGO UCL matched 7
+[53s] OddsAPI ok
+[53s] OddsAPI {"calls":8,"left":"367"}
+[53s] gates SOC|1x2, SOC|tt, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
+[53s] calibración {"_n":3794,"NBA|prop|over":-0.009,"NBA|prop|under":-0.002,"NBA|game":-0.041,"NFL|prop|over":-0.05,"NFL|prop|under":-0.05,"NFL|game":0.003,"SOC|soc":-0.018,"SOC|dc":0.016,"SOC|dc1h":0.018,"SOC|tt":0.021,"SOC|btts":-0.012,"SOC|1x2":0.05,"SOC|hc":0.03,"SOC|tot":0.002,"SOC|psot":-0.023,"SOC|pshot":-0.08,"SOC|tc":-0.08,"SOC|cor":0.029,"SOC|pgoal":-0.041}
+[53s] peso de la casa aprendido {"NBA":{"w":0.81,"raw":0.9,"n":1030},"NFL":{"w":0.7,"raw":0.9,"n":306}}
+[53s] latest.json 903 KB NBA 4 games/38 props · NFL 13/156 · soccer 66
+[54s] grade all 2026-11-18 ok
+[54s] candidatos guardados 4369
+[54s] grade 2026-11-19 ok
+[54s] grade 2026-11-18 ok
+[55s] bot.json ok
+[55s] done
