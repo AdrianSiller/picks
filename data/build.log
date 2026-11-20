@@ -1,14 +1,18 @@
-[5s] NBA ok
-[45s] NFL ok
-fotmob historial: 5 de 6 equipos con poco historial: MUN=Bayern München, SLB=Slovan Bratislava, SLP=Slavia Prague, VFK=Viking, SHK=Shakhtar Donetsk
-fotmob xG: 122 de 129 equipos
+[4s] NBA ok
+[9s] NFL ok
+fotmob historial: 5 de 6 equipos con poco historial: SLB=Slovan Bratislava, SLP=Slavia Prague, VFK=Viking, MUN=Bayern München, SHK=Shakhtar Donetsk
+fotmob xG: 117 de 124 equipos
 fotmob partido a partido: 130 equipos con xG de sus últimos partidos
-[81s] Soccer ok
-[82s] gates SOC|1x2, SOC|tt, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
-[82s] calibración {"_n":3920,"NBA|prop|over":-0.003,"NBA|prop|under":0.002,"NBA|game":-0.045,"NFL|prop|over":-0.05,"NFL|prop|under":-0.05,"NFL|game":-0.004,"SOC|soc":-0.018,"SOC|dc":0.016,"SOC|dc1h":0.018,"SOC|tt":0.021,"SOC|btts":-0.012,"SOC|1x2":0.05,"SOC|hc":0.03,"SOC|tot":0.002,"SOC|psot":-0.023,"SOC|pshot":-0.08,"SOC|tc":-0.08,"SOC|cor":0.029,"SOC|pgoal":-0.041}
-[82s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1193},"NFL":{"w":0.71,"raw":0.9,"n":317}}
-[82s] latest.json 1080 KB NBA 9 games/105 props · NFL 12/165 · soccer 75
-[83s] candidatos guardados 4657
-[83s] grade 2026-11-20 ok
-[84s] bot.json ok
-[84s] done
+[42s] Soccer ok
+[45s] SGO NFL ok
+[45s] SGO NFL priced 163
+[46s] SGO UCL ok
+[46s] SGO UCL matched 14
+[46s] gates SOC|1x2, SOC|tt, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
+[46s] calibración {"_n":3920,"NBA|prop|over":-0.003,"NBA|prop|under":0.002,"NBA|game":-0.045,"NFL|prop|over":-0.05,"NFL|prop|under":-0.05,"NFL|game":-0.004,"SOC|soc":-0.018,"SOC|dc":0.016,"SOC|dc1h":0.018,"SOC|tt":0.021,"SOC|btts":-0.012,"SOC|1x2":0.05,"SOC|hc":0.03,"SOC|tot":0.002,"SOC|psot":-0.023,"SOC|pshot":-0.08,"SOC|tc":-0.08,"SOC|cor":0.029,"SOC|pgoal":-0.041}
+[46s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1193},"NFL":{"w":0.71,"raw":0.9,"n":317}}
+[46s] latest.json 1058 KB NBA 9 games/106 props · NFL 12/170 · soccer 72
+[48s] candidatos guardados 4517
+[48s] grade 2026-11-20 ok
+[50s] bot.json ok
+[50s] done
