@@ -183,7 +183,12 @@
     // Price vs Pinnacle (the sharpest book): when we have its line, the pick's price must be at least 97% of Pinnacle's fair price.
     // First week of the test (Nov 17-23, 248 game prices): paying 3%+ under fair lost 15%; at fair or above won.
     const pinOk = o => !o.pin || o.mk == null || o.price * o.mk >= 0.97;
-    const pickable = opts2.filter(o => M.gateOn(`${ctx.sp}|game|${o.kind}`) && pinOk(o));
+    // NBA spreads (Nov 23 review of ~300 graded spreads): when the model sees a blowout well past a big line it fails (11% and 36%
+    // with 65%+); small lines with a moderate lean held up. So: NBA spreads only under 7 points and with the model under 65%,
+    // judged as their own type (NBA|game|sp7) instead of the old paused "all spreads".
+    const spOk = o => o.kind !== "sp" || ctx.sp !== "NBA" || (Math.abs(o.line) < 7 && o.pm < 0.65);
+    const gk = o => ctx.sp === "NBA" && o.kind === "sp" ? "NBA|game|sp7" : `${ctx.sp}|game|${o.kind}`;
+    const pickable = opts2.filter(o => M.gateOn(gk(o)) && pinOk(o) && spOk(o));
     const solid = pickable.filter(o => o.p >= 0.60 && o.e >= -0.02).sort((a, b) => b.p - a.p)[0];
     const value = solid ? null : opts2.filter(o => o.p < 0.60 && o.e >= 0.04).sort((a, b) => b.e - a.e)[0] || null;
     // No solid one: the pick of the game is the most likely option (62%+) that only costs the book's usual commission, as long as

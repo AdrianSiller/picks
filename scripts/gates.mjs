@@ -10,7 +10,7 @@ const W = 30, MIN = 12, OFF = -1.5, ON = 0;
 const SEED = {"NFL|prop": "41% en el registro", "NBA|3PM|over": "52% cuando necesita 62%", "NBA|REB|over": "50% cuando necesita 59%", "NBA|AST|over": "44% cuando necesita 60%",
   "NBA|game|sp": "3 de 8", "SOC|tot": "5 de 13", "SOC|dc1h": "1 de 4",
   "SOC|tt|O": "que un equipo anote: −7% y −13% en las dos mitades del registro"};
-const keyOf = x => x.kind === "soc" ? (x.k === "tt" ? `SOC|tt|${x.side}` : `SOC|${x.k}`) : x.kind === "game" ? `${x.sport}|game|${x.bet}` : x.sport === "NFL" ? "NFL|prop" : `${x.sport}|${x.m}|${x.s}`;
+const keyOf = x => x.kind === "game" && x.sport === "NBA" && x.bet === "sp" && Math.abs(x.line) < 7 ? "NBA|game|sp7" : x.kind === "soc" ? (x.k === "tt" ? `SOC|tt|${x.side}` : `SOC|${x.k}`) : x.kind === "game" ? `${x.sport}|game|${x.bet}` : x.sport === "NFL" ? "NFL|prop" : `${x.sport}|${x.m}|${x.s}`;
 const qual = x => x.kind === "soc" ? x.pr >= 0.62 && x.p >= 1.2 : x.kind === "game" ? x.pr >= 0.6 && (x.e == null || x.e >= -0.02) : x.pr >= 0.62 && x.role !== 0 && (x.e == null || x.e >= -0.02);
 function stat(list) { let n = 0, h = 0, eh = 0, v = 0, u = 0;
   for (const x of list) { const q = 1 / x.p; n++; h += x.hit; eh += q; v += q * (1 - q); u += x.hit ? x.p - 1 : -1; }
@@ -21,7 +21,7 @@ export function gates({R, read, dloc, now, prev}) {
   const picks = {}, shadow = {};
   for (const d of R.days || []) if (d.date >= since) for (const x of d.items) if (x.hit != null && x.p) (picks[keyOf(x)] = picks[keyOf(x)] || []).push({d: d.date, p: x.p, hit: x.hit});
   for (let i = 1; i <= W; i++) { const day = dloc(new Date(now.getTime() - i * 864e5).toISOString(), "America/Mexico_City"), s = read(`cands/${day}.json`, null);
-    if (s) for (const x of s.items) if (x.res && x.res.hit != null && x.p && qual(x)) { const k = x.kind === "game" ? `${x.sport}|game|${x.bet}` : keyOf(x); (shadow[k] = shadow[k] || []).push({d: day, p: x.p, hit: x.res.hit}); } }
+    if (s) for (const x of s.items) if (x.res && x.res.hit != null && x.p && qual(x)) { const k = keyOf(x); (shadow[k] = shadow[k] || []).push({d: day, p: x.p, hit: x.res.hit}); } }
   const out = {}, log = [], today = dloc(now.toISOString(), "America/Mexico_City");
   // First run: every type starts being judged from its 30-day log (seeds start paused from today)
   const first = !old;
