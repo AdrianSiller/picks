@@ -298,12 +298,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 17 nov 3:45 p.m. · diseño v2</footer>
-<script src="model.js?v=20261117-1545"></script>
+<footer class="ver">Versión de la app: 23 nov 1:30 p.m. · diseño v2</footer>
+<script src="model.js?v=20261123-1330"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261117-1545";
+const APP_VERSION = "20261123-1330";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1273,7 +1273,10 @@ function quickHtml() {
       const cs = SOC.cands.filter(c => c.g === g.id), gi = socModel[g.id], gps = M.socGamePicks(cs, gi), safe = M.socSafe(cs, gi, g);
       const main = safe[0] || (gps[0] && gps[0].c) || null, up = !main && gps[0] && gps[0].up1 ? gps[0].up1 : null, w = main && M.socWhy(SOC_DATA.teams, g, main, gi);
       const tier = !main ? "mid" : safe[0] === main ? "safe" : (w.back === "ok" || w.back === "form") ? "ok" : "mid";
-      const body = main ? qPick(qShort(main.lbl), fx(main.p), main.pr, tier) : up ? qPick(`1 Up ${up.side === "H" ? g.home.abbr : g.away.abbr}`, "≈" + fx(1 / (up.pr * 1.06)), up.pr, "mid") : `<div class="m-pick"><span class="k">Pick</span><b class="no">Sin pick: nada pasa los filtros</b></div>`;
+      const body = main ? qPick(qShort(main.lbl), fx(main.p), main.pr, tier) : up ? qPick(`1 Up ${up.side === "H" ? g.home.abbr : g.away.abbr}`, "≈" + fx(1 / (up.pr * 1.06)), up.pr, "mid") : (() => {
+        // No pick: still show what is most likely (team markets first), clearly marked as not a bet (paused market or price that does not pay)
+        const top = cs.filter(c => c.p && c.pr >= 0.6 && !M.isPl(c)).sort((a, b) => b.pr - a.pr)[0];
+        return top ? `<div class="m-pick"><span class="k">Lo más probable</span><b>${esc(qShort(top.lbl))} <small style="font-weight:500;color:var(--muted)">· ${fx(top.p)} · ${pct(top.pr)}</small></b></div><div class="m-mx"><span>⚠️ No es pick: ${M.gateOn("SOC|" + top.k) ? "el momio no paga lo suficiente" : "ese mercado pega seguido pero pierde dinero en el registro"}. Informativo.</span></div>` : `<div class="m-pick"><span class="k">Pick</span><b class="no">Sin pick: nada pasa los filtros</b></div>`; })();
       (days[dayKey(g.date)] = days[dayKey(g.date)] || []).push(`<button class="blk${main || up ? "" : " off"}" data-qg="${g.id}">${qHead(g, "soc", g.lg)}${body}</button>`); }
   } else {
     const sp = S.name.toLowerCase(), list = DATA.games.filter(g => inDay(g) && new Date(g.date) > Date.now() - 3 * 36e5).sort((a, b) => new Date(a.date) - new Date(b.date));

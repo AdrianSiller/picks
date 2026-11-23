@@ -87,7 +87,7 @@
 
   // Second level: probable props that only pay what they are worth (58%+, at most 6 points under fair), so the top never goes empty
   M.probables = (cands, sport, n = 6, skip = []) => { const out = [], per = new Set(skip.map(c => c.aid));
-    cands = cands.filter(c => M.gateOn(M.gateKey(c, sport)));
+    cands = cands.filter(c => M.gateOn(M.gateKey(c, sport)) && !(sport === "NBA" && c.pm != null && c.mkB != null && c.pm - c.mkB > 0));
     for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
       if (c.out || !c.p || c.role === 0 || c.pr < 0.58 || c.e < -0.06 || per.has(c.aid) || !M.fails(c, sport)) continue;
       per.add(c.aid); out.push(c); if (out.length === n) break; }
