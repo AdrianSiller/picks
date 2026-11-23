@@ -240,6 +240,19 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
 .m-pick,.m-conf{display:grid;grid-template-columns:78px 1fr auto;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--line)}
 .m-conf{grid-template-columns:78px auto 1fr 44px}
 .m-pick .k,.m-conf .k{font:600 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.px-search{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:500 15px var(--f-body);margin:4px 0 10px}
+.px-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.px-list button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 11px;font:500 13px var(--f-body);cursor:pointer}
+.px-list button small{color:var(--muted);margin-left:4px}.px-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.px-chips button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 10px;font:600 12px var(--f-mono);cursor:pointer}
+.px-chips button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.px-bars{display:flex;align-items:flex-end;gap:5px;height:130px;margin:12px 0 4px;position:relative;padding-top:14px}
+.px-bars .b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.px-bars .b i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:var(--muted);opacity:.55}.px-bars .b i.ok{background:#2f9e5b;opacity:1}
+.px-bars .b span{font:600 11px var(--f-mono);margin-bottom:2px}.px-bars .b small{font:500 9.5px var(--f-mono);color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;max-width:100%}
+.px-bars .ln{position:absolute;left:0;right:0;border-top:2px dashed var(--accent);opacity:.8}
+.px-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px;margin:10px 0}.px-sum div{border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
+.px-sum b{display:block;font:700 18px var(--f-mono)}.px-sum small{color:var(--muted);font-size:11px}
+.px-line{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px;color:var(--muted)}.px-line input{width:80px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:600 14px var(--f-mono)}
 .m-mx{display:flex;flex-direction:column;gap:3px;padding:6px 0 2px;border-top:1px dashed var(--line);font:500 12.5px var(--f-body);color:var(--muted);text-align:left;line-height:1.35}
 .m-pick b{font:600 15.5px var(--f-body);line-height:1.25}.m-pick b.no{font-weight:500;color:var(--muted);font-size:13.5px}
 .m-pick .px{font:600 15px var(--f-mono)}
@@ -291,6 +304,7 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="t-picks" aria-selected="true">Top 10</button>
       <button class="tab" role="tab" id="t-games" aria-selected="false">Partidos</button>
+      <button class="tab" role="tab" id="t-players" aria-selected="false">Jugadores</button>
       <button class="tab" role="tab" id="t-parlays" aria-selected="false">Parlays</button>
       <button class="tab" role="tab" id="t-perf" aria-selected="false">Rendimiento</button>
       <button class="tab" role="tab" id="t-grade" aria-selected="false">Calificación</button>
@@ -298,12 +312,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 23 nov 2:20 p.m. · diseño v2</footer>
-<script src="model.js?v=20261123-1420"></script>
+<footer class="ver">Versión de la app: 23 nov 5:00 p.m. · diseño v2</footer>
+<script src="model.js?v=20261123-1700"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261123-1420";
+const APP_VERSION = "20261123-1700";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -873,6 +887,56 @@ function closeHtml(sp) {
   const clv = r.reduce((s, x) => s + (x.p0 / x.p - 1), 0) / r.length, up = r.filter(x => x.p0 > x.p + 0.005).length, dn = r.filter(x => x.p0 < x.p - 0.005).length;
   return `<div class="note">📉 <b>Contra el cierre</b> (${r.length} picks): en promedio el precio cuando la app propuso el pick fue <b class="${clv >= 0 ? "pos" : "neg"}">${clv >= 0 ? "+" : ""}${(clv * 100).toFixed(1)}%</b> contra el de cierre. ${up} cerraron más bajo (la casa terminó dándonos la razón), ${dn} cerraron más alto. Si este número se mantiene positivo, el modelo está viendo algo antes que el mercado.</div>`;
 }
+// ---- 👤 Jugadores: pick a player and the stats to add up (PTS, PTS+REB, PTS+REB+AST...), see his last games ----
+const PX = {data: null, q: "", pid: "", st: ["PTS"], n: 10, line: ""};
+const PXK = {MIN: [3, "Minutos"], PTS: [4, "Puntos"], REB: [5, "Rebotes"], AST: [6, "Asistencias"], "3PM": [7, "Triples"], "3PA": [8, "Triples intentados"], STL: [9, "Robos"], BLK: [10, "Bloqueos"], TO: [11, "Pérdidas"], FGA: [13, "Tiros de campo intentados"], FTA: [15, "Tiros libres intentados"]};
+const PXP = [["PTS"], ["REB"], ["AST"], ["3PM"], ["PTS", "REB"], ["PTS", "AST"], ["REB", "AST"], ["PTS", "REB", "AST"], ["STL", "BLK"]];
+async function viewPlayers(v) {
+  if (curSport !== "nba") { v.innerHTML = `<div class="card meta" style="cursor:default">Por ahora la sección de jugadores es de NBA. Cambia a NBA arriba.</div>`; return; }
+  if (!PX.data) PX.data = await getData("data/nba_players.json");
+  if (curTab !== "players") return;
+  if (!PX.data || !PX.data.players) { v.innerHTML = `<div class="card meta" style="cursor:default">Todavía no hay datos de jugadores; aparecen después de la próxima actualización.</div>`; return; }
+  v.innerHTML = playersHtml(); wirePlayers(v);
+}
+function playersHtml() {
+  const D = PX.data, P = D.players, games = (D.games || []).filter(g => new Date(g.date) > Date.now() - 3 * 36e5), playing = new Set(games.flatMap(g => [g.h, g.a]));
+  const mins = id => { const r = P[id].r.slice(0, 10); return r.reduce((s, x) => s + x[3], 0) / (r.length || 1); };
+  const q = PX.q.trim().toLowerCase(), norm = x => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  let ids = Object.keys(P).filter(id => q ? norm(P[id].n).includes(norm(q)) || P[id].t.toLowerCase() === q : playing.has(P[id].t));
+  ids.sort((a, b) => mins(b) - mins(a)); const list = ids.slice(0, q ? 40 : 30);
+  const opp = t => { const g = games.find(x => x.h === t || x.a === t); return g ? `${g.h === t ? "vs" : "@"} ${g.h === t ? g.a : g.h} · ${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: "America/Monterrey"})}` : ""; };
+  let out = `<div class="card" style="cursor:default"><h3 class="sub" style="margin-top:0">👤 Jugadores</h3>
+    <input class="px-search" id="pxq" placeholder="Busca un jugador o un equipo (ej. Brunson, LAL)" value="${esc(PX.q)}" autocomplete="off">
+    <div class="px-list">${list.map(id => `<button data-pid="${id}" ${id === PX.pid ? 'style="border-color:var(--ink);font-weight:700"' : ""}>${esc(P[id].n)}<small>${esc(P[id].t)}</small></button>`).join("") || `<span class="meta">Sin resultados.</span>`}</div>
+    ${q ? "" : `<div class="note" style="margin-top:0">Se muestran los jugadores de los partidos de hoy y mañana, ordenados por minutos. Escribe para buscar cualquier otro.</div>`}</div>`;
+  const R = P[PX.pid]; if (!R) return out;
+  const rows = R.r.slice(0, PX.n).slice().reverse(), val = r => PX.st.reduce((s, k) => s + r[PXK[k][0]], 0), vals = rows.map(val), key = PX.st.join("+");
+  const bookLine = PX.st.length === 1 && R.ln && R.ln[PX.st[0]] != null ? R.ln[PX.st[0]] : null, line = PX.line !== "" && !isNaN(+PX.line) ? +PX.line : bookLine;
+  const sorted = vals.slice().sort((a, b) => a - b), med = sorted.length ? (sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2) : 0;
+  const avg = vals.reduce((s, x) => s + x, 0) / (vals.length || 1), mx = Math.max(...vals, line || 0, 1), over = line != null ? vals.filter(x => x > line).length : null;
+  const lbl = PX.st.map(k => PXK[k][1].toLowerCase()).join(" + ");
+  out += `<div class="card" style="cursor:default">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap"><div><b style="font-size:18px">${esc(R.n)}</b> <span class="meta">${esc(R.t)} · ${esc(R.pos)}${R.inj ? ` · <b style="color:#c0392b">${esc(R.inj)}</b>` : ""}</span></div><span class="meta">${esc(opp(R.t))}</span></div>
+    <div class="px-chips">${PXP.map(c => `<button data-pst="${c.join("+")}" aria-pressed="${c.join("+") === key}">${c.join("+")}</button>`).join("")}</div>
+    <div class="px-chips">${Object.keys(PXK).map(k => `<button data-pk="${k}" aria-pressed="${PX.st.includes(k)}" title="${PXK[k][1]}">${k}</button>`).join("")}</div>
+    <div class="px-chips">${[5, 10, 15].map(n => `<button data-pn="${n}" aria-pressed="${PX.n === n}">Últimos ${n}</button>`).join("")}</div>
+    <div class="px-line">Línea: <input id="pxl" inputmode="decimal" placeholder="${bookLine != null ? bookLine : "ej. 24.5"}" value="${esc(PX.line)}">${bookLine != null ? `<span>la casa tiene <b>${bookLine}</b> hoy</span>` : `<span>escribe una para ver cuántas veces la pasó</span>`}</div>
+    <div class="px-bars">${line != null ? `<div class="ln" style="bottom:calc(${(line / mx) * 100}% * 0.78 + 22px)"></div>` : ""}${rows.map((r, i) => `<div class="b"><span>${vals[i]}</span><i class="${line != null && vals[i] > line ? "ok" : ""}" style="height:${Math.max(2, (vals[i] / mx) * 78)}%"></i><small>${esc(r[2] === "@" ? "@" : "vs")}${esc(r[1] || "")}</small></div>`).join("")}</div>
+    <div class="px-sum"><div><b>${avg.toFixed(1)}</b><small>promedio</small></div><div><b>${med}</b><small>mediana</small></div><div><b>${Math.max(...vals)}</b><small>máximo</small></div><div><b>${Math.min(...vals)}</b><small>mínimo</small></div>${over != null ? `<div><b>${over}/${vals.length}</b><small>más de ${line}</small></div>` : ""}</div>
+    <div class="tablewrap"><table class="opts"><thead><tr><th>Fecha</th><th>Rival</th><th>MIN</th>${PX.st.map(k => `<th>${k}</th>`).join("")}${PX.st.length > 1 ? `<th>Total</th>` : ""}</tr></thead><tbody>
+      ${rows.slice().reverse().map(r => `<tr><td>${esc(r[0].slice(5))}</td><td>${esc(r[2])} ${esc(r[1] || "")}</td><td>${r[3]}</td>${PX.st.map(k => `<td>${r[PXK[k][0]]}</td>`).join("")}${PX.st.length > 1 ? `<td><b>${val(r)}</b></td>` : ""}</tr>`).join("")}</tbody></table></div>
+    <div class="note">${esc(lbl)} en sus últimos ${rows.length} partidos de esta temporada (el más reciente a la derecha). Verde: pasó la línea. Es su historial, no una probabilidad: la casa ya conoce estos números.</div></div>`;
+  return out;
+}
+function wirePlayers(v) {
+  const re = () => { const y = window.scrollY; v.innerHTML = playersHtml(); wirePlayers(v); window.scrollTo(0, y); };
+  const q = v.querySelector("#pxq"); if (q) q.addEventListener("input", () => { PX.q = q.value; const pos = q.selectionStart; re(); const q2 = v.querySelector("#pxq"); q2.focus(); q2.setSelectionRange(pos, pos); });
+  v.querySelectorAll("[data-pid]").forEach(b => b.addEventListener("click", () => { PX.pid = b.dataset.pid; PX.line = ""; re(); }));
+  v.querySelectorAll("[data-pst]").forEach(b => b.addEventListener("click", () => { PX.st = b.dataset.pst.split("+"); PX.line = ""; re(); }));
+  v.querySelectorAll("[data-pk]").forEach(b => b.addEventListener("click", () => { const k = b.dataset.pk, i = PX.st.indexOf(k); if (i >= 0) { if (PX.st.length > 1) PX.st.splice(i, 1); } else PX.st.push(k); PX.line = ""; re(); }));
+  v.querySelectorAll("[data-pn]").forEach(b => b.addEventListener("click", () => { PX.n = +b.dataset.pn; re(); }));
+  const l = v.querySelector("#pxl"); if (l) l.addEventListener("change", () => { PX.line = l.value.replace(",", "."); re(); });
+}
 function viewPerf() {
   const sp = S.name === "Soccer" ? "SOC" : S.name, days = RESULTS.days || [];
   const done = x => x.hit === 0 || x.hit === 1;
@@ -1364,9 +1428,10 @@ async function liveBlocks() {
 let curTab = "picks", curSport = "nba";
 function show(name) {
   curTab = name;
-  ["picks", "games", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).setAttribute("aria-selected", String(n === name)));
+  ["picks", "games", "players", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).setAttribute("aria-selected", String(n === name)));
   const v = document.getElementById("view");
   if (name === "grade") { v.innerHTML = `<div class="loading">Calculando…</div>`; viewGrade().then(h => { if (curTab === "grade") v.innerHTML = h; }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
+  if (name === "players") { v.innerHTML = `<div class="loading">Cargando jugadores…</div>`; viewPlayers(v); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "perf") { v.innerHTML = viewPerf(); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "games" && quick && !filt.game) { v.innerHTML = changesHtml() + filterBar() + quickToggle() + quickHtml(); wireFilters(v); wireQuick(v); const ql = v.querySelector("#qlive"); if (ql) liveBlocks().then(h => { if (curTab === "games") ql.innerHTML = h; }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   const pre = (name === "picks" && !filt.game ? safeHtml() : "") + (name === "games" ? quickToggle() : "");
@@ -1385,12 +1450,12 @@ function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""};
     // Today stays the default while it has picks (even if every game already started or ended); otherwise the next day with games
     const ds = [...new Set(gs.filter(g => new Date(g.date) > Date.now() - 3 * 36e5).map(g => dayKey(g.date)))].sort(), hasToday = (SNAP_TODAY.items || []).some(x => x.sport === spK);
     filt.day = ds.includes(d0) || hasToday ? d0 : ds[0] || ""; } setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Revisado en vivo a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
-["picks", "games", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
+["picks", "games", "players", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
 ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).addEventListener("click", () => sport(k)));
 try { curTab = localStorage.getItem("tab") || "picks"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
 // v2 design: the app opens on the match blocks (Partidos · vista rápida) the first time, like the mockup
 try { if (!localStorage.getItem("v2open")) { curTab = "games"; quick = true; localStorage.setItem("v2open", "1"); localStorage.setItem("quick", "1"); } } catch (e) { curTab = "games"; }
-if (curTab === "today") curTab = "games"; if (!views[curTab] && !["perf", "grade"].includes(curTab)) curTab = "picks"; if (!SPORTS[curSport]) curSport = "nba";
+if (curTab === "today") curTab = "games"; if (!views[curTab] && !["perf", "grade", "players"].includes(curTab)) curTab = "picks"; if (!SPORTS[curSport]) curSport = "nba";
 sport(curSport);
 })();</script>
 </body>

@@ -31,6 +31,8 @@ async function step(name, f, fallback) {
 const keep = (v, old) => v && v.games ? v : old || {asOf: now.toISOString(), games: [], cands: [], logs: {}, teams: {}};
 
 const nba = keep(await step("NBA", () => buildNBA(now)), prev.nba);
+// Player explorer data goes to its own file (latest.json stays light)
+if (nba.px) { write("nba_players.json", {asOf: now.toISOString(), games: nba.games.map(g => ({id: g.id, date: g.date, h: g.home.abbr, a: g.away.abbr})), players: nba.px}); delete nba.px; }
 const nfl = keep(await step("NFL", () => buildNFL(now)), prev.nfl);
 const soc = keep(await step("Soccer", () => buildSOC(now)), prev.soc);
 

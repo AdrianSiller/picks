@@ -25,6 +25,19 @@ function parseLog(g, season) {
   return rows.filter(r => r[3] > 0).sort((a, b) => a[0] < b[0] ? 1 : -1);
 }
 
+// Player explorer (app "Jugadores"): full box line per game, this season.
+// row: [date, opp, @/vs, MIN, PTS, REB, AST, 3PM, 3PA, STL, BLK, TO, FGM, FGA, FTM, FTA]
+function parseLogX(g, season) {
+  if (!g) return [];
+  const st = (g.seasonTypes || []).find(s => s.displayName === season); if (!st) return [];
+  const L = g.labels || [], ix = k => L.indexOf(k), num = (e, k) => { const i = ix(k); return i < 0 ? 0 : +e.stats[i] || 0; }, pair = (e, k) => { const i = ix(k); return i < 0 ? [0, 0] : String(e.stats[i] || "0-0").split("-").map(Number); };
+  const rows = [];
+  for (const c of st.categories || []) for (const e of c.events || []) { const m = (g.events || {})[e.eventId]; if (!m) continue;
+    const t3 = pair(e, "3PT"), fg = pair(e, "FG"), ft = pair(e, "FT");
+    rows.push([dloc(m.gameDate), m.opponent && m.opponent.abbreviation, m.atVs === "@" ? "@" : "vs", num(e, "MIN"), num(e, "PTS"), num(e, "REB"), num(e, "AST"), t3[0] || 0, t3[1] || 0, num(e, "STL"), num(e, "BLK"), num(e, "TO"), fg[0] || 0, fg[1] || 0, ft[0] || 0, ft[1] || 0]); }
+  return rows.filter(r => r[3] > 0).sort((a, b) => a[0] < b[0] ? 1 : -1).slice(0, 20);
+}
+
 const teamResults = (s, ab) => ((s && s.events) || []).filter(e => e.competitions[0].status.type.completed).map(e => {
   const cc = e.competitions[0].competitors, me = cc.find(x => x.team.abbreviation === ab), op = cc.find(x => x.team.abbreviation !== ab);
   return {id: e.id, row: [dloc(e.date), op.team.abbreviation, me.homeAway === "home" ? "vs" : "@", Number(me.score && me.score.value != null ? me.score.value : me.score), Number(op.score && op.score.value != null ? op.score.value : op.score)]};
@@ -105,6 +118,12 @@ export async function buildNBA(now = new Date()) {
   const outIds = Object.entries(inj).filter(([, s]) => s === "Out").map(([id]) => id);
   const ids = [...new Set(props.map(p => p.aid).concat(outIds))], logs = {};
   await pool(ids, 8, async id => { const [c, p] = await Promise.all([J(`${LOG}/${id}/gamelog`), J(`${LOG}/${id}/gamelog?season=${PREV}`)]); logs[id] = {c: parseLog(c, CUR_LBL), p: parseLog(p, PREV_LBL)}; });
+
+  // Explorer: every rostered player of the teams playing in the next days (the app's "Jugadores" section), with today's prop lines
+  const px = {};
+  await pool(Object.keys(roster), 8, async id => { const R = roster[id]; const g = await J(`${LOG}/${id}/gamelog`); const r = parseLogX(g, CUR_LBL);
+    if (r.length && r.slice(0, 10).reduce((s, x) => s + x[3], 0) / Math.min(10, r.length) >= 8) px[id] = {n: R.n, t: R.t, pos: R.pos, inj: inj[id] || R.inj || null, r}; });
+  for (const p of props) if (px[p.aid]) (px[p.aid].ln = px[p.aid].ln || {})[p.m] = p.l;
 
   // Candidates: the better side of every prop with enough support
   // Rest: days since each team's last game (1 = second night of a back-to-back)
@@ -221,5 +240,5 @@ export async function buildNBA(now = new Date()) {
     const rows = L.c.length ? L.c : L.p.slice(0, 20), m = avg(rows.map(r => r[3])); if (!m || m < 15) continue;
     (rmin[R.t] = rmin[R.t] || {})[R.n] = m;
     if (inj[id] === "Out") (outs[R.t] = outs[R.t] || []).push([R.n, m, Math.min(3, Math.round(m / 18 * 2) / 2)]); }
-  return {asOf: now.toISOString(), games, cands, logs: keepLogs, teams, def, outs, rmin};
+  return {asOf: now.toISOString(), games, cands, logs: keepLogs, teams, def, outs, rmin, px};
 }
