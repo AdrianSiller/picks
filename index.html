@@ -312,12 +312,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 23 nov 5:30 p.m. · diseño v2</footer>
-<script src="model.js?v=20261123-1730"></script>
+<footer class="ver">Versión de la app: 23 nov 6:00 p.m. · diseño v2</footer>
+<script src="model.js?v=20261123-1800"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261123-1730";
+const APP_VERSION = "20261123-1800";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -888,23 +888,31 @@ function closeHtml(sp) {
   return `<div class="note">📉 <b>Contra el cierre</b> (${r.length} picks): en promedio el precio cuando la app propuso el pick fue <b class="${clv >= 0 ? "pos" : "neg"}">${clv >= 0 ? "+" : ""}${(clv * 100).toFixed(1)}%</b> contra el de cierre. ${up} cerraron más bajo (la casa terminó dándonos la razón), ${dn} cerraron más alto. Si este número se mantiene positivo, el modelo está viendo algo antes que el mercado.</div>`;
 }
 // ---- 👤 Jugadores: pick a player and the stats to add up (PTS, PTS+REB, PTS+REB+AST...), see his last games ----
-const PX = {data: null, q: "", pid: "", st: ["PTS"], n: 10, line: "", team: ""};
-const PXK = {MIN: [3, "Minutos"], PTS: [4, "Puntos"], REB: [5, "Rebotes"], AST: [6, "Asistencias"], "3PM": [7, "Triples"], "3PA": [8, "Triples intentados"], STL: [9, "Robos"], BLK: [10, "Bloqueos"], TO: [11, "Pérdidas"], FGA: [13, "Tiros de campo intentados"], FTA: [15, "Tiros libres intentados"]};
-const PXP = [["PTS"], ["REB"], ["AST"], ["3PM"], ["PTS", "REB"], ["PTS", "AST"], ["REB", "AST"], ["PTS", "REB", "AST"], ["STL", "BLK"]];
+// Per sport: data file, stat columns (index in the row, name), presets, default stats by position, book prop keys -> our stats, and "usage" for ordering
+const PXC = {
+  nba: {file: "data/nba_players.json", K: {MIN: [3, "Minutos"], PTS: [4, "Puntos"], REB: [5, "Rebotes"], AST: [6, "Asistencias"], "3PM": [7, "Triples"], "3PA": [8, "Triples intentados"], STL: [9, "Robos"], BLK: [10, "Bloqueos"], TO: [11, "Pérdidas"], FGA: [13, "Tiros de campo intentados"], FTA: [15, "Tiros libres intentados"]},
+    P: [["PTS"], ["REB"], ["AST"], ["3PM"], ["PTS", "REB"], ["PTS", "AST"], ["REB", "AST"], ["PTS", "REB", "AST"], ["STL", "BLK"]], def: () => ["PTS"], ln: {PTS: "PTS", REB: "REB", AST: "AST", "3PM": "3PM"},
+    use: r => r[3], useLbl: "min", logo: "nba", lead: "MIN"},
+  nfl: {file: "data/nfl_players.json", K: {CMP: [3, "Pases completos"], ATT: [4, "Pases intentados"], PYD: [5, "Yardas por pase"], PTD: [6, "TD de pase"], INT: [7, "Intercepciones"], CAR: [8, "Acarreos"], RYD: [9, "Yardas por tierra"], RTD: [10, "TD por tierra"], REC: [11, "Recepciones"], TGT: [12, "Targets"], RECYD: [13, "Yardas recibidas"], RECTD: [14, "TD de recepción"]},
+    P: [["PYD"], ["CMP"], ["PTD"], ["RYD"], ["CAR"], ["REC"], ["RECYD"], ["TGT"], ["RYD", "RECYD"], ["RTD", "RECTD"]], def: pos => pos === "QB" ? ["PYD"] : pos === "RB" ? ["RYD"] : ["RECYD"],
+    ln: {PASSYDS: "PYD", CMP: "CMP", RUSHYDS: "RYD", CAR: "CAR", REC: "REC", RECYDS: "RECYD", RRY: "RYD+RECYD"}, use: r => r[4] + r[8] + r[12], useLbl: "toques", logo: "nfl", lead: null}};
+const PXS = {nba: {data: null, q: "", pid: "", st: ["PTS"], n: 10, line: "", team: ""}, nfl: {data: null, q: "", pid: "", st: ["RECYD"], n: 10, line: "", team: ""}};
+let PX = PXS.nba, PXK = PXC.nba.K, PXP = PXC.nba.P;
 async function viewPlayers(v) {
-  if (curSport !== "nba") { v.innerHTML = `<div class="card meta" style="cursor:default">Por ahora la sección de jugadores es de NBA. Cambia a NBA arriba.</div>`; return; }
-  if (!PX.data) PX.data = await getData("data/nba_players.json");
+  if (!PXC[curSport]) { v.innerHTML = `<div class="card meta" style="cursor:default">La sección de jugadores es de NBA y NFL. Cambia arriba.</div>`; return; }
+  PX = PXS[curSport]; PXK = PXC[curSport].K; PXP = PXC[curSport].P;
+  if (!PX.data) PX.data = await getData(PXC[curSport].file);
   if (curTab !== "players") return;
   if (!PX.data || !PX.data.players) { v.innerHTML = `<div class="card meta" style="cursor:default">Todavía no hay datos de jugadores; aparecen después de la próxima actualización.</div>`; return; }
   v.innerHTML = playersHtml(); wirePlayers(v);
 }
 function playersHtml() {
   const D = PX.data, P = D.players, games = (D.games || []).filter(g => new Date(g.date) > Date.now() - 3 * 36e5), playing = new Set(games.flatMap(g => [g.h, g.a]));
-  const mins = id => { const r = P[id].r.slice(0, 10); return r.reduce((s, x) => s + x[3], 0) / (r.length || 1); };
+  const C = PXC[curSport], mins = id => { const r = P[id].r.slice(0, 10); return r.reduce((s, x) => s + C.use(x), 0) / (r.length || 1); };
   const q = PX.q.trim().toLowerCase(), norm = x => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   let ids = Object.keys(P).filter(id => q ? norm(P[id].n).includes(norm(q)) || P[id].t.toLowerCase() === q : P[id].t === PX.team);
   ids.sort((a, b) => mins(b) - mins(a)); const list = ids.slice(0, 40);
-  const nbaLogo = ab => `<img src="https://a.espncdn.com/i/teamlogos/nba/500/${String(ab).toLowerCase()}.png" alt="" style="width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:6px" onerror="this.style.display='none'">`;
+  const nbaLogo = ab => `<img src="https://a.espncdn.com/i/teamlogos/${C.logo}/500/${String(ab).toLowerCase()}.png" alt="" style="width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:6px" onerror="this.style.display='none'">`;
   // Teams of today's and tomorrow's games: tap a team to see its players
   const gameRows = q ? "" : `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">${games.map(g => `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="meta" style="min-width:74px;font-size:12px">${esc(new Date(g.date).toLocaleString("es-MX", {weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/Monterrey"}))}</span>
       ${[g.a, g.h].map((t, i) => `${i ? `<span class="meta">@</span>` : ""}<button data-team="${t}" class="lgb" aria-pressed="${PX.team === t}" style="display:inline-flex;align-items:center">${nbaLogo(t)}${esc(t)}</button>`).join("")}</div>`).join("")}</div>`;
@@ -912,11 +920,11 @@ function playersHtml() {
   let out = `<div class="card" style="cursor:default"><h3 class="sub" style="margin-top:0">👤 Jugadores</h3>
     <input class="px-search" id="pxq" placeholder="Busca un jugador o un equipo (ej. Brunson, LAL)" value="${esc(PX.q)}" autocomplete="off">
     ${gameRows}
-    ${q || PX.team ? `${!q ? `<div style="font-weight:700;margin:4px 0 6px">${nbaLogo(PX.team)}${esc(PX.team)} · jugadores por minutos</div>` : ""}<div class="px-list">${list.map(id => `<button data-pid="${id}" ${id === PX.pid ? 'style="border-color:var(--ink);font-weight:700"' : ""}>${esc(P[id].n)}<small>${q ? esc(P[id].t) + " · " : ""}${Math.round(mins(id))} min${P[id].inj ? " · " + esc(P[id].inj) : ""}</small></button>`).join("") || `<span class="meta">Sin resultados.</span>`}</div>` : ""}
+    ${q || PX.team ? `${!q ? `<div style="font-weight:700;margin:4px 0 6px">${nbaLogo(PX.team)}${esc(PX.team)} · jugadores por ${curSport === "nba" ? "minutos" : "toques (pases + acarreos + targets)"}</div>` : ""}<div class="px-list">${list.map(id => `<button data-pid="${id}" ${id === PX.pid ? 'style="border-color:var(--ink);font-weight:700"' : ""}>${esc(P[id].n)}<small>${q ? esc(P[id].t) + " · " : ""}${Math.round(mins(id))} ${C.useLbl}${P[id].inj ? " · " + esc(P[id].inj) : ""}</small></button>`).join("") || `<span class="meta">Sin resultados.</span>`}</div>` : ""}
     ${q ? "" : `<div class="note" style="margin-top:0">Toca un equipo de los partidos de hoy y mañana para ver sus jugadores, o escribe arriba para buscar a cualquiera.</div>`}</div>`;
   const R = P[PX.pid]; if (!R) return out;
   const rows = R.r.slice(0, PX.n).slice().reverse(), val = r => PX.st.reduce((s, k) => s + r[PXK[k][0]], 0), vals = rows.map(val), key = PX.st.join("+");
-  const bookLine = PX.st.length === 1 && R.ln && R.ln[PX.st[0]] != null ? R.ln[PX.st[0]] : null, line = PX.line !== "" && !isNaN(+PX.line) ? +PX.line : bookLine;
+  const bkey = Object.entries(C.ln).find(([, v]) => v === PX.st.join("+")), bookLine = bkey && R.ln && R.ln[bkey[0]] != null ? R.ln[bkey[0]] : null, line = PX.line !== "" && !isNaN(+PX.line) ? +PX.line : bookLine;
   const sorted = vals.slice().sort((a, b) => a - b), med = sorted.length ? (sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2) : 0;
   const avg = vals.reduce((s, x) => s + x, 0) / (vals.length || 1), mx = Math.max(...vals, line || 0, 1), over = line != null ? vals.filter(x => x > line).length : null;
   const lbl = PX.st.map(k => PXK[k][1].toLowerCase()).join(" + ");
@@ -928,15 +936,15 @@ function playersHtml() {
     <div class="px-line">Línea: <input id="pxl" inputmode="decimal" placeholder="${bookLine != null ? bookLine : "ej. 24.5"}" value="${esc(PX.line)}">${bookLine != null ? `<span>la casa tiene <b>${bookLine}</b> hoy</span>` : `<span>escribe una para ver cuántas veces la pasó</span>`}</div>
     <div class="px-bars">${line != null ? `<div class="ln" style="bottom:${(12 + (line / mx) * 0.78 * 112).toFixed(1)}px"></div>` : ""}${rows.map((r, i) => `<div class="b"><span>${vals[i]}</span><i class="${line != null && vals[i] > line ? "ok" : ""}" style="height:${Math.max(2, (vals[i] / mx) * 78)}%"></i><small>${esc(r[2] === "@" ? "@" : "vs")}${esc(r[1] || "")}</small></div>`).join("")}</div>
     <div class="px-sum"><div><b>${avg.toFixed(1)}</b><small>promedio</small></div><div><b>${med}</b><small>mediana</small></div><div><b>${Math.max(...vals)}</b><small>máximo</small></div><div><b>${Math.min(...vals)}</b><small>mínimo</small></div>${over != null ? `<div><b>${over}/${vals.length}</b><small>más de ${line}</small></div>` : ""}</div>
-    <div class="tablewrap"><table class="opts"><thead><tr><th>Fecha</th><th>Rival</th><th>MIN</th>${PX.st.map(k => `<th>${k}</th>`).join("")}${PX.st.length > 1 ? `<th>Total</th>` : ""}</tr></thead><tbody>
-      ${rows.slice().reverse().map(r => `<tr><td>${esc(r[0].slice(5))}</td><td>${esc(r[2])} ${esc(r[1] || "")}</td><td>${r[3]}</td>${PX.st.map(k => `<td>${r[PXK[k][0]]}</td>`).join("")}${PX.st.length > 1 ? `<td><b>${val(r)}</b></td>` : ""}</tr>`).join("")}</tbody></table></div>
+    <div class="tablewrap"><table class="opts"><thead><tr><th>Fecha</th><th>Rival</th>${C.lead ? `<th>${C.lead}</th>` : ""}${PX.st.map(k => `<th>${k}</th>`).join("")}${PX.st.length > 1 ? `<th>Total</th>` : ""}</tr></thead><tbody>
+      ${rows.slice().reverse().map(r => `<tr><td>${esc(r[0].length > 5 ? r[0].slice(5) : r[0])}</td><td>${esc(r[2])} ${esc(r[1] || "")}</td>${C.lead ? `<td>${r[PXK[C.lead][0]]}</td>` : ""}${PX.st.map(k => `<td>${r[PXK[k][0]]}</td>`).join("")}${PX.st.length > 1 ? `<td><b>${val(r)}</b></td>` : ""}</tr>`).join("")}</tbody></table></div>
     <div class="note">${esc(lbl)} en sus últimos ${rows.length} partidos de esta temporada (el más reciente a la derecha). Verde: pasó la línea. Es su historial, no una probabilidad: la casa ya conoce estos números.</div></div>`;
   return out;
 }
 function wirePlayers(v) {
   const re = () => { const y = window.scrollY; v.innerHTML = playersHtml(); wirePlayers(v); window.scrollTo(0, y); };
   const q = v.querySelector("#pxq"); if (q) q.addEventListener("input", () => { PX.q = q.value; const pos = q.selectionStart; re(); const q2 = v.querySelector("#pxq"); q2.focus(); q2.setSelectionRange(pos, pos); });
-  v.querySelectorAll("[data-pid]").forEach(b => b.addEventListener("click", () => { PX.pid = b.dataset.pid; PX.line = ""; re(); const c = v.querySelectorAll(".card")[1]; if (c) c.scrollIntoView({behavior: "smooth", block: "start"}); }));
+  v.querySelectorAll("[data-pid]").forEach(b => b.addEventListener("click", () => { PX.pid = b.dataset.pid; PX.line = ""; if (curSport === "nfl") { const R = PX.data.players[PX.pid]; if (R) PX.st = PXC.nfl.def(R.pos); } re(); const c = v.querySelectorAll(".card")[1]; if (c) c.scrollIntoView({behavior: "smooth", block: "start"}); }));
   v.querySelectorAll("[data-team]").forEach(b => b.addEventListener("click", () => { PX.team = PX.team === b.dataset.team ? "" : b.dataset.team; re(); }));
   v.querySelectorAll("[data-pst]").forEach(b => b.addEventListener("click", () => { PX.st = b.dataset.pst.split("+"); PX.line = ""; re(); }));
   v.querySelectorAll("[data-pk]").forEach(b => b.addEventListener("click", () => { const k = b.dataset.pk, i = PX.st.indexOf(k); if (i >= 0) { if (PX.st.length > 1) PX.st.splice(i, 1); } else PX.st.push(k); PX.line = ""; re(); }));

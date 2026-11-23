@@ -34,6 +34,18 @@ function parseLog(g, season) {
   return rows.sort((a, b) => a[0] < b[0] ? 1 : -1).map(r => [r[0].slice(5)].concat(r.slice(1)));
 }
 
+// Player explorer (app "Jugadores" NFL): this season, one row per game.
+// row: [MM-DD, opp, @/vs, CMP, ATT, PYD, PTD, INT, CAR, RYD, RTD, REC, TGT, RECYD, RECTD]
+function parseLogNX(g, season) {
+  if (!g || !g.names) return [];
+  const st = (g.seasonTypes || []).find(s => s.displayName === season); if (!st) return [];
+  const K = ["completions", "passingAttempts", "passingYards", "passingTouchdowns", "interceptions", "rushingAttempts", "rushingYards", "rushingTouchdowns", "receptions", "receivingTargets", "receivingYards", "receivingTouchdowns"].map(k => g.names.indexOf(k));
+  const v = (s, i) => i < 0 ? 0 : (parseFloat(String(s[i]).replace(/,/g, "")) || 0), rows = [];
+  for (const c of st.categories || []) for (const e of c.events || []) { const m = (g.events || {})[e.eventId]; if (!m) continue;
+    rows.push([dloc(m.gameDate), m.opponent && m.opponent.abbreviation, m.atVs === "@" ? "@" : "vs", ...K.map(i => v(e.stats, i))]); }
+  return rows.sort((a, b) => a[0] < b[0] ? 1 : -1).map(r => [r[0].slice(5)].concat(r.slice(1))).slice(0, 17);
+}
+
 const teamResults = (s, ab) => ((s && s.events) || []).filter(e => e.competitions[0].status.type.completed).map(e => {
   const cc = e.competitions[0].competitors, me = cc.find(x => x.team.abbreviation === ab), op = cc.find(x => x.team.abbreviation !== ab);
   const sc = x => Number(x.score && x.score.value != null ? x.score.value : x.score);
@@ -157,6 +169,12 @@ export async function buildNFL(now = new Date()) {
   const inPlay0 = new Set(games.flatMap(g => [g.home.abbr, g.away.abbr])), seen = new Set(Object.values(box).flatMap(b => Object.values((b && b.__use) || {}).flatMap(U => Object.keys(U))));
   const backIds = Object.entries(roster).filter(([aid, Rr]) => inPlay0.has(Rr.t) && Rr.grp === "offense" && ["RB", "WR", "TE"].includes(Rr.pos) && !seen.has(aid) && !logs[aid] && !SKIP.has(inj[aid] || Rr.inj)).map(([aid]) => aid);
   await pool(backIds, 8, async id => { const p = await J(`${LOG}/${id}/gamelog?season=${PREV}`); logs[id] = {c: [], p: parseLog(p, PREV_LBL)}; });
+  // Explorer: QBs, RBs, WRs and TEs of the teams playing this week, with today's prop lines
+  const px = {}, pxIds = Object.entries(roster).filter(([, Rr]) => inPlay0.has(Rr.t) && ["QB", "RB", "WR", "TE"].includes(Rr.pos)).map(([aid]) => aid);
+  await pool(pxIds, 8, async id => { const Rr = roster[id], r = parseLogNX(await J(`${LOG}/${id}/gamelog`), CUR_LBL);
+    const use = r.reduce((s, x) => s + x[4] + x[8] + x[12], 0); if (r.length && use >= r.length * 2) px[id] = {n: Rr.n, t: Rr.t, pos: Rr.pos, inj: inj[id] || Rr.inj || null, r}; });
+  for (const p of props) if (px[p.aid]) (px[p.aid].ln = px[p.aid].ln || {})[p.m] = p.l;
+  out.px = px;
 
   // Usage model: each player's share of his team's targets and carries in the games he played. When a starter is out,
   // his share goes to the active teammates (the WR2 becomes the WR1, the backup RB gets the carries); when a starter

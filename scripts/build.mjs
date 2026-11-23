@@ -34,6 +34,7 @@ const nba = keep(await step("NBA", () => buildNBA(now)), prev.nba);
 // Player explorer data goes to its own file (latest.json stays light)
 if (nba.px) { write("nba_players.json", {asOf: now.toISOString(), games: nba.games.map(g => ({id: g.id, date: g.date, h: g.home.abbr, a: g.away.abbr})), players: nba.px}); delete nba.px; }
 const nfl = keep(await step("NFL", () => buildNFL(now)), prev.nfl);
+if (nfl.px) { write("nfl_players.json", {asOf: now.toISOString(), games: nfl.games.map(g => ({id: g.id, date: g.date, h: g.home.abbr, a: g.away.abbr})), players: nfl.px}); delete nfl.px; }
 const soc = keep(await step("Soccer", () => buildSOC(now)), prev.soc);
 
 if (runSgo && key) {
