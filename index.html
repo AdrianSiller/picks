@@ -312,12 +312,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 23 nov 7:20 p.m. · diseño v2</footer>
-<script src="model.js?v=20261123-1920"></script>
+<footer class="ver">Versión de la app: 23 nov 7:30 p.m. · diseño v2</footer>
+<script src="model.js?v=20261123-1930"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261123-1920";
+const APP_VERSION = "20261123-1930";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -936,7 +936,9 @@ function playersHtml() {
   const rows = R.r.slice(0, PX.n).slice().reverse(), val = r => PX.st.reduce((s, k) => s + r[PXK[k][0]], 0), vals = rows.map(val), key = PX.st.join("+");
   const bkey = Object.entries(C.ln).find(([, v]) => v === PX.st.join("+")), bookLine = bkey && R.ln && R.ln[bkey[0]] != null ? R.ln[bkey[0]] : null, line = PX.line !== "" && !isNaN(+PX.line) ? +PX.line : bookLine;
   const sorted = vals.slice().sort((a, b) => a - b), med = sorted.length ? (sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2) : 0;
-  const avg = vals.reduce((s, x) => s + x, 0) / (vals.length || 1), mx = Math.max(...vals, line || 0, 1), over = line != null ? vals.filter(x => x > line).length : null;
+  // A whole-number line means "that many or more" (1 = 1+ TD, 25 = 25+ points); a .5 line is the usual "more than"
+  const hit = x => line != null && (Number.isInteger(line) ? x >= line : x > line), lineTxt = line == null ? "" : Number.isInteger(line) ? `${line} o más` : `más de ${line}`;
+  const avg = vals.reduce((s, x) => s + x, 0) / (vals.length || 1), mx = Math.max(...vals, line || 0, 1), over = line != null ? vals.filter(hit).length : null;
   const lbl = PX.st.map(k => PXK[k][1].toLowerCase()).join(" + ");
   out += `<div class="card" style="cursor:default">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap"><div><b style="font-size:18px">${esc(R.n)}</b> <span class="meta">${esc(R.t)} · ${esc(R.pos)}${R.inj ? ` · <b style="color:#c0392b">${esc(R.inj)}</b>` : ""}</span></div><span class="meta">${esc(opp(R.t))}</span></div>
@@ -946,12 +948,12 @@ function playersHtml() {
     <div class="px-chips">${[5, 10, 15].map(n => `<button data-pn="${n}" aria-pressed="${PX.n === n}">Últimos ${n}</button>`).join("")}</div>
     <div class="px-line">Línea: <input id="pxl" inputmode="decimal" placeholder="${bookLine != null ? bookLine : "ej. 24.5"}" value="${esc(PX.line)}">${bookLine != null ? `<span>la casa tiene <b>${bookLine}</b> hoy</span>` : `<span>escribe una para ver cuántas veces la pasó</span>`}</div>
     <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:10px"><span>← más antiguo</span><span>más reciente →</span></div>
-    <div class="px-bars" style="margin-top:2px">${line != null ? `<div class="ln" style="bottom:${(12 + (line / mx) * 0.78 * 112).toFixed(1)}px"></div>` : ""}${rows.map((r, i) => `<div class="b"><span>${vals[i]}</span><i class="${line != null && vals[i] > line ? "ok" : ""}" style="height:${Math.max(2, (vals[i] / mx) * 78)}%"></i><small ${i === rows.length - 1 ? 'style="color:var(--ink);font-weight:700"' : ""}>${esc(r[2] === "@" ? "@" : "vs")}${esc(r[1] || "")}</small>${i === rows.length - 1 ? `<small style="color:var(--ink);font-weight:700;margin-top:0">último</small>` : ""}</div>`).join("")}</div>
+    <div class="px-bars" style="margin-top:2px">${line != null ? `<div class="ln" style="bottom:${(12 + (line / mx) * 0.78 * 112).toFixed(1)}px"></div>` : ""}${rows.map((r, i) => `<div class="b"><span>${vals[i]}</span><i class="${hit(vals[i]) ? "ok" : ""}" style="height:${Math.max(2, (vals[i] / mx) * 78)}%"></i><small ${i === rows.length - 1 ? 'style="color:var(--ink);font-weight:700"' : ""}>${esc(r[2] === "@" ? "@" : "vs")}${esc(r[1] || "")}</small>${i === rows.length - 1 ? `<small style="color:var(--ink);font-weight:700;margin-top:0">último</small>` : ""}</div>`).join("")}</div>
     ${pxProb(R, line, bookLine)}
-    <div class="px-sum"><div><b>${avg.toFixed(1)}</b><small>promedio</small></div><div><b>${med}</b><small>mediana</small></div><div><b>${Math.max(...vals)}</b><small>máximo</small></div><div><b>${Math.min(...vals)}</b><small>mínimo</small></div>${over != null ? `<div><b>${over}/${vals.length}</b><small>más de ${line}</small></div>` : ""}</div>
+    <div class="px-sum"><div><b>${avg.toFixed(1)}</b><small>promedio</small></div><div><b>${med}</b><small>mediana</small></div><div><b>${Math.max(...vals)}</b><small>máximo</small></div><div><b>${Math.min(...vals)}</b><small>mínimo</small></div>${over != null ? `<div><b>${over}/${vals.length}</b><small>${lineTxt}</small></div>` : ""}</div>
     <div class="tablewrap"><table class="opts"><thead><tr><th>Fecha</th><th>Rival</th>${C.lead ? `<th>${C.lead}</th>` : ""}${PX.st.map(k => `<th>${(PXL[k] || k).replace(" (le lanzan)", "")}</th>`).join("")}${PX.st.length > 1 ? `<th>Total</th>` : ""}</tr></thead><tbody>
       ${rows.slice().reverse().map(r => `<tr><td>${esc(r[0].length > 5 ? r[0].slice(5) : r[0])}</td><td>${esc(r[2])} ${esc(r[1] || "")}</td>${C.lead ? `<td>${r[PXK[C.lead][0]]}</td>` : ""}${PX.st.map(k => `<td>${r[PXK[k][0]]}</td>`).join("")}${PX.st.length > 1 ? `<td><b>${val(r)}</b></td>` : ""}</tr>`).join("")}</tbody></table></div>
-    <div class="note">${esc(lbl)} en sus últimos ${rows.length} partidos de esta temporada (el más reciente a la derecha, marcado como "último"; la tabla va del más reciente al más antiguo). Verde: pasó la línea. Es su historial, no una probabilidad: la casa ya conoce estos números.</div></div>`;
+    <div class="note">${esc(lbl)} en sus últimos ${rows.length} partidos de esta temporada (el más reciente a la derecha, marcado como "último"; la tabla va del más reciente al más antiguo). Verde: llegó a la línea (con número entero, por ejemplo 1, cuenta "1 o más"; con .5 tiene que pasarla). Es su historial, no una probabilidad: la casa ya conoce estos números.</div></div>`;
   return out;
 }
 // Probability for the line on screen: the app's own estimate (model + book) at the book's line; at another line only our model
@@ -962,10 +964,11 @@ function pxProb(R, line, bookLine) {
   const c = m && cs.find(x => x.aid === PX.pid && x.m === m[0]);
   if (!c) return `<div class="note" style="margin:8px 0">Sin probabilidad para esta estadística: la casa no tiene línea de ${esc(R.n)} hoy en eso, así que solo hay historial.</div>`;
   let over, src;
-  if (line === c.l) { over = c.s === "over" ? c.pr : 1 - c.pr; src = "modelo + casa (lo mismo que usa la app para los picks)"; }
-  else { const r = M.repricePr(c, line); over = c.s === "over" ? r.pm : 1 - r.pm; src = "solo nuestro modelo (la casa no tiene esta línea)"; }
+  const L = Number.isInteger(line) ? line - 0.5 : line; // "1 o más" = more than 0.5
+  if (L === c.l) { over = c.s === "over" ? c.pr : 1 - c.pr; src = "modelo + casa (lo mismo que usa la app para los picks)"; }
+  else { const r = M.repricePr(c, L); over = c.s === "over" ? r.pm : 1 - r.pm; src = "solo nuestro modelo (la casa no tiene esta línea)"; }
   const fair = p => p > 0.02 ? (1 / p).toFixed(2) : "—";
-  return `<div class="px-sum" style="margin-top:8px"><div><b>${pct(over)}</b><small>más de ${line}<br>justo: ${fair(over)}</small></div><div><b>${pct(1 - over)}</b><small>menos de ${line}<br>justo: ${fair(1 - over)}</small></div></div>
+  return `<div class="px-sum" style="margin-top:8px"><div><b>${pct(over)}</b><small>${Number.isInteger(line) ? `${line} o más` : `más de ${line}`}<br>justo: ${fair(over)}</small></div><div><b>${pct(1 - over)}</b><small>menos de ${line}<br>justo: ${fair(1 - over)}</small></div></div>
     <div class="note" style="margin-top:0">Probabilidad estimada: ${src}. "Justo" es el momio a partir del cual conviene; si tu casa paga menos, no vale la pena.</div>`;
 }
 function wirePlayers(v) {
