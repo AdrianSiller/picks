@@ -1,18 +1,14 @@
 [5s] NBA ok
-[8s] NFL ok
+[9s] NFL ok
 fotmob historial: 11 de 12 equipos con poco historial: SLB=Slovan Bratislava, SLP=Slavia Prague, VFK=Viking, MUN=Bayern München, SHK=Shakhtar Donetsk, HBE=Hapoel Beer Sheva, DZG=Dinamo Zagreb, LEVS=Levski Sofia, NKC=NK Celje, SPP=Sparta Prague, TORR=Torreense
 fotmob xG: 97 de 114 equipos
 fotmob partido a partido: 150 equipos con xG de sus últimos partidos
-[41s] Soccer ok
-[43s] SGO NFL ok
-[43s] SGO NFL priced 15
-[45s] SGO UCL ok
-[45s] SGO UCL matched 14
-[45s] gates NBA|3PM|under, SOC|btts, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
-[45s] calibración {"_n":5257,"NBA|prop|over":0.005,"NBA|prop|under":0.008,"NBA|game":-0.039,"NFL|prop|over":-0.033,"NFL|prop|under":-0.037,"NFL|game":0.013,"SOC|soc":-0.03,"SOC|1x2":0.04,"SOC|dc":0.014,"SOC|hc":0.05,"SOC|dc1h":0.017,"SOC|tot":-0.003,"SOC|tt":0.018,"SOC|tc":-0.08,"SOC|psot":-0.042,"SOC|pshot":-0.08,"SOC|pgoal":-0.038,"SOC|btts":-0.02,"SOC|cor":0.037}
-[45s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1186},"NFL":{"w":0.69,"raw":0.9,"n":262}}
-[45s] latest.json 712 KB NBA 10 games/108 props · NFL 1/16 · soccer 64
-[47s] candidatos guardados 2712
-[47s] grade 2026-11-23 ok
-[48s] bot.json ok
-[48s] done
+[43s] Soccer ok
+[43s] gates NBA|3PM|under, SOC|btts, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
+[43s] calibración {"_n":5257,"NBA|prop|over":0.005,"NBA|prop|under":0.008,"NBA|game":-0.039,"NFL|prop|over":-0.033,"NFL|prop|under":-0.037,"NFL|game":0.013,"SOC|soc":-0.03,"SOC|1x2":0.04,"SOC|dc":0.014,"SOC|hc":0.05,"SOC|dc1h":0.017,"SOC|tot":-0.003,"SOC|tt":0.018,"SOC|tc":-0.08,"SOC|psot":-0.042,"SOC|pshot":-0.08,"SOC|pgoal":-0.038,"SOC|btts":-0.02,"SOC|cor":0.037}
+[43s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1186},"NFL":{"w":0.69,"raw":0.9,"n":262}}
+[43s] latest.json 712 KB NBA 10 games/108 props · NFL 1/16 · soccer 64
+[43s] candidatos guardados 2712
+[44s] grade 2026-11-23 ok
+[45s] bot.json ok
+[45s] done
