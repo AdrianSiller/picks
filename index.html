@@ -298,12 +298,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 23 nov 2:00 p.m. · diseño v2</footer>
-<script src="model.js?v=20261123-1400"></script>
+<footer class="ver">Versión de la app: 23 nov 2:10 p.m. · diseño v2</footer>
+<script src="model.js?v=20261123-1410"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261123-1400";
+const APP_VERSION = "20261123-1410";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1277,7 +1277,7 @@ function quickHtml() {
         // No pick: still show what is most likely (team markets first), clearly marked as not a bet (paused market or price that does not pay)
         const top = cs.filter(c => c.p && c.pr >= 0.6 && !M.isPl(c)).sort((a, b) => b.pr - a.pr)[0];
         return top ? `<div class="m-pick"><span class="k">Lo más probable</span><b>${esc(qShort(top.lbl))} <small style="font-weight:500;color:var(--muted)">· ${fx(top.p)} · ${pct(top.pr)}</small></b></div><div class="m-mx"><span>⚠️ No es pick: ${M.gateOn(M.socGK(top)) ? "el momio no paga lo suficiente" : "ese mercado pega seguido pero pierde dinero en el registro"}. Informativo.</span></div>` : `<div class="m-pick"><span class="k">Pick</span><b class="no">Sin pick: nada pasa los filtros</b></div>`; })();
-      (days[dayKey(g.date)] = days[dayKey(g.date)] || []).push(`<button class="blk${main || up ? "" : " off"}" data-qg="${g.id}">${qHead(g, "soc", g.lg)}${body}</button>`); }
+      (days[dayKey(g.date)] = days[dayKey(g.date)] || []).push(`<button class="blk${main || up ? "" : " off"}" data-qg="${g.id}">${qHead(g, "soc", g.lg)}${body}${main && main.supTxt ? `<div class="m-mx"><span>📋 Respaldo del partido: ${esc(main.supTxt)}</span></div>` : ""}</button>`); }
   } else {
     const sp = S.name.toLowerCase(), list = DATA.games.filter(g => inDay(g) && new Date(g.date) > Date.now() - 3 * 36e5).sort((a, b) => new Date(a.date) - new Date(b.date));
     const top = M.topPicks(DATA.cands, S.name), prob = M.probables(DATA.cands, S.name, 6, top), safe = S.name === "NBA" ? M.nbaSafe(DATA.cands) : [];

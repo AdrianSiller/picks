@@ -376,6 +376,10 @@
         add({k: "cor", side: "O", lbl: `Más de ${corn.line} corners`, line: corn.line, pm: po, mk, p: corn.over || null});
         add({k: "cor", side: "U", lbl: `Menos de ${corn.line} corners`, line: corn.line, pm: 1 - po, mk: mk != null ? 1 - mk : null, p: corn.under || null}); }
     }
+    // Reading of THIS match: how often each pick happened in both teams' recent matches (last 8 league/cup-proper games each side,
+    // from the point of view of the pick: e.g. "Monza scores" = Monza scored in x/8 and Fiorentina conceded in y/8). c.sup = average.
+    const G0 = Object.fromEntries(D.games.map(g => [g.id, g]));
+    for (const c of cands) { const g = G0[c.g]; if (!g) continue; const s = M.socSupport(c, rowsOf(g.home.abbr).slice(0, 8), rowsOf(g.away.abbr).slice(0, 8), g); if (s) { c.sup = s.sup; c.supTxt = s.txt; } }
     return {games, cands, lgMu, lgC, rowsOf};
   };
   // Soccer picks need support too: priced ones must hit at least 52% (value alone is not enough)
@@ -400,6 +404,23 @@
     return true; };
   // Why a soccer pick: short reasons from the teams' last matches, and whether our numbers back it or it leans on the market.
   // Returns {lines: [plain text], back: "ok" | "market" | null, pm, mk}
+  M.socSupport = (c, H, A, g) => {
+    if (H.length < 5 || A.length < 5) return null;
+    const fr = (r, f) => r.filter(f).length / r.length, n = (r, f) => `${r.filter(f).length}/${r.length}`;
+    const hA = g.home.abbr, aA = g.away.abbr, mine = c.team === "H" ? H : A, opp = c.team === "H" ? A : H, mA = c.team === "H" ? hA : aA, oA = c.team === "H" ? aA : hA;
+    const two = (f1, r1, f2, r2, t1, t2) => ({sup: (fr(r1, f1) + fr(r2, f2)) / 2, txt: `${t1} ${n(r1, f1)} · ${t2} ${n(r2, f2)}`});
+    if (c.k === "tt" && c.side === "O") return two(x => x[4] > c.line, mine, x => x[5] > c.line, opp, `${mA} metió más de ${c.line} en`, `${oA} recibió más de ${c.line} en`);
+    if (c.k === "tt" && c.side === "U") return two(x => x[4] < c.line, mine, x => x[5] < c.line, opp, `${mA} metió menos de ${c.line} en`, `${oA} recibió menos de ${c.line} en`);
+    if (c.k === "btts") { const f = x => x[4] > 0 && x[5] > 0, g2 = c.side === "N" ? x => !f(x) : f; return two(g2, H, g2, A, `${c.side === "N" ? "No anotaron ambos" : "Anotaron ambos"} en ${hA}`, aA); }
+    if (c.k === "tot") { const f = c.side === "O" ? x => x[4] + x[5] > c.line : x => x[4] + x[5] < c.line; return two(f, H, f, A, `${c.side === "O" ? "Más" : "Menos"} de ${c.line} goles en ${hA}`, aA); }
+    if (c.k === "dc") return c.side === "1X" ? two(x => x[4] >= x[5], H, x => x[4] <= x[5], A, `${hA} no perdió en`, `${aA} no ganó en`) : two(x => x[4] >= x[5], A, x => x[4] <= x[5], H, `${aA} no perdió en`, `${hA} no ganó en`);
+    if (c.k === "1x2") return c.side === "H" ? two(x => x[4] > x[5], H, x => x[4] < x[5], A, `${hA} ganó`, `${aA} perdió`) : c.side === "A" ? two(x => x[4] > x[5], A, x => x[4] < x[5], H, `${aA} ganó`, `${hA} perdió`) : two(x => x[4] === x[5], H, x => x[4] === x[5], A, `Empates de ${hA}`, aA);
+    if ((c.k === "psot" || c.k === "pshot" || c.k === "pgoal") && c.ph && c.ph[1] >= 5) return {sup: c.ph[0] / c.ph[1], txt: `${c.pl}: ${c.ph[0]}/${c.ph[1]} en sus últimos partidos`};
+    return null;
+  };
+  // A pick the match itself backs strongly (75%+ of both teams' recent games, model at least as high as the book, usual price)
+  // may come from a market the log paused: the match decides, the market history does not veto it
+  M.matchBacked = c => c.sup != null && c.sup >= 0.75 && c.pm != null && c.mk != null && c.pm >= c.mk && c.pm - c.mk <= M.SOC.hi && c.p >= 1.25 && c.pr >= 0.6 && c.p * c.mk >= 0.92;
   M.socWhy = (teams, g, c, gi) => {
     const pc = x => Math.round(x * 100) + "%", rows = ab => (teams[ab] || []).filter(r => !r[8]).slice(0, 10), H = rows(g.home.abbr), A = rows(g.away.abbr), out = [];
     const cnt = (r, f) => r.filter(f).length, avg = (r, f) => r.length ? (r.reduce((s, x) => s + f(x), 0) / r.length).toFixed(1) : "–";
@@ -441,7 +462,7 @@
   };
   // Main markets (result, handicap) carry the book's lowest commission (~3% vs 6-8% on team goals, shots, both-score):
   // when two options are close, the pick of the match goes to the main one (Nov 17 review of every graded candidate)
-  const pri = c => ["1x2", "hc"].includes(c.k) ? 0.03 : 0;
+  const pri = c => (["1x2", "hc"].includes(c.k) ? 0.03 : 0) + (c.sup != null ? 0.4 * (c.sup - 0.65) : 0);
   M.socGamePick = (cands, gi) => {
     // Too few matches of either team in the data (e.g. a league ESPN does not cover): no pick
     if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return null;
@@ -472,7 +493,8 @@
   // and after the team markets that also pass
   M.isPl = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal";
   M.socGamePicks = (cands, gi, max = 3) => {
-    cands = cands.filter(c => M.gateOn(M.socGK(c))); // paused types never show (not even as "fair")
+    // Paused types only show when this match backs them strongly (M.matchBacked); a match that contradicts a pick drops it
+    cands = cands.filter(c => (M.gateOn(M.socGK(c)) || M.matchBacked(c)) && !(c.sup != null && c.sup < 0.5));
     const main = M.socGamePick(cands, gi);
     // No team pick: the backed player picks (if any) still show, so the match list and the top never disagree
     if (!main) { if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return []; const seen = new Set(), out = [];
