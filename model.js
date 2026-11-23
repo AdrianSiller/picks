@@ -65,7 +65,9 @@
   // Gates: each type of pick (e.g. NBA 3PM under, soccer player shots, NFL props) turns itself off and back on from the log.
   // Computed every build (scripts/gates.mjs) and shipped in latest.json; here only the lookup.
   M.GATES = {};
-  M.gateKey = (c, sport) => sport === "SOC" ? `SOC|${c.k}` : c.kind === "game" || c.bet ? `${sport}|game|${c.bet || c.kind}` : sport === "NFL" ? "NFL|prop" : `${sport}|${c.m}|${c.s}`;
+  // Soccer team goals split by side: unders held +3% in both halves of the log, "team scores" (overs) lost (Nov 23 review)
+  M.socGK = c => c.k === "tt" ? `SOC|tt|${c.side}` : `SOC|${c.k}`;
+  M.gateKey = (c, sport) => sport === "SOC" ? M.socGK(c) : c.kind === "game" || c.bet ? `${sport}|game|${c.bet || c.kind}` : sport === "NFL" ? "NFL|prop" : `${sport}|${c.m}|${c.s}`;
   M.gateOn = k => !(M.GATES[k] && M.GATES[k].on === false);
   M.fails = (c, sport) => { const cfg = M.CFG[sport];
     const gk = M.gateKey(c, sport); if (!M.gateOn(gk)) return `en pausa: ${M.GATES[gk].why || "va perdiendo en el registro"}`;
@@ -374,7 +376,7 @@
   // Soccer picks need support too: priced ones must hit at least 52% (value alone is not enough)
   // Our model far ABOVE the book (8+ points) is a warning, not support: the book usually knows something we do not
   // Soccer totals and half-time double chance out since Nov 10 (5/13 and 1/4 in the log)
-  M.socOk = c => M.gateOn(`SOC|${c.k}`) && !c.thin && c.al !== 0 && (c.gap == null || (c.gap >= -M.SOC.gap && c.gap <= M.SOC.hi)) && (c.p ? (c.p >= M.SOC.minP && c.e >= M.SOC.eMin && c.pr >= M.SOC.minPr) : (c.pr >= 0.62 && c.pr <= 0.75));
+  M.socOk = c => M.gateOn(M.socGK(c)) && !c.thin && c.al !== 0 && (c.gap == null || (c.gap >= -M.SOC.gap && c.gap <= M.SOC.hi)) && (c.p ? (c.p >= M.SOC.minP && c.e >= M.SOC.eMin && c.pr >= M.SOC.minPr) : (c.pr >= 0.62 && c.pr <= 0.75));
   // Ranked by probability; value adds at most 5 points, and picks without a price start a bit lower
   M.socScore = c => c.pr + (c.p ? 0 : -0.03);
   // Top lists only take picks with a price in hand (real or estimated)
@@ -465,7 +467,7 @@
   // and after the team markets that also pass
   M.isPl = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal";
   M.socGamePicks = (cands, gi, max = 3) => {
-    cands = cands.filter(c => M.gateOn(`SOC|${c.k}`)); // paused types never show (not even as "fair")
+    cands = cands.filter(c => M.gateOn(M.socGK(c))); // paused types never show (not even as "fair")
     const main = M.socGamePick(cands, gi);
     // No team pick: the backed player picks (if any) still show, so the match list and the top never disagree
     if (!main) { if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return []; const seen = new Set(), out = [];
@@ -477,7 +479,7 @@
     return out; };
   // 🛡️ Safest picks: only low-risk markets (double chance, a team scoring / a team under its goal line), 72%+, our model and the
   // book within 4 points (nobody "sees more"), full history of both teams and no real substitutes on the side the pick depends on
-  M.socSafe = (cands, gi, g) => { if (!gi || !gi.H || !gi.A || Math.min(gi.H.n, gi.A.n) < 6) return []; cands = cands.filter(c => M.gateOn(`SOC|${c.k}`));
+  M.socSafe = (cands, gi, g) => { if (!gi || !gi.H || !gi.A || Math.min(gi.H.n, gi.A.n) < 6) return []; cands = cands.filter(c => M.gateOn(M.socGK(c)));
     const subs = k => { const x = g && g.xi && g.xi[k]; return x ? x.miss.length - (x.depth || 0) : 0; }, fav = gi.fav;
     // Since Nov 10: at 1.18-1.29 a pick must hit 80%+ to win money and they were hitting 75%: only 1.30+ or a very high estimate (78%+)
     return cands.filter(c => c.p && c.p >= 1.18 && c.pr >= 0.72 && (c.p >= 1.3 || c.pr >= 0.78) && c.mk != null && Math.abs(c.pm - c.mk) <= 0.04 && !c.thin && c.al !== 0 && M.socAligned(c, fav) &&

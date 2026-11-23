@@ -8,8 +8,9 @@ import M from "../model.js";
 const W = 30, MIN = 12, OFF = -1.5, ON = 0;
 // Seeds: types we already paused by hand on Nov 10-11 (they start off and come back by themselves if their shadow recovers)
 const SEED = {"NFL|prop": "41% en el registro", "NBA|3PM|over": "52% cuando necesita 62%", "NBA|REB|over": "50% cuando necesita 59%", "NBA|AST|over": "44% cuando necesita 60%",
-  "NBA|game|sp": "3 de 8", "SOC|tot": "5 de 13", "SOC|dc1h": "1 de 4"};
-const keyOf = x => x.kind === "soc" ? `SOC|${x.k}` : x.kind === "game" ? `${x.sport}|game|${x.bet}` : x.sport === "NFL" ? "NFL|prop" : `${x.sport}|${x.m}|${x.s}`;
+  "NBA|game|sp": "3 de 8", "SOC|tot": "5 de 13", "SOC|dc1h": "1 de 4",
+  "SOC|tt|O": "que un equipo anote: −7% y −13% en las dos mitades del registro"};
+const keyOf = x => x.kind === "soc" ? (x.k === "tt" ? `SOC|tt|${x.side}` : `SOC|${x.k}`) : x.kind === "game" ? `${x.sport}|game|${x.bet}` : x.sport === "NFL" ? "NFL|prop" : `${x.sport}|${x.m}|${x.s}`;
 const qual = x => x.kind === "soc" ? x.pr >= 0.62 && x.p >= 1.2 : x.kind === "game" ? x.pr >= 0.6 && (x.e == null || x.e >= -0.02) : x.pr >= 0.62 && x.role !== 0 && (x.e == null || x.e >= -0.02);
 function stat(list) { let n = 0, h = 0, eh = 0, v = 0, u = 0;
   for (const x of list) { const q = 1 / x.p; n++; h += x.hit; eh += q; v += q * (1 - q); u += x.hit ? x.p - 1 : -1; }
@@ -25,7 +26,7 @@ export function gates({R, read, dloc, now, prev}) {
   // First run: every type starts being judged from its 30-day log (seeds start paused from today)
   const first = !old;
   for (const k of new Set([...Object.keys(picks), ...Object.keys(shadow), ...Object.keys(SEED), ...Object.keys(old || {})])) {
-    if (k.includes("undefined")) continue;
+    if (k.includes("undefined") || k === "SOC|tt") continue; // SOC|tt was split by side on Nov 23
     // Each state is judged only by what happened since it started: a type that came back is not re-judged by its old bad picks,
     // and a paused one has to prove itself with shadow picks from after the pause
     const o = old && old[k], was = o ? o.on : !SEED[k], since0 = (o && o.at) || (first && !SEED[k] ? since : today), P = stat((picks[k] || []).filter(x => x.d >= since0)), S = stat((shadow[k] || []).filter(x => x.d >= since0));
