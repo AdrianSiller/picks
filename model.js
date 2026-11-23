@@ -168,7 +168,8 @@
     const mk = [pn.h && pn.a ? nv(pn.h, pn.a) : nv(L.mlHome, L.mlAway), pn.h && pn.a ? nv(pn.a, pn.h) : nv(L.mlAway, L.mlHome),
       pinSp ? nv(pn.spr.ph, pn.spr.pa) : nv(L.spreadHomeOdds, L.spreadAwayOdds), pinSp ? nv(pn.spr.pa, pn.spr.ph) : nv(L.spreadAwayOdds, L.spreadHomeOdds)];
     const cal = M.calAdj(`${ctx.sp || ctx.name}|game`), spN = ctx.sp || ctx.name, ea = M.EARLY[spN];
-    opts.forEach((o, i) => { o.pm = o.p; o.mk = mk[i]; if (mk[i] != null) o.p = 0.5 * o.p + 0.5 * mk[i];
+    const pinSrc = [!!(pn.h && pn.a), !!(pn.h && pn.a), !!pinSp, !!pinSp];
+    opts.forEach((o, i) => { o.pm = o.p; o.mk = mk[i]; o.pin = pinSrc[i]; if (mk[i] != null) o.p = 0.5 * o.p + 0.5 * mk[i];
       // Early payout (your books pay the moneyline as won if the lead reaches 20 in NBA / 17 in NFL): the extra chance it adds
       if (o.kind === "ml" && ea) { const mu = o.side === "H" ? margin : -margin, up = M.winOrLead(mu, ctx.sd, ea) - M.phi(mu / ctx.sd); o.early = +up.toFixed(3); o.p += up; }
       o.p = clamp(o.p + cal, 0.02, 0.98); o.cal = cal; });
@@ -177,7 +178,10 @@
     // An underdog that only has value (wins less than 55%) is shown apart as a risky option, never as the pick.
     // Solid = the most likely option with 60%+ whose price is fair or better (at most 2 points below our estimate)
     // NBA spreads out of the picks since Nov 11 (3/8 in the log, −2.5 u); the NBA moneyline stays (27/37)
-    const pickable = opts2.filter(o => M.gateOn(`${ctx.sp}|game|${o.kind}`));
+    // Price vs Pinnacle (the sharpest book): when we have its line, the pick's price must be at least 97% of Pinnacle's fair price.
+    // First week of the test (Nov 17-23, 248 game prices): paying 3%+ under fair lost 15%; at fair or above won.
+    const pinOk = o => !o.pin || o.mk == null || o.price * o.mk >= 0.97;
+    const pickable = opts2.filter(o => M.gateOn(`${ctx.sp}|game|${o.kind}`) && pinOk(o));
     const solid = pickable.filter(o => o.p >= 0.60 && o.e >= -0.02).sort((a, b) => b.p - a.p)[0];
     const value = solid ? null : opts2.filter(o => o.p < 0.60 && o.e >= 0.04).sort((a, b) => b.e - a.e)[0] || null;
     // No solid one: the pick of the game is the most likely option (62%+) that only costs the book's usual commission, as long as
