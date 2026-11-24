@@ -302,25 +302,25 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
       <button class="sport" role="tab" id="s-nfl" aria-selected="false">NFL</button>
       <button class="sport" role="tab" id="s-soc" aria-selected="false">Soccer</button>
     </div>
-    <div class="src" id="src"></div>
-    <div class="refresh"><button class="rbtn" id="refresh" type="button">↻ Actualizar</button><span class="rstat" id="rstat"></span></div>
+    <div class="src" id="src" style="display:none"></div>
+    <div class="refresh"><button class="rbtn" id="refresh" type="button">↻ Actualizar</button><button class="rbtn" id="gloss" type="button" style="margin-left:6px">¿Qué significa?</button><span class="rstat" id="rstat"></span></div>
     <div class="tabs" role="tablist">
-      <button class="tab" role="tab" id="t-picks" aria-selected="true">Top 10</button>
-      <button class="tab" role="tab" id="t-games" aria-selected="false">Partidos</button>
+      <button class="tab" role="tab" id="t-picks" aria-selected="false" style="display:none">Top 10</button>
+      <button class="tab" role="tab" id="t-games" aria-selected="true">Hoy</button>
       <button class="tab" role="tab" id="t-players" aria-selected="false">Jugadores</button>
-      <button class="tab" role="tab" id="t-parlays" aria-selected="false">Parlays</button>
+      <button class="tab" role="tab" id="t-parlays" aria-selected="false" style="display:none">Parlays</button>
       <button class="tab" role="tab" id="t-perf" aria-selected="false">Rendimiento</button>
-      <button class="tab" role="tab" id="t-grade" aria-selected="false">Calificación</button>
+      <button class="tab" role="tab" id="t-grade" aria-selected="false" style="display:none">Calificación</button>
     </div>
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 24 nov 11:30 a.m. · diseño v2</footer>
-<script src="model.js?v=20261124-1130"></script>
+<footer class="ver">Versión de la app: 24 nov 12:00 p.m. · diseño v2</footer>
+<script src="model.js?v=20261124-1200"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261124-1130";
+const APP_VERSION = "20261124-1200";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -508,7 +508,7 @@ function socViewGames() {
           <div class="team" style="text-align:right">${crest(g.home, "soc")}${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record || ""}</small></div>
         </div>
         ${top ? `<div class="gpick">
-          <div class="gpick-h">${gp.tier === "safe" ? "🛡️ Más seguro" : gp.tier === "solid" ? "Pick sólido" : gp.tier === "read" ? "Pick del partido · 📖 lectura" : "Pick del partido · paga lo justo"}</div>
+          <div class="gpick-h">${gp.tier === "safe" ? "Pick · 🛡️ Seguro" : gp.tier === "solid" ? "Pick · ✅ Respaldado" : "Pick · 📖 Lectura"}</div>
           <div class="gpick-main"><span>${esc(top.lbl)}</span><b>${top.p ? (top.est ? "≈" : "") + fx(top.p) : "—"}</b></div>
           <div class="probtxt"><span>Probabilidad estimada <b>${pct(top.pr)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / top.pr)}</b> o más</span></div>
           ${whyBox(g, top, m, gp.tier)}
@@ -1017,7 +1017,7 @@ function viewPerf() {
   return learnHtml() + `<div class="card" style="cursor:default">${closeHtml(sp)}
       <div class="perf-top"><div><small>${esc(S.name)}</small><b>${ME.w} de ${ME.n}</b><span>${Math.round(ME.pct * 100)}% · <span class="${ME.u >= 0 ? "pos" : "neg"}">${uTxt(ME.u)}</span></span></div>
       <div><small>Todos los deportes</small><b>${ALL.w} de ${ALL.n}</b><span>${Math.round(ALL.pct * 100)}% · <span class="${ALL.u >= 0 ? "pos" : "neg"}">${uTxt(ALL.u)}</span></span></div></div>
-      <div class="note">Unidades: 1 a cada pick (sin momio se toma 1.91). Con momios de 1.50–1.80 hay que pegar 55–67% para ganar. Desde el ${dname(days[days.length - 1].date)}; con pocos días, toma las tendencias con calma.</div>
+      <div class="note">Unidades: 1 a cada pick (sin momio se toma 1.91). Con momios de 1.50–1.80 hay que pegar 55–67% para ganar. Desde el ${dname(days[days.length - 1].date)}; con pocos días, toma las tendencias con calma.<br>Fuentes: ${esc(S.src || "")}</div>
     </div>
     ${rows.length ? `<div class="card" style="cursor:default">
       ${dayTable()}
@@ -1154,6 +1154,14 @@ function changesHtml() {
     ${list.length ? `<ul>${list.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${R.changes.length > 25 ? `<div class="meta">y ${R.changes.length - 25} más</div>` : ""}</details>`;
 }
 document.getElementById("refresh").addEventListener("click", () => { refresh(); rebuild(); });
+document.getElementById("gloss").addEventListener("click", () => { const v = document.getElementById("view"), ex = document.getElementById("glossbox"); if (ex) { ex.remove(); return; }
+  v.insertAdjacentHTML("afterbegin", `<div class="card" id="glossbox" style="cursor:default"><h3 class="sub" style="margin-top:0">¿Qué significa?</h3><ul class="why" style="line-height:1.5">
+    <li><b>🛡️ Seguro</b>: el pick más firme; reglas extra estrictas.</li><li><b>✅ Respaldado</b>: nuestras estadísticas y la casa coinciden.</li><li><b>📖 Lectura</b>: lo que mejor respalda el partido, a precio justo, pero con menos margen; apuesta chica.</li>
+    <li><b>Momio</b>: lo que paga la casa por cada peso (1.50 = ganas 50 centavos por peso).</li><li><b>Conviene si tu casa paga X o más</b>: el momio justo según nuestra probabilidad; si tu casa paga menos, no vale la pena.</li>
+    <li><b>ML (moneyline)</b>: que ese equipo gane el partido.</li><li><b>Spread / handicap</b>: el equipo gana por más de X puntos o goles (o pierde por menos si es +X).</li>
+    <li><b>1 Up</b>: se paga si el equipo va arriba por 1 gol en cualquier momento, aunque luego no gane.</li><li><b>Doble oportunidad</b>: gana o empata ("X o empate").</li>
+    <li><b>Over / Under (más de / menos de)</b>: el total de goles, puntos o la estadística del jugador pasa o no la línea.</li><li><b>Visita @ local</b>: el de la izquierda visita, el de la derecha juega en casa.</li></ul>
+    <button class="lgb" onclick="document.getElementById('glossbox').remove()">Cerrar</button></div>`); window.scrollTo(0, 0); });
 
 /* ---------- views ---------- */
 const topNow = () => filt.day ? M.topPicks(DATA.cands.filter(c => games[c.g] && inDay(games[c.g])), S.name) : topPicks;
@@ -1266,7 +1274,7 @@ function gamePickBox(g, M) {
   else if (isFav) why = `Proyectamos que ${esc(fav.name)} gana por unos ${mg} puntos; es la opción con más probabilidad de pegar.`;
   else why = `Ojo: proyectamos que ${esc(fav.name)} gana (por unos ${mg} puntos), pero la casa lo ve todavía más claro. ${esc(team.name)} pierde más veces de las que gana, pero su momio paga más de lo que debería: es una apuesta de valor, no de favorito.`;
   return `<div class="gpick">
-      <div class="gpick-h">${M.tier === "fair" ? "Pick del partido · 🟡 paga lo justo" : M.tier === "prob" ? "Pick de tendencia · 🔵 más probable" : "Pick sólido"}</div>
+      <div class="gpick-h">${M.tier === "solid" ? "Pick · ✅ Respaldado" : "Pick · 📖 Lectura"}</div>
       <div class="gpick-main"><span>${esc(B.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", ""))}</span><b>${fx(B.price)}</b></div>
       <div class="probtxt"><span>Probabilidad estimada <b>${pct(B.p)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / B.p)}</b> o más</span></div>
       <div class="gpick-why">${why} ${B.e >= 0.01 ? `Supera a la casa por ${Math.round(B.e * 100)} puntos.` : "Su momio es justo para esa probabilidad."}</div>
@@ -1345,7 +1353,7 @@ function filterBar() {
   const dchips = days.length > 1 ? `<div class="lgs">${[""].concat(days).map(d => `<button class="lgb dayb" data-day="${d}" aria-pressed="${filt.day === d}">${d ? dayLbl(d) : "Todos los días"}</button>`).join("")}</div>` : "";
   const when = S.custom ? socWhen : time;
   const lgs = S.custom ? `<div class="lgs">${["", "Liga MX", "La Liga", "Premier", "Bundesliga", "Serie A", "Ligue 1", "Champions", "Europa", "Nations League", "Concacaf NL"].map(l => `<button class="lgb" data-lg="${l}" aria-pressed="${filt.lg === l}">${l || "Todas"}</button>`).join("")}</div>` : "";
-  return `<div class="filters">${lgs}${dchips}<label class="fsel"><span>Partido</span><select id="f-game"><option value="">Todos los partidos</option>${gs.map(g => `<option value="${g.id}"${filt.game === g.id ? " selected" : ""}>${esc(g.away.abbr)} @ ${esc(g.home.abbr)} · ${esc(when(g.date))}</option>`).join("")}</select></label></div>`;
+  return `<div class="filters">${lgs}${dchips}<label class="fsel" style="${curTab === "games" ? "display:none" : ""}"><span>Partido</span><select id="f-game"><option value="">Todos los partidos</option>${gs.map(g => `<option value="${g.id}"${filt.game === g.id ? " selected" : ""}>${esc(g.away.abbr)} @ ${esc(g.home.abbr)} · ${esc(when(g.date))}</option>`).join("")}</select></label></div>`;
 }
 function wireFilters(v) {
   const sel = v.querySelector("#f-game"); if (sel) sel.addEventListener("change", () => { filt.game = sel.value; show(curTab); });
@@ -1377,8 +1385,8 @@ async function viewGrade() {
     <p class="lead" style="text-align:center;margin-top:8px">Barra = lo que acertó · línea = lo que prometió. Rojo: pega bastante menos de lo que dice.</p>`;
 }
 // ---- Quick view (Partidos): one block per match with its pick and how backed it is; tap = full detail of that match ----
-let quick = true; try { quick = localStorage.getItem("quick") !== "0"; } catch (e) {}
-const QT = {safe: ["t-safe", "🛡 seguro"], ok: ["t-ok", "respaldado"], mid: ["t-mid", "paga lo justo"], read: ["t-mid", "📖 lectura"]};
+let quick = true;
+const QT = {safe: ["t-safe", "🛡️ Seguro"], ok: ["t-ok", "✅ Respaldado"], mid: ["t-mid", "📖 Lectura"], read: ["t-mid", "📖 Lectura"]};
 const qPick = (lbl, price, pr, tier) => { const [tc, tt] = QT[tier]; return `<div class="m-pick"><span class="k">Pick</span><b>${esc(lbl)}</b><span class="px">${price}</span></div>
   <div class="m-conf"><span class="k">Confianza</span><i class="${tc}">${tt}</i><span class="bar ${tier}"><i style="width:${Math.round(pr * 100)}%"></i></span><span class="pct">${Math.round(pr * 100)}%</span></div>`; };
 const qHead = (g, sp, lg) => `<div class="m-top"><span>${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}</span><span>${esc(lg || "")}</span></div>
@@ -1424,7 +1432,10 @@ function quickHtml() {
   for (const [k, arr] of Object.entries(days).sort()) out.push(`<div class="qday">${k === today ? "🔜 Por iniciar · hoy" : esc(dayLbl(k))}</div>`, ...arr);
   return (showLive ? `<div id="qlive"></div>` : "") + (out.length ? out.join("") : showLive ? "" : `<div class="card meta" style="cursor:default">No hay partidos con estos filtros.</div>`);
 }
-const quickToggle = () => `<div class="qtog"><button data-q="1" class="${quick ? "on" : ""}">Vista rápida</button><button data-q="0" class="${quick ? "" : "on"}">Detalle</button></div>`;
+// One view only (the short blocks; tap one for its detail). Top 10, Parlays and Calificación live inside "Hoy" as links.
+const quickToggle = () => filt.game ? `<button class="lgb" data-back="1" style="margin:2px 0 10px">← Todos los partidos</button>` : `<div class="lgs" style="margin:2px 0 10px"><button class="lgb" data-goto="picks">🔥 Top 10</button><button class="lgb" data-goto="parlays">🧩 Parlays</button><button class="lgb" data-goto="grade">📊 Calidad del modelo</button></div>`;
+const backHoy = () => `<button class="lgb" data-goto="games" style="margin:2px 0 10px">← Hoy</button>`;
+const quickToggle0 = () => `<div class="qtog"><button data-q="1" class="${quick ? "on" : ""}">Vista rápida</button><button data-q="0" class="${quick ? "" : "on"}">Detalle</button></div>`;
 // ---- 🛡️ Más seguros (top of Top 10): strict rules, plus the best 2- and 3-leg parlays ----
 function safeHtml() {
   const soon = d => new Date(d) > Date.now() && new Date(d) - Date.now() < 30 * 36e5, list = [];
@@ -1490,19 +1501,21 @@ async function liveBlocks() {
 let curTab = "picks", curSport = "nba";
 function show(name) {
   curTab = name;
-  ["picks", "games", "players", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).setAttribute("aria-selected", String(n === name)));
+  ["picks", "games", "players", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).setAttribute("aria-selected", String(n === name || (n === "games" && ["picks", "parlays", "grade"].includes(name)))));
   const v = document.getElementById("view");
-  if (name === "grade") { v.innerHTML = `<div class="loading">Calculando…</div>`; viewGrade().then(h => { if (curTab === "grade") v.innerHTML = h; }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
+  if (name === "grade") { v.innerHTML = `<div class="loading">Calculando…</div>`; viewGrade().then(h => { if (curTab === "grade") { v.innerHTML = backHoy() + h; wireQuick(v); } }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "players") { v.innerHTML = `<div class="loading">Cargando jugadores…</div>`; viewPlayers(v); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "perf") { v.innerHTML = viewPerf(); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "games" && quick && !filt.game) { v.innerHTML = changesHtml() + filterBar() + quickToggle() + quickHtml(); wireFilters(v); wireQuick(v); const ql = v.querySelector("#qlive"); if (ql) liveBlocks().then(h => { if (curTab === "games") ql.innerHTML = h; }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
-  const pre = (name === "picks" && !filt.game ? safeHtml() : "") + (name === "games" ? quickToggle() : "");
+  const pre = (["picks", "parlays"].includes(name) ? backHoy() : "") + (name === "picks" && !filt.game ? safeHtml() : "") + (name === "games" ? quickToggle() : "");
   if (S.custom) { v.innerHTML = changesHtml() + filterBar() + pre + S.views[name]() + socMethod(); socWire(v); }
   else { v.innerHTML = changesHtml() + filterBar() + pre + views[name]() + methodHtml(); wire(v); }
   wireFilters(v); wireQuick(v);
   try { localStorage.setItem("tab", name); localStorage.setItem("sport", curSport); } catch (e) {}
 }
 function wireQuick(v) {
+  v.querySelectorAll("[data-goto]").forEach(b => b.addEventListener("click", () => { filt.game = ""; show(b.dataset.goto); window.scrollTo(0, 0); }));
+  v.querySelectorAll("[data-back]").forEach(b => b.addEventListener("click", () => { filt.game = ""; show("games"); }));
   v.querySelectorAll("[data-q]").forEach(b => b.addEventListener("click", () => { quick = b.dataset.q === "1"; filt.game = ""; try { localStorage.setItem("quick", quick ? "1" : "0"); } catch (e) {} show("games"); }));
   v.querySelectorAll("[data-qg]").forEach(b => b.addEventListener("click", () => { filt.game = b.dataset.qg; show("games"); window.scrollTo(0, 0); }));
 }
@@ -1514,7 +1527,7 @@ function sport(key) { curSport = key; filt = {game: "", lg: "", day: ""};
     filt.day = ds.includes(d0) || hasToday ? d0 : ds[0] || ""; } setSport(key); show(curTab); const R = lastRefresh[key]; document.getElementById("rstat").textContent = R ? `Revisado en vivo a las ${R.at.toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}` : "Revisa antes de apostar"; }
 ["picks", "games", "players", "parlays", "perf", "grade"].forEach(n => document.getElementById("t-" + n).addEventListener("click", () => show(n)));
 ["nba", "nfl", "soc"].forEach(k => document.getElementById("s-" + k).addEventListener("click", () => sport(k)));
-try { curTab = localStorage.getItem("tab") || "picks"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
+try { curTab = localStorage.getItem("tab") || "games"; if (!["games", "players", "perf"].includes(curTab)) curTab = "games"; curSport = localStorage.getItem("sport") || "nba"; } catch (e) {}
 // v2 design: the app opens on the match blocks (Partidos · vista rápida) the first time, like the mockup
 try { if (!localStorage.getItem("v2open")) { curTab = "games"; quick = true; localStorage.setItem("v2open", "1"); localStorage.setItem("quick", "1"); } } catch (e) { curTab = "games"; }
 if (curTab === "today") curTab = "games"; if (!views[curTab] && !["perf", "grade", "players"].includes(curTab)) curTab = "picks"; if (!SPORTS[curSport]) curSport = "nba";
