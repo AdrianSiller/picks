@@ -1,18 +1,14 @@
-[3s] NBA ok
-[3s] NFL ok
+[4s] NBA ok
+[4s] NFL ok
 fotmob historial: 11 de 12 equipos con poco historial: SLB=Slovan Bratislava, SLP=Slavia Prague, VFK=Viking, MUN=Bayern München, SHK=Shakhtar Donetsk, HBE=Hapoel Beer Sheva, DZG=Dinamo Zagreb, LEVS=Levski Sofia, NKC=NK Celje, SPP=Sparta Prague, TORR=Torreense
 fotmob xG: 113 de 138 equipos
 fotmob partido a partido: 150 equipos con xG de sus últimos partidos
-[42s] Soccer ok
-[42s] SGO NFL ok
-[42s] SGO NFL priced 0
-[46s] SGO UCL ok
-[46s] SGO UCL matched 0
-[46s] gates SOC|btts, SOC|dc, NBA|3PM|under, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
-[46s] calibración {"_n":5399,"NBA|prop|over":0.011,"NBA|prop|under":0.005,"NBA|game":-0.037,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.011,"SOC|soc":-0.032,"SOC|dc":0.013,"SOC|dc1h":0.016,"SOC|tot":-0.004,"SOC|tt":0.017,"SOC|psot":-0.042,"SOC|pshot":-0.08,"SOC|btts":-0.024,"SOC|1x2":0.039,"SOC|hc":0.05,"SOC|tc":-0.08,"SOC|pgoal":-0.04,"SOC|cor":0.036}
-[46s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1214},"NFL":{"w":0.69,"raw":0.9,"n":261}}
-[46s] latest.json 699 KB NBA 3 games/31 props · NFL 0/0 · soccer 89
-[47s] candidatos guardados 4402
-[47s] grade 2026-11-24 ok
-[49s] bot.json ok
-[49s] done
+[49s] Soccer ok
+[49s] gates SOC|btts, SOC|dc, NBA|3PM|under, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
+[49s] calibración {"_n":5399,"NBA|prop|over":0.011,"NBA|prop|under":0.005,"NBA|game":-0.037,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.011,"SOC|soc":-0.032,"SOC|dc":0.013,"SOC|dc1h":0.016,"SOC|tot":-0.004,"SOC|tt":0.017,"SOC|psot":-0.042,"SOC|pshot":-0.08,"SOC|btts":-0.024,"SOC|1x2":0.039,"SOC|hc":0.05,"SOC|tc":-0.08,"SOC|pgoal":-0.04,"SOC|cor":0.036}
+[49s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1214},"NFL":{"w":0.69,"raw":0.9,"n":261}}
+[49s] latest.json 704 KB NBA 3 games/33 props · NFL 0/0 · soccer 89
+[51s] candidatos guardados 4404
+[52s] grade 2026-11-24 ok
+[54s] bot.json ok
+[54s] done
