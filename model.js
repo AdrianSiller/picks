@@ -492,12 +492,21 @@
   // Player markets (shots, shots on target, goalscorer) are only secondary picks: never the pick of the match, at most 2,
   // and after the team markets that also pass
   M.isPl = c => c.k === "psot" || c.k === "pshot" || c.k === "pgoal";
+  // "Reading" pick: when nothing passes the strict filters, the team market this match backs best, as long as the price is fair
+  // (usual commission), our model is not below the book nor far above it, and the teams' recent games do not contradict it.
+  // Paused markets are allowed here (the match decides); player markets are not. Tracked as its own tier ("read").
+  M.socRead = (cands, gi) => {
+    if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return null;
+    const ok = c => !M.isPl(c) && c.p && c.p >= 1.25 && c.pr >= 0.6 && c.pm != null && c.mk != null && c.pm - c.mk >= -0.05 && c.pm - c.mk <= 0.10 && c.p * c.mk >= 0.92 && !(c.sup != null && c.sup < 0.5) && !c.thin && c.al !== 0;
+    return cands.filter(ok).sort((a, b) => (b.pr + pri(b)) - (a.pr + pri(a)))[0] || null; };
   M.socGamePicks = (cands, gi, max = 3) => {
+    const all0 = cands;
     // Paused types only show when this match backs them strongly (M.matchBacked); a match that contradicts a pick drops it
     cands = cands.filter(c => (M.gateOn(M.socGK(c)) || M.matchBacked(c)) && !(c.sup != null && c.sup < 0.5));
     const main = M.socGamePick(cands, gi);
     // No team pick: the backed player picks (if any) still show, so the match list and the top never disagree
     if (!main) { if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return []; const seen = new Set(), out = [];
+      const rd = M.socRead(all0, gi); if (rd) { out.push({c: rd, tier: "read"}); seen.add(fam(rd)); }
       for (const c of M.socBacked(cands, gi).filter(M.isPl)) { if (out.length >= 2 || seen.has(fam(c))) continue; seen.add(fam(c)); out.push({c, tier: M.socOk(c) ? "solid" : "fair", pl: 1}); } return out; }
     const out = [main], seen = new Set(main.c ? [fam(main.c)] : ["up1"]), B = M.socBacked(cands, gi);
     let npl = 0;
