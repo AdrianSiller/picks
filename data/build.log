@@ -1,14 +1,18 @@
 [3s] NBA ok
 [3s] NFL ok
 fotmob historial: 11 de 12 equipos con poco historial: SLB=Slovan Bratislava, SLP=Slavia Prague, VFK=Viking, MUN=Bayern München, SHK=Shakhtar Donetsk, HBE=Hapoel Beer Sheva, DZG=Dinamo Zagreb, LEVS=Levski Sofia, NKC=NK Celje, SPP=Sparta Prague, TORR=Torreense
-fotmob xG: 113 de 138 equipos
+fotmob xG: 111 de 135 equipos
 fotmob partido a partido: 150 equipos con xG de sus últimos partidos
-[40s] Soccer ok
-[40s] gates SOC|btts, SOC|dc, NBA|3PM|under, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
-[40s] calibración {"_n":5399,"NBA|prop|over":0.011,"NBA|prop|under":0.005,"NBA|game":-0.037,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.011,"SOC|soc":-0.032,"SOC|dc":0.013,"SOC|dc1h":0.016,"SOC|tot":-0.004,"SOC|tt":0.017,"SOC|psot":-0.042,"SOC|pshot":-0.08,"SOC|btts":-0.024,"SOC|1x2":0.039,"SOC|hc":0.05,"SOC|tc":-0.08,"SOC|pgoal":-0.04,"SOC|cor":0.036}
-[40s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1214},"NFL":{"w":0.69,"raw":0.9,"n":261}}
-[40s] latest.json 707 KB NBA 3 games/33 props · NFL 0/0 · soccer 89
-[42s] candidatos guardados 4413
-[42s] grade 2026-11-24 ok
-[45s] bot.json ok
-[45s] done
+[58s] Soccer ok
+[58s] SGO NFL ok
+[58s] SGO NFL priced 0
+[63s] SGO UCL ok
+[63s] SGO UCL matched 0
+[63s] gates SOC|btts, SOC|dc, NBA|3PM|under, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
+[63s] calibración {"_n":5399,"NBA|prop|over":0.011,"NBA|prop|under":0.005,"NBA|game":-0.037,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.011,"SOC|soc":-0.032,"SOC|dc":0.013,"SOC|dc1h":0.016,"SOC|tot":-0.004,"SOC|tt":0.017,"SOC|psot":-0.042,"SOC|pshot":-0.08,"SOC|btts":-0.024,"SOC|1x2":0.039,"SOC|hc":0.05,"SOC|tc":-0.08,"SOC|pgoal":-0.04,"SOC|cor":0.036}
+[63s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1214},"NFL":{"w":0.69,"raw":0.9,"n":261}}
+[63s] latest.json 696 KB NBA 3 games/34 props · NFL 0/0 · soccer 87
+[65s] candidatos guardados 4241
+[65s] grade 2026-11-24 ok
+[67s] bot.json ok
+[67s] done
