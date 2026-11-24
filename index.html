@@ -312,12 +312,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 24 nov 9:35 a.m. · diseño v2</footer>
-<script src="model.js?v=20261124-0935"></script>
+<footer class="ver">Versión de la app: 24 nov 10:45 a.m. · diseño v2</footer>
+<script src="model.js?v=20261124-1045"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261124-0935";
+const APP_VERSION = "20261124-1045";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1007,10 +1007,9 @@ function viewPerf() {
   // By date, newest first, every day in the period (a day with no graded pick for this sport says so instead of disappearing)
   const dayTable = () => { const ds = days.map(d => d.date).sort().reverse(); if (!ds.length) return "";
     const first = ds[ds.length - 1], list = []; for (let d = new Date(ds[0] + "T12:00:00"); d.toISOString().slice(0, 10) >= first; d.setDate(d.getDate() - 1)) list.push(d.toISOString().slice(0, 10));
-    return `<h3 class="sub">Por día</h3><div class="tablewrap"><table class="opts perf"><tbody>${list.map(d => { const r = rows.filter(x => x.date === d);
-      if (!r.length) return `<tr><td>${esc(dname(d))}</td><td colspan="3" class="meta" style="text-align:left">sin picks calificados</td></tr>`; const t = T(r);
+    return `<h3 class="sub">Por día</h3><div class="tablewrap"><table class="opts perf"><tbody>${list.filter(d => rows.some(x => x.date === d)).map(d => { const r = rows.filter(x => x.date === d); const t = T(r);
       return `<tr><td>${esc(dname(d))}</td><td>${t.w}/${t.n}</td><td>${bar(t)} ${Math.round(t.pct * 100)}%</td><td class="${t.u >= 0 ? "pos" : "neg"}">${uTxt(t.u)}</td></tr>`; }).join("")}</tbody></table></div>
-      <div class="note">Del más reciente al más antiguo. Un día sin picks es porque ese día no hubo partidos de ${esc(S.name)} o ningún pick pasó los filtros.</div>`; };
+      <div class="note">Del más reciente al más antiguo. Solo aparecen los días con picks de ${esc(S.name)}${sp === "NFL" ? " (la NFL juega sobre todo jueves, domingo y lunes)" : ""}; si falta un día es porque no hubo partidos o ningún pick pasó los filtros.</div>`; };
   return learnHtml() + `<div class="card" style="cursor:default">${closeHtml(sp)}
       <div class="perf-top"><div><small>${esc(S.name)}</small><b>${ME.w} de ${ME.n}</b><span>${Math.round(ME.pct * 100)}% · <span class="${ME.u >= 0 ? "pos" : "neg"}">${uTxt(ME.u)}</span></span></div>
       <div><small>Todos los deportes</small><b>${ALL.w} de ${ALL.n}</b><span>${Math.round(ALL.pct * 100)}% · <span class="${ALL.u >= 0 ? "pos" : "neg"}">${uTxt(ALL.u)}</span></span></div></div>
