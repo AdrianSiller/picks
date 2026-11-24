@@ -312,12 +312,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 24 nov 10:45 a.m. · diseño v2</footer>
-<script src="model.js?v=20261124-1045"></script>
+<footer class="ver">Versión de la app: 24 nov 10:50 a.m. · diseño v2</footer>
+<script src="model.js?v=20261124-1050"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261124-1045";
+const APP_VERSION = "20261124-1050";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1146,7 +1146,7 @@ async function refresh() {
 function changesHtml() {
   const R = lastRefresh[curSport]; if (!R) return "";
   const list = R.changes.slice(0, 25);
-  return `<details class="card changes" style="cursor:default"${list.length ? " open" : ""}><summary>${list.length ? `${R.changes.length} cambio${R.changes.length > 1 ? "s" : ""} desde la carga` : "Sin cambios: todo sigue igual"}</summary>
+  return `<details class="card changes" style="cursor:default"><summary style="cursor:pointer">${list.length ? `${R.changes.length} cambio${R.changes.length > 1 ? "s" : ""} desde la carga <span class="meta">· toca para ver</span>` : "Sin cambios: todo sigue igual"}</summary>
     ${list.length ? `<ul>${list.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${R.changes.length > 25 ? `<div class="meta">y ${R.changes.length - 25} más</div>` : ""}</details>`;
 }
 document.getElementById("refresh").addEventListener("click", () => { refresh(); rebuild(); });
