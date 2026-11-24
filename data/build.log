@@ -1,18 +1,18 @@
 [2s] NBA ok
 [2s] NFL ok
-fotmob historial: 11 de 12 equipos con poco historial: SLB=Slovan Bratislava, SLP=Slavia Prague, VFK=Viking, MUN=Bayern München, SHK=Shakhtar Donetsk, DZG=Dinamo Zagreb, HBE=Hapoel Beer Sheva, LEVS=Levski Sofia, NKC=NK Celje, SPP=Sparta Prague, TORR=Torreense
+fotmob historial: 11 de 12 equipos con poco historial: SLB=Slovan Bratislava, SLP=Slavia Prague, VFK=Viking, MUN=Bayern München, SHK=Shakhtar Donetsk, HBE=Hapoel Beer Sheva, DZG=Dinamo Zagreb, LEVS=Levski Sofia, NKC=NK Celje, SPP=Sparta Prague, TORR=Torreense
 fotmob xG: 113 de 138 equipos
 fotmob partido a partido: 150 equipos con xG de sus últimos partidos
-[51s] Soccer ok
-[51s] SGO NFL ok
-[51s] SGO NFL priced 0
-[55s] SGO UCL ok
-[55s] SGO UCL matched 0
-[55s] gates SOC|btts, SOC|dc, NBA|3PM|under, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
-[55s] calibración {"_n":5399,"NBA|prop|over":0.011,"NBA|prop|under":0.005,"NBA|game":-0.037,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.011,"SOC|soc":-0.032,"SOC|dc":0.013,"SOC|dc1h":0.016,"SOC|tot":-0.004,"SOC|tt":0.017,"SOC|psot":-0.042,"SOC|pshot":-0.08,"SOC|btts":-0.024,"SOC|1x2":0.039,"SOC|hc":0.05,"SOC|tc":-0.08,"SOC|pgoal":-0.04,"SOC|cor":0.036}
-[55s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1214},"NFL":{"w":0.69,"raw":0.9,"n":261}}
-[55s] latest.json 698 KB NBA 3 games/31 props · NFL 0/0 · soccer 89
-[56s] candidatos guardados 4414
-[56s] grade 2026-11-24 ok
-[58s] bot.json ok
-[58s] done
+[46s] Soccer ok
+[46s] SGO NFL ok
+[46s] SGO NFL priced 0
+[50s] SGO UCL ok
+[50s] SGO UCL matched 0
+[50s] gates SOC|btts, SOC|dc, NBA|3PM|under, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|pshot, SOC|dc1h, SOC|tot cambios: 
+[50s] calibración {"_n":5399,"NBA|prop|over":0.011,"NBA|prop|under":0.005,"NBA|game":-0.037,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.011,"SOC|soc":-0.032,"SOC|dc":0.013,"SOC|dc1h":0.016,"SOC|tot":-0.004,"SOC|tt":0.017,"SOC|psot":-0.042,"SOC|pshot":-0.08,"SOC|btts":-0.024,"SOC|1x2":0.039,"SOC|hc":0.05,"SOC|tc":-0.08,"SOC|pgoal":-0.04,"SOC|cor":0.036}
+[50s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1214},"NFL":{"w":0.69,"raw":0.9,"n":261}}
+[50s] latest.json 699 KB NBA 3 games/31 props · NFL 0/0 · soccer 89
+[51s] candidatos guardados 4412
+[52s] grade 2026-11-24 ok
+[53s] bot.json ok
+[53s] done
