@@ -101,7 +101,7 @@ svg text{font-family:var(--f-mono)}
 .l5 i.low{box-shadow:inset 0 -2px 0 var(--warn)}
 .l5 i sup{font-size:9px;margin-left:1px;color:var(--warn)}
 .filters{display:flex;flex-direction:column;gap:8px}
-.lgs{display:flex;gap:6px;flex-wrap:wrap}
+.lgs{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin-bottom:6px}.lgs::-webkit-scrollbar{display:none}.lgs .lgb{flex:0 0 auto;white-space:nowrap}
 .lgb{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 12px;font:600 13px var(--f-body);cursor:pointer}
 .lgb[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
 .fsel{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px 4px 4px 12px}
@@ -254,6 +254,8 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
 .px-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px;margin:10px 0}.px-sum div{border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
 .px-sum b{display:block;font:700 18px var(--f-mono)}.px-sum small{color:var(--muted);font-size:11px}
 .px-line{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px;color:var(--muted)}.px-line input{width:80px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:600 14px var(--f-mono)}
+.m-why{font:500 13px var(--f-body);color:var(--ink);padding:6px 0 2px;border-top:1px dashed var(--line);text-align:left;line-height:1.35}.m-why b{font-weight:700}
+.m-alt{font:500 12.5px var(--f-body);color:var(--muted);padding:4px 0 0;text-align:left;line-height:1.4}.m-alt span{font-weight:700}.m-alt b{color:var(--ink);font-family:var(--f-mono);font-weight:600}
 .m-mx{display:flex;flex-direction:column;gap:3px;padding:6px 0 2px;border-top:1px dashed var(--line);font:500 12.5px var(--f-body);color:var(--muted);text-align:left;line-height:1.35}
 .m-pick b{font:600 15.5px var(--f-body);line-height:1.25}.m-pick b.no{font-weight:500;color:var(--muted);font-size:13.5px}
 .m-pick .px{font:600 15px var(--f-mono)}
@@ -313,12 +315,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 24 nov 11:10 a.m. · diseño v2</footer>
-<script src="model.js?v=20261124-1110"></script>
+<footer class="ver">Versión de la app: 24 nov 11:20 a.m. · diseño v2</footer>
+<script src="model.js?v=20261124-1120"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261124-1110";
+const APP_VERSION = "20261124-1120";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1375,12 +1377,11 @@ async function viewGrade() {
 }
 // ---- Quick view (Partidos): one block per match with its pick and how backed it is; tap = full detail of that match ----
 let quick = true; try { quick = localStorage.getItem("quick") !== "0"; } catch (e) {}
-const QT = {safe: ["t-safe", "🛡 seguro"], ok: ["t-ok", "respaldado"], mid: ["t-mid", "paga lo justo"], read: ["t-mid", "📖 lectura del partido"]};
+const QT = {safe: ["t-safe", "🛡 seguro"], ok: ["t-ok", "respaldado"], mid: ["t-mid", "paga lo justo"], read: ["t-mid", "📖 lectura"]};
 const qPick = (lbl, price, pr, tier) => { const [tc, tt] = QT[tier]; return `<div class="m-pick"><span class="k">Pick</span><b>${esc(lbl)}</b><span class="px">${price}</span></div>
   <div class="m-conf"><span class="k">Confianza</span><i class="${tc}">${tt}</i><span class="bar ${tier}"><i style="width:${Math.round(pr * 100)}%"></i></span><span class="pct">${Math.round(pr * 100)}%</span></div>`; };
 const qHead = (g, sp, lg) => `<div class="m-top"><span>${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}</span><span>${esc(lg || "")}</span></div>
-  <div class="m-vs"><span class="tm">${crest(g.away, sp)}<b>${esc(g.away.abbr)}</b></span><span class="vx">@</span><span class="tm r"><b>${esc(g.home.abbr)}</b>${crest(g.home, sp)}</span></div>
-  <div style="font:500 12px var(--f-body);color:var(--muted);text-align:center;margin:-2px 0 4px">${esc(g.away.name)} visita a ${esc(g.home.name)}</div>`;
+  <div class="m-vs"><span class="tm">${crest(g.away, sp)}<b>${esc(g.away.abbr)}</b></span><span class="vx">@</span><span class="tm r"><b>${esc(g.home.abbr)}</b>${crest(g.home, sp)}</span></div>`;
 const qShort = l => String(l).replace(" tiros a puerta", " a puerta").replace("Ambos anotan: Sí", "Ambos anotan");
 // Matchup notes (offense vs defense) built in nfl.mjs: 📊 favorable, 🧱 tough matchup
 // Other backed options of the match (up to 3): the other picks that pass, plus 1 Up when likely, each with its probability and match backing
@@ -1390,9 +1391,9 @@ function socAlts(g, gi, gps, main, up, cs) {
   if (cs && alts.length < 3) { const fam = c => ["dc", "1x2", "hc", "dc1h"].includes(c.k) ? "res" : c.k + (c.team || ""), seen = new Set([...alts, main].filter(Boolean).map(fam));
     const ok = c => !M.isPl(c) && c.p && c.p >= 1.25 && c.pr >= 0.6 && c.pm != null && c.mk != null && c.pm - c.mk >= -0.05 && c.pm - c.mk <= 0.10 && c.p * c.mk >= 0.9 && !(c.sup != null && c.sup < 0.5);
     for (const c of cs.filter(ok).sort((a, b) => b.pr - a.pr)) { if (alts.length >= 3) break; if (c === main || seen.has(fam(c))) continue; seen.add(fam(c)); alts.push(c); } }
-  const L = alts.map(c => `${esc(qShort(c.lbl))} · ${fx(c.p)} · ${pct(c.pr)}${c.sup != null ? ` · se dio en ${pct(c.sup)} reciente` : ""}`);
-  if (gi && L.length < 3 && !up) { const u = gi.up1H >= gi.up1A ? {s: "H", p: gi.up1H} : {s: "A", p: gi.up1A}; if (u.p >= 0.68) L.push(`1 Up ${u.s === "H" ? g.home.abbr : g.away.abbr} · ≈${fx(1 / (u.p * 1.06))} (estimado) · ${pct(u.p)}`); }
-  return L.length ? `<div class="m-mx"><span style="font-weight:600">Otras opciones con respaldo:</span>${L.map(t => `<span>• ${t}</span>`).join("")}</div>` : "";
+  const L = alts.map(c => `${esc(qShort(c.lbl))} <b>${fx(c.p)}</b>`);
+  if (gi && L.length < 3 && !up) { const u = gi.up1H >= gi.up1A ? {s: "H", p: gi.up1H} : {s: "A", p: gi.up1A}; if (u.p >= 0.68) L.push(`1 Up ${u.s === "H" ? g.home.abbr : g.away.abbr} <b>≈${fx(1 / (u.p * 1.06))}</b>`); }
+  return L.length ? `<div class="m-alt"><span>También:</span> ${L.join(" · ")}</div>` : "";
 }
 const mxHtml = g => g.mx && g.mx.length ? `<div class="m-mx">${g.mx.map(x => `<span>${x.ok ? "📊" : "🧱"} ${esc(x.t)}</span>`).join("")}</div>` : "";
 function quickHtml() {
@@ -1406,7 +1407,8 @@ function quickHtml() {
         // No pick: still show what is most likely (team markets first), clearly marked as not a bet (paused market or price that does not pay)
         const top = cs.filter(c => c.p && c.pr >= 0.6 && !M.isPl(c)).sort((a, b) => b.pr - a.pr)[0];
         return top ? `<div class="m-pick"><span class="k">Lo más probable</span><b>${esc(qShort(top.lbl))} <small style="font-weight:500;color:var(--muted)">· ${fx(top.p)} · ${pct(top.pr)}</small></b></div><div class="m-mx"><span>⚠️ No es pick: ${M.gateOn(M.socGK(top)) ? "el momio no paga lo suficiente" : "ese mercado pega seguido pero pierde dinero en el registro"}. Informativo.</span></div>` : `<div class="m-pick"><span class="k">Pick</span><b class="no">Sin pick: nada pasa los filtros</b></div>`; })();
-      (days[dayKey(g.date)] = days[dayKey(g.date)] || []).push(`<button class="blk${main || up ? "" : " off"}" data-qg="${g.id}">${qHead(g, "soc", g.lg)}${body}${main && main.supTxt ? `<div class="m-mx"><span>📋 Respaldo del partido: ${esc(main.supTxt)}</span></div>` : ""}${socAlts(g, gi, gps, main, up, cs)}</button>`); }
+      (days[dayKey(g.date)] = days[dayKey(g.date)] || []).push(`<button class="blk${main || up ? "" : " off"}" data-qg="${g.id}">${qHead(g, "soc", g.lg)}${body}${main && main.supTxt ? `<div class="m-why"><b>Por qué:</b> ${esc(main.supTxt)}</div>` : up && gi ? (() => { const T = up.side === "H" ? g.home : g.away, O = up.side === "H" ? g.away : g.home, rw = ab => (SOC_DATA.teams[ab] || []).filter(r => r && !r[8]).slice(0, 8), tr = rw(T.abbr), orr = rw(O.abbr);
+          return `<div class="m-why"><b>Por qué:</b> ${esc(T.abbr)} anotó en ${tr.filter(r => r[4] > 0).length}/${tr.length} y ganó ${tr.filter(r => r[4] > r[5]).length}/${tr.length} · ${esc(O.abbr)} recibió gol en ${orr.filter(r => r[5] > 0).length}/${orr.length}. Para el 1 Up basta ir arriba una vez.</div>`; })() : ""}${socAlts(g, gi, gps, main, up, cs)}</button>`); }
   } else {
     const sp = S.name.toLowerCase(), list = DATA.games.filter(g => inDay(g) && new Date(g.date) > Date.now() - 3 * 36e5).sort((a, b) => new Date(a.date) - new Date(b.date));
     const top = M.topPicks(DATA.cands, S.name), prob = M.probables(DATA.cands, S.name, 6, top), safe = S.name === "NBA" ? M.nbaSafe(DATA.cands) : [];
