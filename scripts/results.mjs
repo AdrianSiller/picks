@@ -30,6 +30,9 @@ export function snapshot(data, now, hours = 30) {
     const GI = Object.fromEntries(B.games.map(x => [x.id, x]));
     // Every backed pick of each match (main one and the extras, e.g. player shots), with its tier
     for (const g of S.games) for (const gp of M.socGamePicks(B.cands.filter(c => c.g === g.id), GI[g.id])) if (gp.c) add(gp.c, gp.tier === "solid" ? "game" : gp.tier === "read" ? "read" : gp.tier === "likely" ? "likely" : "fair");
+      // 1 Up as the pick of the match: saved too (estimated price, the source does not publish it) so it stays visible after kickoff and gets graded
+      else if (gp.up1 && soon(g) && !seen.has(g.id + "up1")) { seen.add(g.id + "up1"); const ab = gp.up1.side === "H" ? g.home.abbr : g.away.abbr;
+        items.push({sport: "SOC", kind: "soc", lg: g.lg, d: g.date, pr: +gp.up1.pr.toFixed(3), g: g.id, k: "up1", side: gp.up1.side, p: +(1 / (gp.up1.pr * 1.06)).toFixed(2), est: 1, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: `1 Up ${ab}`, why: "up1"}); }
   }
   // 🛡️ Safest picks: tracked with their own flag (and added if they were not a pick already) to see if they really hit more
   { const S2 = data.soc; if (S2 && S2.games.length) { const B2 = M.buildSoccer(S2), GI2 = Object.fromEntries(B2.games.map(x => [x.id, x]));
@@ -98,6 +101,11 @@ export async function grade(items) {
           hit = v === "dnp" || v == null ? null : v >= x.line; break; }
         case "pshot": { let v = null; for (const r of s.rosters || []) for (const p of r.roster || []) if (p.athlete && String(p.athlete.id) === String(x.aid)) { const st = (p.stats || []).find(z => z.name === "totalShots"); const ap = (p.stats || []).find(z => z.name === "appearances"); v = ap && !+ap.value && !p.starter ? "dnp" : st ? +st.value : null; }
           hit = v === "dnp" || v == null ? null : v >= x.line; break; }
+        case "up1": { // went ahead by 1 at any moment: replay the goals in order (keyEvents); a win always counts
+          const ev = (s.keyEvents || []).filter(e => e.scoringPlay && e.team).sort((p, q) => (p.clock && p.clock.value || 0) - (q.clock && q.clock.value || 0));
+          const meId = x.side === "H" ? sc.hid : sc.aid; let me = 0, op = 0, led = false;
+          for (const e of ev) { if (String(e.team.id) === String(meId)) me++; else op++; if (me > op) led = true; }
+          const won = x.side === "H" ? h > a : a > h; hit = led || won ? true : ev.length ? false : (h + a === 0 ? false : null); break; }
         case "cor": { const ch = corners(sc.hid), ca = corners(sc.aid); hit = ch == null || ca == null ? null : x.side === "O" ? ch + ca > x.line : ch + ca < x.line; break; }
       }
       x.res = {hit: hit == null ? null : hit ? 1 : 0, act: x.k === "tc" ? `${a}-${h}, corners` : `${a}-${h}`};
