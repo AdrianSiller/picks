@@ -312,12 +312,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 24 nov 9:30 a.m. · diseño v2</footer>
-<script src="model.js?v=20261124-0930"></script>
+<footer class="ver">Versión de la app: 24 nov 9:35 a.m. · diseño v2</footer>
+<script src="model.js?v=20261124-0935"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261124-0930";
+const APP_VERSION = "20261124-0935";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -876,10 +876,10 @@ const GATE_NAME = {"NFL|prop": "Props de jugadores NFL", "NBA|3PM|over": "Overs 
 function learnHtml() {
   const G = LATEST.gates || {}, off = Object.entries(G).filter(([, v]) => !v.on), L = (LATEST.gateLog || []).slice(-6).reverse(); if (!off.length && !L.length) return "";
   const nm = k => GATE_NAME[k] || k, sh = v => v.S && v.S.n ? ` · en la sombra: ${v.S.h} de ${v.S.n} desde la pausa (necesita ${Math.round((v.S.be || 0) * 100)}%)` : "";
-  return `<div class="card" style="cursor:default"><h3 class="sub" style="margin-top:0">🧠 Qué está aprendiendo</h3>
+  return `<details class="card" style="cursor:default"><summary style="cursor:pointer;font-weight:600">⏸️ Tipos de pick en pausa (${off.length}) <span class="meta" style="font-weight:400">· toca para ver</span></summary>
     <div class="note" style="margin-top:0">Cada actualización revisa cada tipo de pick contra su momio. Si pierde claramente (no solo un mal día), se pausa solo; sigue calculándose "en la sombra" y regresa solo cuando vuelve a pegar lo que el momio pide.</div>
     ${off.length ? `<div class="tablewrap"><table class="opts perf"><tbody>${off.map(([k, v]) => `<tr><td>⏸️ ${esc(nm(k))}</td><td colspan="3">${esc(v.why || "")}${esc(sh(v))}</td></tr>`).join("")}</tbody></table></div>` : ""}
-    ${L.length ? `<div class="note">Cambios recientes: ${L.map(c => `${c.on ? "▶️ regresó" : "⏸️ pausado"} ${esc(nm(c.k))} (${new Date(c.at).toLocaleDateString("es-MX", {day: "numeric", month: "short", timeZone: "America/Monterrey"})})`).join(" · ")}</div>` : ""}</div>`;
+    ${L.length ? `<div class="note">Cambios recientes: ${L.map(c => `${c.on ? "▶️ regresó" : "⏸️ pausado"} ${esc(nm(c.k))} (${new Date(c.at).toLocaleDateString("es-MX", {day: "numeric", month: "short", timeZone: "America/Monterrey"})})`).join(" · ")}</div>` : ""}</details>`;
 }
 // 📉 Against the closing price: the price when the app first proposed each pick (p0) vs the last one before kickoff (p).
 // Getting better prices than the close, again and again, is the fastest sign that a model sees something before the market.
