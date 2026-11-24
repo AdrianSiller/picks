@@ -315,12 +315,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 24 nov 12:00 p.m. · diseño v2</footer>
-<script src="model.js?v=20261124-1200"></script>
+<footer class="ver">Versión de la app: 24 nov 12:30 p.m. · diseño v2</footer>
+<script src="model.js?v=20261124-1230"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261124-1200";
+const APP_VERSION = "20261124-1230";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -497,8 +497,8 @@ function socViewGames() {
       const m = socModel[g.id], L = g.lines || {};
       const props = SOC.cands.filter(c => c.g === g.id && socOk(c)).sort((a, b) => (!!b.p - !!a.p) || socScore(b) - socScore(a)).slice(0, 5);
       // Same main pick everywhere: the 🛡️ safest one when there is one, otherwise the pick of the match
-      const cs0 = SOC.cands.filter(c => c.g === g.id), gpsD = M.socGamePicks(cs0, m), sf = M.socSafe(cs0, m, g)[0], gpm = M.socGamePick(cs0, m), gp0 = gpm || (gpsD[0] && gpsD[0].tier === "read" ? gpsD[0] : null), gp = sf ? {c: sf, tier: "safe"} : gp0, top = gp && gp.c;
-      const extras = [...(gp0 && gp0.c && gp0.c !== top ? [gp0.c] : []), ...M.socGamePicks(SOC.cands.filter(c => c.g === g.id), m).map(x => x.c)].filter((c, i, a) => c && c !== top && a.indexOf(c) === i).slice(0, 3), others = props.filter(c => c !== top && !extras.includes(c));
+      const cs0 = SOC.cands.filter(c => c.g === g.id), gpsD = M.socGamePicks(cs0, m), sf = M.socSafe(cs0, m, g)[0], gp0 = gpsD[0] || null, gp = sf ? {c: sf, tier: "safe"} : gp0, top = gp && gp.c;
+      const extras = [], others = props.filter(c => c !== top && !extras.includes(c));
       const form = t => { const rows = SOC.rowsOf(t.abbr).slice(0, 5).reverse(); return rows.map(r => `<i class="${r[4] > r[5] ? "w" : "l"}" title="${dateLbl(r[0])} ${r[3] === "h" ? "vs" : "@"} ${r[2]} ${r[4]}-${r[5]}">${r[4] > r[5] ? "G" : r[4] < r[5] ? "P" : "E"}</i>`).join(""); };
       const cl = g.cl && g.cl.length ? g.cl[Math.floor(g.cl.length / 2)] : null;
       return `<div class="card game" style="cursor:default">
@@ -508,7 +508,7 @@ function socViewGames() {
           <div class="team" style="text-align:right">${crest(g.home, "soc")}${g.home.abbr}<small>${esc(g.home.name)} · ${g.home.record || ""}</small></div>
         </div>
         ${top ? `<div class="gpick">
-          <div class="gpick-h">${gp.tier === "safe" ? "Pick · 🛡️ Seguro" : gp.tier === "solid" ? "Pick · ✅ Respaldado" : "Pick · 📖 Lectura"}</div>
+          <div class="gpick-h">${gp.tier === "safe" || gp.tier === "likely" ? "Pick · 🛡️ Seguro" : gp.tier === "solid" ? "Pick · ✅ Respaldado" : "Pick · 📖 Lectura"}</div>
           <div class="gpick-main"><span>${esc(top.lbl)}</span><b>${top.p ? (top.est ? "≈" : "") + fx(top.p) : "—"}</b></div>
           <div class="probtxt"><span>Probabilidad estimada <b>${pct(top.pr)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / top.pr)}</b> o más</span></div>
           ${whyBox(g, top, m, gp.tier)}
@@ -523,7 +523,7 @@ function socViewGames() {
         ${others.length ? `<div class="others"><h4>Opciones sin momio</h4>${others.map(c => `<div class="mini"><span><b>${esc(c.lbl)}</b><br><span class="meta">Conviene si tu casa paga ${fx(1 / c.pr)} o más</span></span><span class="r"><b>—</b><br><span class="meta">${pct(c.pr)}</span></span></div>`).join("")}</div>` : ""}`}
         ${extras.length ? `<div class="gpick extra"><div class="gpick-h">También respaldados</div>${extras.map(c => { const w = window.M.socWhy(SOC_DATA.teams, g, c, m);
           return `<div class="gpick-main" style="margin-top:8px"><span>${esc(c.lbl)}</span><b>${fx(c.p)}</b></div><div class="meta">${pct(c.pr)} · conviene desde ${fx(1 / c.pr)}${w.back === "market" ? " · ⚠️ lo sostiene el mercado" : w.back === "far" ? " · ⚠️ el modelo ve de más" : ""}</div><ul class="why">${w.lines.slice(0, 2).map(t => `<li>${esc(t)}</li>`).join("")}</ul>`; }).join("")}</div>` : ""}
-        <details class="gmore"${filt.game ? " open" : ""}><summary>Ver detalle del partido</summary>
+        <details class="gmore"><summary>Ver detalle del partido</summary>
         ${g.rot ? `<div class="inj">${[["a", g.away.abbr], ["h", g.home.abbr]].filter(([k]) => g.rot[k]).map(([k, t]) => g.rot[k].next != null ? `<b>${t}</b> juega Champions en ${g.rot[k].next} día${g.rot[k].next === 1 ? "" : "s"}: posible rotación` : `<b>${t}</b> viene de jugar Champions hace ${g.rot[k].prev} día${g.rot[k].prev === 1 ? "" : "s"}: posible cansancio`).join("<br>")}. No lo damos por hecho: el modelo solo lo toma en cuenta cuando salen las alineaciones (como 1 hora antes, dale ↻ Actualizar).</div>` : ""}
         ${g.xi ? `<div class="inj"><b>Alineaciones confirmadas:</b> ${[["a", g.away.abbr], ["h", g.home.abbr]].filter(([k]) => g.xi[k]).map(([k, t]) => g.xi[k].miss.length ? `${t} sin ${g.xi[k].miss.map(esc).join(", ")}` : `${t} con su once habitual`).join(" · ")}.</div>` : ""}
         <h3 class="sub">Proyección</h3>
@@ -1213,7 +1213,7 @@ function viewGames() {
       ${M.tot ? `<div class="gpick${M.tot.play ? "" : " pass"}" style="margin-top:8px"><div class="gpick-h">${M.tot.play ? "Total (over/under)" : "Total: sin pick"}</div>
         ${M.tot.play ? `<div class="gpick-main"><span>${esc(M.tot.best.lbl)}</span><b>${fx(M.tot.best.price)}</b></div><div class="probtxt"><span>Probabilidad estimada <b>${pct(M.tot.best.p)}</b></span><span>Conviene si tu casa paga <b>${fx(1 / M.tot.best.p)}</b> o más</span></div>` : ""}
         <div class="gpick-why">Proyectamos ~${M.tot.proj.toFixed(0)} puntos contra la línea de ${M.tot.line} (${esc(g.home.abbr)} ~${M.tot.eh.toFixed(0)}, ${esc(g.away.abbr)} ~${M.tot.ea.toFixed(0)}). Este año ${esc(g.home.abbr)} mete ${M.tot.h.cpf.toFixed(1)} y recibe ${M.tot.h.cpa.toFixed(1)}; ${esc(g.away.abbr)} mete ${M.tot.a.cpf.toFixed(1)} y recibe ${M.tot.a.cpa.toFixed(1)}. Modelo ${pct(M.tot.pm)} al over, casa ${pct(M.tot.mk)}.${M.tot.far ? " El modelo y la casa están muy lejos: algo no estamos viendo, mejor no." : ""}</div></div>` : ""}
-      <details class="gmore"${filt.game ? " open" : ""}><summary>Ver detalle del partido</summary>
+      <details class="gmore"><summary>Ver detalle del partido</summary>
       ${B ? `      <h3 class="sub">Moneyline o spread: las opciones</h3>
       <table class="opts"><thead><tr><th>Opción</th><th>Momio</th><th>Estimado</th><th>Casa</th></tr></thead><tbody>
         ${M.opts.map(o => `<tr class="${o === B && M.play ? "best" : ""}"><td>${esc(o.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", ""))}</td><td>${fx(o.price)}</td><td>${pct(o.p)}</td><td>${pct(o.imp)}</td></tr>`).join("")}
@@ -1386,7 +1386,7 @@ async function viewGrade() {
 }
 // ---- Quick view (Partidos): one block per match with its pick and how backed it is; tap = full detail of that match ----
 let quick = true;
-const QT = {safe: ["t-safe", "🛡️ Seguro"], ok: ["t-ok", "✅ Respaldado"], mid: ["t-mid", "📖 Lectura"], read: ["t-mid", "📖 Lectura"]};
+const QT = {safe: ["t-safe", "🛡️ Seguro"], ok: ["t-ok", "✅ Respaldado"], mid: ["t-mid", "📖 Lectura"], read: ["t-mid", "📖 Lectura"], likely: ["t-safe", "🛡️ Seguro"]};
 const qPick = (lbl, price, pr, tier) => { const [tc, tt] = QT[tier]; return `<div class="m-pick"><span class="k">Pick</span><b>${esc(lbl)}</b><span class="px">${price}</span></div>
   <div class="m-conf"><span class="k">Confianza</span><i class="${tc}">${tt}</i><span class="bar ${tier}"><i style="width:${Math.round(pr * 100)}%"></i></span><span class="pct">${Math.round(pr * 100)}%</span></div>`; };
 const qHead = (g, sp, lg) => `<div class="m-top"><span>${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}</span><span>${esc(lg || "")}</span></div>
@@ -1411,7 +1411,7 @@ function quickHtml() {
     for (const g of SOC_DATA.games.filter(g => (!filt.lg || g.lg === filt.lg) && inDay(g) && new Date(g.date) > Date.now() - 2.5 * 36e5).sort((a, b) => new Date(a.date) - new Date(b.date))) {
       const cs = SOC.cands.filter(c => c.g === g.id), gi = socModel[g.id], gps = M.socGamePicks(cs, gi), safe = M.socSafe(cs, gi, g);
       const main = safe[0] || (gps[0] && gps[0].c) || null, up = !main && gps[0] && gps[0].up1 ? gps[0].up1 : null, w = main && M.socWhy(SOC_DATA.teams, g, main, gi);
-      const tier = !main ? "mid" : safe[0] === main ? "safe" : gps[0] && gps[0].c === main && gps[0].tier === "read" ? "read" : (w.back === "ok" || w.back === "form") ? "ok" : "mid";
+      const tier = !main ? "mid" : safe[0] === main ? "safe" : gps[0] && gps[0].c === main && gps[0].tier === "read" ? "read" : gps[0] && gps[0].c === main && gps[0].tier === "likely" ? "safe" : (w.back === "ok" || w.back === "form") ? "ok" : "mid";
       const body = main ? qPick(qShort(main.lbl), fx(main.p), main.pr, tier) : up ? qPick(`1 Up ${up.side === "H" ? g.home.abbr : g.away.abbr}`, "≈" + fx(1 / (up.pr * 1.06)), up.pr, "mid") : (() => {
         // No pick: still show what is most likely (team markets first), clearly marked as not a bet (paused market or price that does not pay)
         const top = cs.filter(c => c.p && c.pr >= 0.6 && !M.isPl(c)).sort((a, b) => b.pr - a.pr)[0];

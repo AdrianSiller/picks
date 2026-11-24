@@ -29,7 +29,7 @@ export function snapshot(data, now, hours = 30) {
     // The pick of each match (solid or fair) is tracked too, with its tier, to see if the "fair" ones hold up
     const GI = Object.fromEntries(B.games.map(x => [x.id, x]));
     // Every backed pick of each match (main one and the extras, e.g. player shots), with its tier
-    for (const g of S.games) for (const gp of M.socGamePicks(B.cands.filter(c => c.g === g.id), GI[g.id])) if (gp.c) add(gp.c, gp.tier === "solid" ? "game" : gp.tier === "read" ? "read" : "fair");
+    for (const g of S.games) for (const gp of M.socGamePicks(B.cands.filter(c => c.g === g.id), GI[g.id])) if (gp.c) add(gp.c, gp.tier === "solid" ? "game" : gp.tier === "read" ? "read" : gp.tier === "likely" ? "likely" : "fair");
   }
   // 🛡️ Safest picks: tracked with their own flag (and added if they were not a pick already) to see if they really hit more
   { const S2 = data.soc; if (S2 && S2.games.length) { const B2 = M.buildSoccer(S2), GI2 = Object.fromEntries(B2.games.map(x => [x.id, x]));

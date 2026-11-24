@@ -499,14 +499,23 @@
     if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return null;
     const ok = c => !M.isPl(c) && c.p && c.p >= 1.25 && c.pr >= 0.6 && c.pm != null && c.mk != null && c.pm - c.mk >= -0.05 && c.pm - c.mk <= 0.10 && c.p * c.mk >= 0.92 && !(c.sup != null && c.sup < 0.5) && !c.thin && c.al !== 0;
     return cands.filter(ok).sort((a, b) => (b.pr + pri(b)) - (a.pr + pri(a)))[0] || null; };
+  // "Very likely": the clear favourite at a fair price (the book, Pinnacle when we have it, gives it 75%+ and the price is at least
+  // 95% of fair), backed by the teams' recent games. Our goals model underrates big favourites, so here the market leads (Nov 24).
+  M.socLikely = (cands, gi) => {
+    if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return null;
+    const ok = c => ["1x2", "hc", "tt"].includes(c.k) && c.p && c.p >= 1.1 && c.mk != null && c.mk >= 0.75 && c.p * c.mk >= 0.95 && !(c.sup != null && c.sup < 0.6) && !c.thin;
+    return cands.filter(ok).sort((a, b) => b.mk - a.mk)[0] || null; };
   M.socGamePicks = (cands, gi, max = 3) => {
     const all0 = cands;
     // Paused types only show when this match backs them strongly (M.matchBacked); a match that contradicts a pick drops it
     cands = cands.filter(c => (M.gateOn(M.socGK(c)) || M.matchBacked(c)) && !(c.sup != null && c.sup < 0.5));
     const main = M.socGamePick(cands, gi);
+    // A clear favourite at a fair price beats an estimated 1 Up
+    if (main && main.up1) { const lk = M.socLikely(all0, gi); if (lk) return [{c: lk, tier: "likely"}]; }
     // No team pick: the backed player picks (if any) still show, so the match list and the top never disagree
     if (!main) { if (gi && gi.H && gi.A && Math.min(gi.H.n, gi.A.n) < 6) return []; const seen = new Set(), out = [];
-      const rd = M.socRead(all0, gi); if (rd) { out.push({c: rd, tier: "read"}); seen.add(fam(rd)); }
+      const lk = M.socLikely(all0, gi); if (lk) { out.push({c: lk, tier: "likely"}); seen.add(fam(lk)); }
+      const rd = lk ? null : M.socRead(all0, gi); if (rd) { out.push({c: rd, tier: "read"}); seen.add(fam(rd)); }
       for (const c of M.socBacked(cands, gi).filter(M.isPl)) { if (out.length >= 2 || seen.has(fam(c))) continue; seen.add(fam(c)); out.push({c, tier: M.socOk(c) ? "solid" : "fair", pl: 1}); } return out; }
     const out = [main], seen = new Set(main.c ? [fam(main.c)] : ["up1"]), B = M.socBacked(cands, gi);
     let npl = 0;
