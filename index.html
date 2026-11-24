@@ -1430,7 +1430,7 @@ function quickHtml() {
   }
   const today = dayKey(new Date()), showLive = !filt.day || filt.day === today;
   for (const [k, arr] of Object.entries(days).sort()) out.push(`<div class="qday">${k === today ? "🔜 Por iniciar · hoy" : esc(dayLbl(k))}</div>`, ...arr);
-  return (showLive ? `<div id="qlive"></div>` : "") + (out.length ? out.join("") : showLive ? "" : `<div class="card meta" style="cursor:default">No hay partidos con estos filtros.</div>`);
+  return (showLive ? `<div id="qlive"></div>` : "") + (out.length ? out.join("") : `<div class="card meta" style="cursor:default">${S.name === "NFL" ? "No hay partidos de NFL por jugar ahorita. La próxima jornada aparece en cuanto ESPN publique la semana (normalmente martes o miércoles)." : "No hay partidos por jugar con estos filtros."}</div>`);
 }
 // One view only (the short blocks; tap one for its detail). Top 10, Parlays and Calificación live inside "Hoy" as links.
 const quickToggle = () => filt.game ? `<button class="lgb" data-back="1" style="margin:2px 0 10px">← Todos los partidos</button>` : `<div class="lgs" style="margin:2px 0 10px"><button class="lgb" data-goto="picks">🔥 Top 10</button><button class="lgb" data-goto="parlays">🧩 Parlays</button><button class="lgb" data-goto="grade">📊 Calidad del modelo</button></div>`;
