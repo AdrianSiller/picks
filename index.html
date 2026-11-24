@@ -237,6 +237,7 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
 .m-vs .tm{display:flex;align-items:center;gap:8px}.m-vs .tm.r{justify-content:flex-end}
 .m-vs .tm b{font:700 21px var(--f-display);letter-spacing:.02em}.m-vs .vx{font:500 12px var(--f-mono);color:var(--muted);padding:0 6px}
 .m-vs .crest{width:40px;height:40px;margin:0}
+.m-vs .tm b::after{content:"visita";display:block;font:500 10.5px var(--f-body);color:var(--muted);letter-spacing:0}.m-vs .tm.r b::after{content:"local";text-align:right}
 .m-pick,.m-conf{display:grid;grid-template-columns:78px 1fr auto;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--line)}
 .m-conf{grid-template-columns:78px auto 1fr 44px}
 .m-pick .k,.m-conf .k{font:600 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
@@ -312,12 +313,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 24 nov 10:50 a.m. · diseño v2</footer>
-<script src="model.js?v=20261124-1050"></script>
+<footer class="ver">Versión de la app: 24 nov 11:00 a.m. · diseño v2</footer>
+<script src="model.js?v=20261124-1100"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261124-1050";
+const APP_VERSION = "20261124-1100";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1378,7 +1379,8 @@ const QT = {safe: ["t-safe", "🛡 seguro"], ok: ["t-ok", "respaldado"], mid: ["
 const qPick = (lbl, price, pr, tier) => { const [tc, tt] = QT[tier]; return `<div class="m-pick"><span class="k">Pick</span><b>${esc(lbl)}</b><span class="px">${price}</span></div>
   <div class="m-conf"><span class="k">Confianza</span><i class="${tc}">${tt}</i><span class="bar ${tier}"><i style="width:${Math.round(pr * 100)}%"></i></span><span class="pct">${Math.round(pr * 100)}%</span></div>`; };
 const qHead = (g, sp, lg) => `<div class="m-top"><span>${new Date(g.date).toLocaleTimeString("es-MX", {hour: "numeric", minute: "2-digit", timeZone: TZ})}</span><span>${esc(lg || "")}</span></div>
-  <div class="m-vs"><span class="tm">${crest(g.away, sp)}<b>${esc(g.away.abbr)}</b></span><span class="vx">vs</span><span class="tm r"><b>${esc(g.home.abbr)}</b>${crest(g.home, sp)}</span></div>`;
+  <div class="m-vs"><span class="tm">${crest(g.away, sp)}<b>${esc(g.away.abbr)}</b></span><span class="vx">@</span><span class="tm r"><b>${esc(g.home.abbr)}</b>${crest(g.home, sp)}</span></div>
+  <div style="font:500 12px var(--f-body);color:var(--muted);text-align:center;margin:-2px 0 4px">${esc(g.away.name)} visita a ${esc(g.home.name)}</div>`;
 const qShort = l => String(l).replace(" tiros a puerta", " a puerta").replace("Ambos anotan: Sí", "Ambos anotan");
 // Matchup notes (offense vs defense) built in nfl.mjs: 📊 favorable, 🧱 tough matchup
 // Other backed options of the match (up to 3): the other picks that pass, plus 1 Up when likely, each with its probability and match backing
@@ -1466,7 +1468,7 @@ async function liveBlocks() {
   for (const [id, xs] of Object.entries(by)) { const L = live[id], x0 = xs[0], done = xs.every(x => x.res && x.res.hit != null) || (L && L.done);
     const head = L ? `<div class="m-top"><span>${esc(L.clock || "")}</span><span>${esc(x0.lg || S.name)}</span></div><div class="m-vs"><span class="tm">${crest({abbr: L.A.abbreviation, logo: L.A.logo}, sp)}<b>${esc(L.A.abbreviation)}</b></span><span class="vx" style="font:700 22px var(--f-display);color:var(--ink)">${L.a} - ${L.h}</span><span class="tm r"><b>${esc(L.H.abbreviation)}</b>${crest({abbr: L.H.abbreviation, logo: L.H.logo}, sp)}</span></div>`
       : (() => { const [aa, hh] = String(x0.n || "").split(" @ "), fake = !S.custom && x0.kind === "prop"; return fake ? `<div class="m-top"><span>en juego</span><span>${esc(S.name)}</span></div>`
-        : `<div class="m-top"><span>en juego · marcador no disponible</span><span>${esc(x0.lg || S.name)}</span></div><div class="m-vs"><span class="tm">${crest({abbr: aa}, sp)}<b>${esc(aa || "")}</b></span><span class="vx">vs</span><span class="tm r"><b>${esc(hh || "")}</b>${crest({abbr: hh}, sp)}</span></div>`; })();
+        : `<div class="m-top"><span>en juego · marcador no disponible</span><span>${esc(x0.lg || S.name)}</span></div><div class="m-vs"><span class="tm">${crest({abbr: aa}, sp)}<b>${esc(aa || "")}</b></span><span class="vx">@</span><span class="tm r"><b>${esc(hh || "")}</b>${crest({abbr: hh}, sp)}</span></div>`; })();
     const rows = xs.map(x => { const r = x.res && x.res.hit != null ? !!x.res.hit : judge(x); if (done && r != null) r ? W++ : F++;
       const chip = done ? (r == null ? "➖" : r ? `<i class="t-ok" style="background:var(--good);color:var(--bg)">✅ pegó</i>` : `<i style="background:var(--bad);color:#fff">❌ falló</i>`) : `<i class="${r ? "t-ok" : "t-mid"}" style="${r ? "background:var(--good);color:var(--bg)" : ""}">${r == null ? "⏳ en juego" : r ? "⏳ va pegando" : "⏳ todavía no"}</i>`;
       return `<div class="m-pick"><span class="k">Pick</span><b>${x.safe ? "🛡️ " : ""}${esc(x.kind === "prop" ? x.n + " " + x.lbl : qShort(x.lbl))}${esc(lleva(x))}</b><span class="px">${fx(x.p)}</span></div><div class="m-conf"><span class="k">Estado</span>${chip}<span></span><span class="pct">${Math.round(x.pr * 100)}%</span></div>`; }).join("");
