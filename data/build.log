@@ -1,14 +1,20 @@
 [0s] NBA ok
-[5s] NFL ok
-fotmob historial: 7 de 7 equipos con poco historial: HBE=Hapoel Beer Sheva, DZG=Dinamo Zagreb, LEVS=Levski Sofia, NKC=NK Celje, SPP=Sparta Prague, TORR=Torreense, MUN=Bayern München
-fotmob xG: 108 de 128 equipos
+[10s] NFL ok
+fotmob historial: 1 de 1 equipos con poco historial: MUN=Bayern München
+fotmob xG: 95 de 104 equipos
 fotmob partido a partido: 150 equipos con xG de sus últimos partidos
-[36s] Soccer ok
-[36s] gates SOC|dc, SOC|pshot, SOC|btts, NBA|3PM|under, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc1h, SOC|tot cambios: 
-[36s] calibración {"_n":5609,"NBA|prop|over":0.008,"NBA|prop|under":0.005,"NBA|game":-0.036,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.011,"SOC|soc":-0.034,"SOC|1x2":0.037,"SOC|dc":0.012,"SOC|dc1h":0.014,"SOC|tot":-0.009,"SOC|tt":0.017,"SOC|tc":-0.08,"SOC|psot":-0.055,"SOC|pshot":-0.08,"SOC|btts":-0.033,"SOC|hc":0.046,"SOC|pgoal":-0.041,"SOC|cor":0.035}
-[36s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1179},"NFL":{"w":0.69,"raw":0.9,"n":261}}
-[36s] latest.json 858 KB NBA 0 games/0 props · NFL 15/230 · soccer 72
-[38s] candidatos guardados 4068
-[38s] grade 2026-11-25 ok
-[40s] bot.json ok
-[40s] done
+[51s] Soccer ok
+[55s] SGO NFL ok
+[55s] SGO NFL priced 0
+[55s] SGO UCL ok
+[55s] SGO UCL matched 0
+[56s] OddsAPI ok
+[56s] OddsAPI {"calls":7,"left":"286"}
+[56s] gates SOC|dc, SOC|pshot, SOC|btts, NBA|3PM|under, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc1h, SOC|tot cambios: 
+[56s] calibración {"_n":5870,"NBA|prop|over":0.007,"NBA|prop|under":0,"NBA|game":-0.036,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.019,"SOC|soc":-0.034,"SOC|1x2":0.036,"SOC|dc":0.014,"SOC|hc":0.041,"SOC|dc1h":0.017,"SOC|tt":0.019,"SOC|psot":-0.051,"SOC|pshot":-0.08,"SOC|tot":-0.013,"SOC|tc":-0.08,"SOC|btts":-0.043,"SOC|cor":0.037,"SOC|pgoal":-0.041}
+[56s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1162},"NFL":{"w":0.69,"raw":0.9,"n":261}}
+[56s] latest.json 844 KB NBA 0 games/0 props · NFL 15/230 · soccer 55
+[57s] candidatos guardados 3862
+[58s] grade 2026-11-26 ok
+[59s] bot.json ok
+[59s] done
