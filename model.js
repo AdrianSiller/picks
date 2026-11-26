@@ -76,6 +76,10 @@
     // at least as likely as our model (unders: +10% and +4%). When our model sees more than the book, it was -5% to -20%.
     if (sport === "NBA" && c.pm != null && c.mkB != null && c.pm - c.mkB > 0) return `el modelo ve más que la casa (${Math.round(c.pm * 100)}% contra ${Math.round(c.mkB * 100)}%): en NBA solo entran los que la casa respalda igual o más`;
     return c.out ? "no juega" : !c.p ? "sin momio en la casa" : c.role === 0 ? "fuera de su rol" : c.pr < cfg.minPr ? `probabilidad baja (${Math.round(c.pr * 100)}%)` : c.e < -0.02 ? "momio caro para lo que estimamos" : ""; };
+  // "Reading" prop for a game with no other pick: main-role player, 58%+, the book about as convinced as our model (at most 5 points
+  // apart), a usual price, and a type of pick that is not paused. Small stake; tracked as its own tier.
+  M.propRead = (cands, sport, gid) => cands.filter(c => c.g === gid && c.p && !c.out && c.role !== 0 && c.pr >= 0.58 && (c.e == null || c.e >= -0.04) && c.pm != null && c.mkB != null && Math.abs(c.pm - c.mkB) <= 0.05 && M.gateOn(M.gateKey(c, sport)))
+    .sort((a, b) => b.pr - a.pr)[0] || null;
   M.topPicks = (cands, sport, n = 10) => {
     const cfg = M.CFG[sport], out = [], per = {};
     for (const c of cands.slice().sort((a, b) => M.score(b, sport) - M.score(a, sport))) {
@@ -197,8 +201,12 @@
     // Still nothing: the most probable side (53%+) where our own model is not clearly against the book (within 3 points).
     // It is a "trend" pick, not a value one: e.g. a 1.57 favorite at 58%, or an underdog +5.5 when we see a closer game than the book
     const prob = solid || fair ? null : pickable.filter(o => o.p >= 0.53 && o.mk != null && o.pm >= o.mk - 0.03 && o.price * o.mk >= 0.9).sort((a, b) => b.p - a.p)[0] || null;
-    const best = solid || fair || prob || opts2.slice().sort((a, b) => b.e - a.e)[0];
-    return {H, A, margin, opts: opts2, best, play: !!(solid || fair || prob), tier: solid ? "solid" : fair ? "fair" : prob ? "prob" : null, value: fair || prob ? null : value, tot: (t => { if (t && !M.gateOn(`${ctx.sp}|game|tot`)) t.play = false; return t; })(M.totalModel(g, ctx, H, A))};
+    // Clear favourite at a fair price (the book gives it 70%+ and pays at least 95% of fair): a pick even if our model sees less (Nov 25)
+    const likely = solid || fair || prob ? null : opts2.filter(o => o.kind === "ml" && o.mk != null && o.mk >= 0.70 && o.price * o.mk >= 0.95 && M.gateOn(gk(o))).sort((a, b) => b.mk - a.mk)[0] || null;
+    // Still nothing: the most likely side at a fair price where our model is not clearly against the book ("reading" pick, small stake)
+    const read = solid || fair || prob || likely ? null : pickable.filter(o => o.p >= 0.52 && o.mk != null && o.pm >= o.mk - 0.05 && o.pm - o.mk <= 0.10 && o.price * o.mk >= 0.94).sort((a, b) => b.p - a.p)[0] || null;
+    const best = solid || fair || prob || likely || read || opts2.slice().sort((a, b) => b.e - a.e)[0];
+    return {H, A, margin, opts: opts2, best, play: !!(solid || fair || prob || likely || read), tier: solid ? "solid" : fair ? "fair" : prob ? "prob" : likely ? "likely" : read ? "read" : null, value: fair || prob ? null : value, tot: (t => { if (t && !M.gateOn(`${ctx.sp}|game|tot`)) t.play = false; return t; })(M.totalModel(g, ctx, H, A))};
   };
 
   /* ---------- soccer ---------- */

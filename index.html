@@ -315,12 +315,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 24 nov 3:45 p.m. · diseño v2</footer>
-<script src="model.js?v=20261124-1545"></script>
+<footer class="ver">Versión de la app: 25 nov 6:40 p.m. · diseño v2</footer>
+<script src="model.js?v=20261125-1840"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261124-1545";
+const APP_VERSION = "20261125-1840";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -1424,8 +1424,11 @@ function quickHtml() {
     const top = M.topPicks(DATA.cands, S.name), prob = M.probables(DATA.cands, S.name, 6, top), safe = S.name === "NBA" ? M.nbaSafe(DATA.cands) : [];
     for (const g of list) { const parts = [];
       if (S.teams && S.teams[g.home.abbr] && S.teams[g.away.abbr]) { const m = gameModel(g);
-        if (m.play) parts.push(qPick(m.best.lbl.replace(" (moneyline)", " (ML)"), fx(m.best.price), m.best.p, m.tier === "solid" ? "ok" : "mid"));
+        if (m.play) parts.push(qPick(m.best.lbl.replace(" (moneyline)", " (ML)"), fx(m.best.price), m.best.p, m.tier === "solid" ? "ok" : m.tier === "likely" ? "safe" : "mid"));
         if (m.tot && m.tot.play) parts.push(qPick(`Total ${m.tot.best.lbl.replace("Over", "más de").replace("Under", "menos de")}`, fx(m.tot.best.price), m.tot.best.p, "ok")); }
+      if (!parts.length) { const rd = M.propRead(DATA.cands, S.name, g.id); if (rd) parts.push(qPick(`${rd.n} ${(rd.s === "over" ? "más de " : "menos de ") + rd.l + " " + MK[rd.m].lbl}`, fx(rd.p), rd.pr, "read")); }
+      if (!parts.length) { const t = DATA.cands.filter(c => c.g === g.id && c.p && !c.out && c.pr >= 0.6).sort((a, b) => b.pr - a.pr)[0];
+        if (t) parts.push(`<div class="m-pick"><span class="k">Lo más probable</span><b>${esc(t.n)} ${t.s === "over" ? "más de" : "menos de"} ${t.l} ${MK[t.m].lbl} <small style="font-weight:500;color:var(--muted)">· ${fx(t.p)} · ${pct(t.pr)}</small></b></div><div class="m-alt">⚠️ No es pick: ${M.gateOn(M.gateKey(t, S.name)) ? "el momio no paga lo suficiente" : "ese tipo de pick pega seguido pero pierde dinero en el registro"}. Informativo.</div>`); }
       for (const c of [...top, ...prob].filter(c => c.g === g.id).sort((a, b) => b.pr - a.pr).slice(0, 3)) parts.push(qPick(`${c.n} ${c.m === "ATD" ? "anota TD" : (c.s === "over" ? "más de " : "menos de ") + c.l + " " + MK[c.m].lbl}`, fx(c.p), c.pr, safe.includes(c) ? "safe" : top.includes(c) ? "ok" : "mid"));
       (days[dayKey(g.date)] = days[dayKey(g.date)] || []).push(`<button class="blk${parts.length ? "" : " off"}" data-qg="${g.id}">${qHead(g, sp, S.name)}${parts.join("") || `<div class="m-pick"><span class="k">Pick</span><b class="no">Sin pick: nada pasa los filtros</b></div>`}${mxHtml(g)}</button>`); }
   }

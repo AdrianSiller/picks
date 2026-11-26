@@ -18,6 +18,7 @@ export function snapshot(data, now, hours = 30) {
     for (const g of D.games) { if (!soon(g) || !D.teams[g.home.abbr] || !D.teams[g.away.abbr]) continue;
       const gm = M.gameModel(g, {...cfg, teams: D.teams, outs: D.outs || {}});
       if (gm.tot && gm.tot.play) items.push({sport, kind: "game", d: g.date, pr: gm.tot.best.p, cal: gm.tot.best.cal || 0, e: gm.tot.best.e, g: g.id, side: gm.tot.best.side, bet: "tot", line: gm.tot.best.line, p: gm.tot.best.price, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: `Total ${gm.tot.best.lbl}`});
+      if (!gm.play && !items.some(x => x.g === g.id)) { const c = M.propRead(D.cands, sport, g.id); if (c) items.push({sport, kind: "prop", why: "read", d: g.date, g: c.g, aid: c.aid, n: c.n, t: c.t, pos: c.pos, m: c.m, l: c.l, s: c.s, p: c.p || null, pr: c.pr, e: c.e, role: c.role, cal: c.calAdj || 0}); }
       if (gm.play) items.push({sport, kind: "game", tier: gm.tier, d: g.date, pr: gm.best.p, cal: gm.best.cal || 0, e: gm.best.e, g: g.id, side: gm.best.side, bet: gm.best.kind, line: gm.best.line, p: gm.best.price, n: `${g.away.abbr} @ ${g.home.abbr}`, lbl: gm.best.lbl.replace(" (moneyline)", " · ML").replace(" (spread)", "")}); }
   }
   const S = data.soc;
