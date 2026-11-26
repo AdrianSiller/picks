@@ -315,12 +315,12 @@ h3.sub{font-family:var(--f-mono);letter-spacing:.1em;color:var(--ink)}
   </div>
 </header>
 <main><div class="wrap" id="view"><div class="loading">Cargando picks…</div></div></main>
-<footer class="ver">Versión de la app: 25 nov 6:40 p.m. · diseño v2</footer>
-<script src="model.js?v=20261125-1840"></script>
+<footer class="ver">Versión de la app: 25 nov 6:50 p.m. · diseño v2</footer>
+<script src="model.js?v=20261125-1850"></script>
 
 <script>
 // Self-update: the phone may keep an old copy of this page; if the published one is newer, reload it
-const APP_VERSION = "20261125-1840";
+const APP_VERSION = "20261125-1850";
 fetch("./?check=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
   const m = t.match(/APP_VERSION = "([^"]+)"/);
   if (m && m[1] !== APP_VERSION && !location.search.includes("v=" + m[1])) location.replace("./?v=" + m[1]);
@@ -369,7 +369,7 @@ const NFL_DATA = LATEST.nfl;
 const SOC_DATA = LATEST.soc;
 // Games that already started drop out of the picks
 const nowMs = Date.now();
-[NBA_DATA, NFL_DATA, SOC_DATA].forEach(D => { D.games = D.games.filter(g => new Date(g.date).getTime() > nowMs - 5 * 60e3); const ids = new Set(D.games.map(g => g.id)); if (D.cands) D.cands = D.cands.filter(c => ids.has(c.g)); });
+[NBA_DATA, NFL_DATA, SOC_DATA].forEach(D => { D.games = D.games.filter(g => new Date(g.date).getTime() > nowMs - 3 * 36e5); const ids = new Set(D.games.filter(g => new Date(g.date).getTime() > nowMs - 5 * 60e3).map(g => g.id)); if (D.cands) D.cands = D.cands.filter(c => ids.has(c.g)); });
 // Rushing + receiving yards (RRY) as an extra log column
 Object.values(NFL_DATA.logs || {}).forEach(rows => rows.forEach(r => { if (r.length === 11) r.push(r[4] + r[6]); }));
 
@@ -1487,6 +1487,7 @@ async function liveBlocks() {
     const j = (await getRaw(`https://site.api.espn.com/apis/site/v2/sports/${q}`)) || (await getRaw(`https://picks-bot.adrian-rmzsiller.workers.dev/espn?p=${encodeURIComponent(q)}`)); if (!j) return;
     for (const e of j.events || []) { const c = e.competitions[0], st = c.status.type; if (st.state === "pre" || by[e.id]) continue; const H = c.competitors.find(x => x.homeAway === "home"), A = c.competitors.find(x => x.homeAway === "away");
       extra.push({id: e.id, lg, d: e.date, done: st.completed, clock: st.shortDetail, h: +H.score || 0, a: +A.score || 0, H: H.team, A: A.team}); } }));
+  window.LIVE_IDS = [...Object.keys(by), ...extra.map(e => e.id)].filter(id => (live[id] && (live[id].done || live[id].clock)) || extra.some(e => e.id === id));
   const sec = {live: [], done: []}, sp = S.custom ? "soc" : S.name.toLowerCase(); let W = 0, F = 0;
   // Soccer: the pick of the match first (the one the block showed before kickoff); secondary picks only as a short "También" line
   const PRI = {safe: 0, top: 1, game: 1, likely: 1, read: 2, up1: 3, fair: 4};
@@ -1515,7 +1516,7 @@ function show(name) {
   if (name === "grade") { v.innerHTML = `<div class="loading">Calculando…</div>`; viewGrade().then(h => { if (curTab === "grade") { v.innerHTML = backHoy() + h; wireQuick(v); } }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "players") { v.innerHTML = `<div class="loading">Cargando jugadores…</div>`; viewPlayers(v); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   if (name === "perf") { v.innerHTML = viewPerf(); try { localStorage.setItem("tab", name); } catch (e) {} return; }
-  if (name === "games" && quick && !filt.game) { v.innerHTML = changesHtml() + filterBar() + quickToggle() + quickHtml(); wireFilters(v); wireQuick(v); const ql = v.querySelector("#qlive"); if (ql) liveBlocks().then(h => { if (curTab === "games") ql.innerHTML = h; }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
+  if (name === "games" && quick && !filt.game) { v.innerHTML = changesHtml() + filterBar() + quickToggle() + quickHtml(); wireFilters(v); wireQuick(v); const ql = v.querySelector("#qlive"); if (ql) liveBlocks().then(h => { if (curTab === "games") { ql.innerHTML = h; (window.LIVE_IDS || []).forEach(id => v.querySelectorAll(`.blk[data-qg="${id}"]`).forEach(b => { if (!ql.contains(b)) b.style.display = "none"; })); } }); try { localStorage.setItem("tab", name); } catch (e) {} return; }
   const pre = (["picks", "parlays"].includes(name) ? backHoy() : "") + (name === "picks" && !filt.game ? safeHtml() : "") + (name === "games" ? quickToggle() : "");
   if (S.custom) { v.innerHTML = changesHtml() + filterBar() + pre + S.views[name]() + socMethod(); socWire(v); }
   else { v.innerHTML = changesHtml() + filterBar() + pre + views[name]() + methodHtml(); wire(v); }
