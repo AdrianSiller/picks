@@ -1,20 +1,14 @@
 [9s] NBA ok
-[14s] NFL ok
+[25s] NFL ok
 fotmob historial: 1 de 1 equipos con poco historial: MUN=Bayern München
-fotmob xG: 95 de 104 equipos
+fotmob xG: 87 de 96 equipos
 fotmob partido a partido: 150 equipos con xG de sus últimos partidos
-[40s] Soccer ok
-[44s] SGO NFL ok
-[44s] SGO NFL priced 0
-[44s] SGO UCL ok
-[44s] SGO UCL matched 0
-[45s] OddsAPI ok
-[45s] OddsAPI {"calls":8,"left":"275"}
-[45s] gates SOC|dc, SOC|btts, SOC|pshot, NBA|3PM|under, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc1h, SOC|tot cambios: 
-[45s] calibración {"_n":6105,"NBA|prop|over":0.007,"NBA|prop|under":0,"NBA|game":-0.036,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.009,"SOC|soc":-0.034,"SOC|1x2":0.025,"SOC|dc":0.012,"SOC|dc1h":0.01,"SOC|tt":0.02,"SOC|tc":-0.08,"SOC|btts":-0.035,"SOC|psot":-0.049,"SOC|pshot":-0.08,"SOC|tot":-0.014,"SOC|cor":0.033,"SOC|hc":0.049,"SOC|pgoal":-0.041}
-[45s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1113},"NFL":{"w":0.68,"raw":0.9,"n":250}}
-[45s] latest.json 1092 KB NBA 11 games/126 props · NFL 12/186 · soccer 63
-[46s] candidatos guardados 4206
-[46s] grade 2026-11-27 ok
-[47s] bot.json ok
-[47s] done
+[52s] Soccer ok
+[52s] gates SOC|dc, SOC|btts, SOC|pshot, NBA|3PM|under, SOC|tt|O, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc1h, SOC|tot cambios: 
+[52s] calibración {"_n":6105,"NBA|prop|over":0.007,"NBA|prop|under":0,"NBA|game":-0.036,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.009,"SOC|soc":-0.034,"SOC|1x2":0.025,"SOC|dc":0.012,"SOC|dc1h":0.01,"SOC|tt":0.02,"SOC|tc":-0.08,"SOC|btts":-0.035,"SOC|psot":-0.049,"SOC|pshot":-0.08,"SOC|tot":-0.014,"SOC|cor":0.033,"SOC|hc":0.049,"SOC|pgoal":-0.041}
+[52s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1113},"NFL":{"w":0.68,"raw":0.9,"n":250}}
+[52s] latest.json 1055 KB NBA 11 games/132 props · NFL 12/187 · soccer 58
+[53s] candidatos guardados 3864
+[53s] grade 2026-11-27 ok
+[54s] bot.json ok
+[54s] done
