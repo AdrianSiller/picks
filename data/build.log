@@ -1,18 +1,18 @@
-[8s] NBA ok
-[12s] NFL ok
+[15s] NBA ok
+[25s] NFL ok
 fotmob historial: 1 de 1 equipos con poco historial: MUN=Bayern München
 fotmob xG: 87 de 96 equipos
 fotmob partido a partido: 150 equipos con xG de sus últimos partidos
-[41s] Soccer ok
-[45s] SGO NFL ok
-[45s] SGO NFL priced 0
-[45s] SGO UCL ok
-[45s] SGO UCL matched 0
-[45s] gates SOC|tt|O, SOC|pshot, SOC|dc, SOC|btts, NBA|3PM|under, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc1h, SOC|tot cambios: 
-[45s] calibración {"_n":6105,"NBA|prop|over":0.007,"NBA|prop|under":0,"NBA|game":-0.036,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.009,"SOC|soc":-0.034,"SOC|1x2":0.025,"SOC|dc":0.012,"SOC|dc1h":0.01,"SOC|tt":0.02,"SOC|tc":-0.08,"SOC|btts":-0.035,"SOC|psot":-0.049,"SOC|pshot":-0.08,"SOC|tot":-0.014,"SOC|cor":0.033,"SOC|hc":0.049,"SOC|pgoal":-0.041}
-[45s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1113},"NFL":{"w":0.68,"raw":0.9,"n":250}}
-[45s] latest.json 1042 KB NBA 11 games/134 props · NFL 11/169 · soccer 58
-[46s] candidatos guardados 3777
-[46s] grade 2026-11-27 ok
-[47s] bot.json ok
-[47s] done
+[60s] Soccer ok
+[64s] SGO NFL ok
+[64s] SGO NFL priced 0
+[64s] SGO UCL ok
+[64s] SGO UCL matched 0
+[65s] gates SOC|tt|O, SOC|pshot, SOC|dc, SOC|btts, NBA|3PM|under, NBA|REB|over, NBA|3PM|over, NBA|game|sp, NBA|AST|over, NFL|prop, SOC|dc1h, SOC|tot cambios: 
+[65s] calibración {"_n":6105,"NBA|prop|over":0.007,"NBA|prop|under":0,"NBA|game":-0.036,"NFL|prop|over":-0.037,"NFL|prop|under":-0.031,"NFL|game":0.009,"SOC|soc":-0.034,"SOC|1x2":0.025,"SOC|dc":0.012,"SOC|dc1h":0.01,"SOC|tt":0.02,"SOC|tc":-0.08,"SOC|btts":-0.035,"SOC|psot":-0.049,"SOC|pshot":-0.08,"SOC|tot":-0.014,"SOC|cor":0.033,"SOC|hc":0.049,"SOC|pgoal":-0.041}
+[65s] peso de la casa aprendido {"NBA":{"w":0.82,"raw":0.9,"n":1113},"NFL":{"w":0.68,"raw":0.9,"n":250}}
+[65s] latest.json 1050 KB NBA 11 games/138 props · NFL 11/169 · soccer 58
+[66s] candidatos guardados 3743
+[66s] grade 2026-11-27 ok
+[67s] bot.json ok
+[67s] done
